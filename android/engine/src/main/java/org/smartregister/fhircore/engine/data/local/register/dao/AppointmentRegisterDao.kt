@@ -197,10 +197,12 @@ constructor(
       val appointmentReasonFilter =
         filters.reasonCode == null ||
           (it.reasonCode.flatMap { cc -> cc.coding }.any { c -> c.code == filters.reasonCode })
-      it.status == Appointment.AppointmentStatus.BOOKED && it.hasStart() &&
+      it.status == Appointment.AppointmentStatus.BOOKED &&
+        it.hasStart() &&
         patientAssignmentFilter &&
         patientCategoryFilter &&
-        appointmentReasonFilter && it.patientRef() != null
+        appointmentReasonFilter &&
+        it.patientRef() != null
     }
   }
 
