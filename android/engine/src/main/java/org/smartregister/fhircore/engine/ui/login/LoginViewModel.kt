@@ -267,13 +267,7 @@ constructor(
     )
     sharedPreferences.write(
       key = SharedPreferenceKey.PRACTITIONER_ID.name,
-      value =
-        practitionerDetails
-          .fhirPractitionerDetails
-          ?.practitioners
-          ?.firstOrNull()
-          ?.id
-          ?.extractLogicalIdUuid()
+      value = practitionerDetails.fhirPractitionerDetails?.practitionerId.valueToString()
     )
 
     sharedPreferences.write(SharedPreferenceKey.PRACTITIONER_DETAILS.name, practitionerDetails)
