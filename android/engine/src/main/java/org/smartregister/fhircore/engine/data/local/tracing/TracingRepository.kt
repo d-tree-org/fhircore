@@ -22,12 +22,12 @@ import com.google.android.fhir.logicalId
 import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Order
 import com.google.android.fhir.search.search
+import com.google.android.fhir.testing.jsonParser
 import java.util.Date
 import javax.inject.Inject
 import org.hl7.fhir.r4.model.CodeableConcept
 import org.hl7.fhir.r4.model.Coding
 import org.hl7.fhir.r4.model.Encounter
-import org.hl7.fhir.r4.model.IdType
 import org.hl7.fhir.r4.model.ListResource
 import org.hl7.fhir.r4.model.Observation
 import org.hl7.fhir.r4.model.Patient
@@ -38,13 +38,15 @@ import org.smartregister.fhircore.engine.domain.model.TracingHistory
 import org.smartregister.fhircore.engine.domain.model.TracingOutcome
 import org.smartregister.fhircore.engine.domain.model.TracingOutcomeDetails
 import org.smartregister.fhircore.engine.domain.util.PaginationConstant
+import org.smartregister.fhircore.engine.util.extension.extractLogicalIdUuid
 import org.smartregister.fhircore.engine.util.extension.referenceValue
+import timber.log.Timber
 
 class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
   suspend fun getTracingHistory(
     currentPage: Int,
     loadAll: Boolean,
-    patientId: String
+    patientId: String,
   ): List<TracingHistory> {
     val list =
       fhirEngine.search<ListResource> {
@@ -54,17 +56,19 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
         from = currentPage * PaginationConstant.DEFAULT_PAGE_SIZE
       }
 
-    return list.map { it.resource }.map {
-      val data = getTracingHistoryFromList(it)
+    return list
+      .map { it.resource }
+      .map {
+        val data = getTracingHistoryFromList(it)
 
-      TracingHistory(
-        historyId = data.historyId,
-        startDate = data.startDate,
-        endDate = data.endDate,
-        numberOfAttempts = data.numberOfAttempts,
-        isActive = data.isActive
-      )
-    }
+        TracingHistory(
+          historyId = data.historyId,
+          startDate = data.startDate,
+          endDate = data.endDate,
+          numberOfAttempts = data.numberOfAttempts,
+          isActive = data.isActive,
+        )
+      }
   }
 
   suspend fun getTracingOutcomes(currentPage: Int, historyId: String): List<TracingOutcome> {
@@ -92,7 +96,9 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
         val fromIndex: Int = ((currentPage + 1) - 1) * pageSize
         if (size <= fromIndex) {
           mutableListOf()
-        } else subList(fromIndex, (fromIndex + pageSize).coerceAtMost(this.size))
+        } else {
+          subList(fromIndex, (fromIndex + pageSize).coerceAtMost(this.size))
+        }
       }
 
     var phoneTracingCounter = 1
@@ -153,7 +159,7 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
             value =
               of(CodeableConcept(Coding("https://d-tree.org", "tracing-outcome-unconducted", "")))
           },
-          operation = Operation.OR
+          operation = Operation.OR,
         )
       }
     outcomeObs
@@ -182,9 +188,9 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
                   Coding(
                     "https://d-tree.org",
                     "phone-tracing-outcome-date-of-agreed-appointment",
-                    ""
-                  )
-                )
+                    "",
+                  ),
+                ),
               )
           },
           {
@@ -194,12 +200,12 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
                   Coding(
                     "https://d-tree.org",
                     "home-tracing-outcome-date-of-agreed-appointment",
-                    ""
-                  )
-                )
+                    "",
+                  ),
+                ),
               )
           },
-          operation = Operation.OR
+          operation = Operation.OR,
         )
       }
     dateObs
@@ -237,15 +243,16 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
       .firstOrNull()
   }
 
-  suspend fun getTracingAttempt(patient: Patient): TracingAttempt {
+  suspend fun getTracingAttempt(patient: Patient, tasks: List<Task>): TracingAttempt {
     val list = getPatientListResource(patient)
+    list?.let { Timber.e(jsonParser.encodeResourceToString(list)) }
     return list?.let { toTracingAttempt(it) }
       ?: TracingAttempt(
         historyId = null,
         lastAttempt = null,
-        numberOfAttempts = 0,
+        numberOfAttempts = if (tasks.isEmpty()) Int.MAX_VALUE else 0,
         outcome = "",
-        reasons = listOf()
+        reasons = listOf(),
       )
   }
 
@@ -256,80 +263,40 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
         lastAttempt = null,
         numberOfAttempts = 0,
         outcome = "",
-        reasons = listOf()
+        reasons = listOf(),
       )
   }
 
-  private suspend fun toTracingAttempt(list: ListResource): TracingAttempt {
-    var lastAttempt: Encounter? = null
-    list
-      .entry
-      .map { it.item }
-      .filter { it.referenceElement.resourceType == ResourceType.Encounter.name }
-      .forEach { ref ->
-        val resourceId = IdType(ref.reference).idPart
-        kotlin
-          .runCatching { fhirEngine.get<Encounter>(resourceId) }
-          .onSuccess { enc ->
-            lastAttempt = maxOf(lastAttempt, enc, nullsFirst(compareBy { it.period?.start?.time }))
-          }
-          .onFailure { it.printStackTrace() }
-      }
-
-    val obs =
-      lastAttempt?.let {
-        fhirEngine.search<Observation> {
-          filter(Observation.ENCOUNTER, { value = it.referenceValue() })
-          filter(
-            Observation.CODE,
-            {
-              value =
-                of(
-                  CodeableConcept(
-                    Coding().apply {
-                      system = "https://d-tree.org"
-                      code = "tracing-outcome-conducted"
-                    }
-                  )
-                )
-            },
-            {
-              value =
-                of(
-                  CodeableConcept(
-                    Coding().apply {
-                      system = "https://d-tree.org"
-                      code = "tracing-outcome-unconducted"
-                    }
-                  )
-                )
-            },
-            operation = Operation.OR
-          )
-          count = 1
-        }
-      }
+  private fun toTracingAttempt(list: ListResource): TracingAttempt {
+    val lastAttempt: ListResource.ListEntryComponent? =
+      list.entry
+        .filter { it.item.referenceElement.resourceType == ResourceType.Encounter.name }
+        .sortedByDescending { it.date }
+        .firstOrNull()
 
     val outcome =
-      obs
-        ?.map { it.resource }
-        ?.firstOrNull { it.hasValueCodeableConcept() }
-        ?.valueCodeableConcept
-        ?.text
-        ?: ""
+      lastAttempt?.let { _ ->
+        list.entry
+          .firstOrNull { entry ->
+            entry.flag.codingFirstRep.display ==
+              lastAttempt.item.reference.extractLogicalIdUuid() &&
+              entry.flag.codingFirstRep.code == "tracing-outcome"
+          }
+          ?.flag
+          ?.text
+      } ?: ""
 
     val attempts =
-      list.orderedBy.coding.filter { coding -> coding.code.all { it.isDigit() } }.maxOfOrNull {
-        it.code.toInt()
-      }
-        ?: list.title.substringAfterLast("_").toIntOrNull() ?: 0
+      list.orderedBy.coding
+        .filter { coding -> coding.code.all { it.isDigit() } }
+        .maxOfOrNull { it.code.toInt() } ?: list.title.substringAfterLast("_").toIntOrNull() ?: 0
 
     return TracingAttempt(
       numberOfAttempts = attempts,
-      lastAttempt = lastAttempt?.period?.start,
+      lastAttempt = lastAttempt?.date,
       outcome = outcome,
       reasons = listOf(),
-      historyId = list.logicalId
+      historyId = list.logicalId,
     )
   }
 
@@ -349,7 +316,6 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
           resource.reasonCode?.codingFirstRep?.display?.let { reasons.add(it) }
           tasks.add(resource)
         } else if (resource is Encounter) {
-
           if (lastAttempt == null) {
             lastAttempt = resource
           } else if (lastAttempt?.period?.start != null) {

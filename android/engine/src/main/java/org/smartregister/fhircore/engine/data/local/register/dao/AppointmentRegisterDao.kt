@@ -16,9 +16,13 @@
 
 package org.smartregister.fhircore.engine.data.local.register.dao
 
+import ca.uhn.fhir.rest.gclient.TokenClientParam
 import ca.uhn.fhir.rest.param.ParamPrefixEnum
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.logicalId
+import com.google.android.fhir.search.Operation
+import com.google.android.fhir.search.filter.TokenParamFilterCriterion
+import com.google.android.fhir.search.has
 import com.google.android.fhir.search.search
 import java.util.Calendar
 import javax.inject.Inject
@@ -44,7 +48,7 @@ import org.smartregister.fhircore.engine.domain.model.RegisterData
 import org.smartregister.fhircore.engine.domain.repository.RegisterDao
 import org.smartregister.fhircore.engine.domain.util.PaginationConstant
 import org.smartregister.fhircore.engine.util.DefaultDispatcherProvider
-import org.smartregister.fhircore.engine.util.LOGGED_IN_PRACTITIONER
+import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.extension.asReference
 import org.smartregister.fhircore.engine.util.extension.extractAge
@@ -61,11 +65,14 @@ constructor(
   val defaultRepository: DefaultRepository,
   val configurationRegistry: ConfigurationRegistry,
   val dispatcherProvider: DefaultDispatcherProvider,
-  val sharedPreferencesHelper: SharedPreferencesHelper
+  val sharedPreferencesHelper: SharedPreferencesHelper,
 ) : RegisterDao {
 
   private val currentPractitioner by lazy {
-    sharedPreferencesHelper.read<Practitioner>(key = LOGGED_IN_PRACTITIONER, decodeWithGson = true)
+    sharedPreferencesHelper.read(
+      key = SharedPreferenceKey.PRACTITIONER_ID.name,
+      defaultValue = null,
+    )
   }
 
   private fun Appointment.patientRef() =
@@ -85,7 +92,6 @@ constructor(
     return fhirEngine
       .search<Appointment> {
         filter(Appointment.STATUS, { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) })
-        filter(Appointment.DATE, { value = of(DateTimeType.today()) })
       }
       .map { it.resource }
       .count {
@@ -102,7 +108,7 @@ constructor(
 
   private suspend fun patientCategoryMatches(
     appointment: Appointment,
-    categories: Iterable<HealthStatus>
+    categories: Iterable<HealthStatus>,
   ): Boolean {
     val patient =
       appointment.patientRef()?.let { defaultRepository.loadResource(it) as Patient }
@@ -113,9 +119,10 @@ constructor(
   private suspend fun searchAppointments(
     filters: RegisterFilter,
     loadAll: Boolean,
-    page: Int = -1
+    page: Int = -1,
   ): List<Appointment> {
     filters as AppointmentRegisterFilter
+    val patientTypeFilterTag = applicationConfiguration().patientTypeFilterTagViaMetaCodingSystem
     val searchResults =
       fhirEngine.search<Appointment> {
         if (!loadAll) count = PaginationConstant.DEFAULT_PAGE_SIZE
@@ -129,43 +136,46 @@ constructor(
           {
             value = of(DateTimeType(filters.dateOfAppointment))
             prefix = ParamPrefixEnum.GREATERTHAN_OR_EQUALS
-          }
+          },
         )
         filter(
           Appointment.DATE,
           {
             value = of(DateTimeType(filters.dateOfAppointment).apply { add(Calendar.DATE, 1) })
             prefix = ParamPrefixEnum.LESSTHAN
-          }
+          },
         )
 
-        //        if (filters.myPatients && currentPractititoner != null)
-        //          filter(Appointment.PRACTITIONER, { value =
-        // currentPractititoner!!.referenceValue() })
-        //
-        //        filters.patientCategory?.let {
-        //          val paramQueries: List<(TokenParamFilterCriterion.() -> Unit)> =
-        //            it.flatMap { healthStatus ->
-        //              val coding: Coding =
-        //                Coding().apply {
-        //                  system = "https://d-tree.org"
-        //                  code = healthStatus.name.lowercase().replace("_", "-")
-        //                }
-        //              val alternativeCoding: Coding =
-        //                Coding().apply {
-        //                  system = "https://d-tree.org"
-        //                  code = healthStatus.name.lowercase()
-        //                }
-        //
-        //              return@flatMap listOf<Coding>(coding, alternativeCoding).map<
-        //                Coding, TokenParamFilterCriterion.() -> Unit> { c -> { value = of(c) } }
-        //            }
-        //
-        //          has<Patient>(Appointment.PATIENT){
-        //            filter(TokenClientParam("_tag"), *paramQueries.toTypedArray(), operation =
-        // Operation.OR)
-        //          }
-        //        }
+        if (filters.myPatients && currentPractitioner != null) {
+          filter(Appointment.PRACTITIONER, { value = currentPractitioner!! })
+        }
+
+        filters.patientCategory?.let {
+          val paramQueries: List<(TokenParamFilterCriterion.() -> Unit)> =
+            it.flatMap { healthStatus ->
+              val coding: Coding =
+                Coding().apply {
+                  system = patientTypeFilterTag
+                  code = healthStatus.name.lowercase().replace("_", "-")
+                }
+              val alternativeCoding: Coding =
+                Coding().apply {
+                  system = patientTypeFilterTag
+                  code = healthStatus.name.lowercase()
+                }
+
+              return@flatMap listOf<Coding>(coding, alternativeCoding).map<
+                Coding,
+                TokenParamFilterCriterion.() -> Unit,
+              > { c ->
+                { value = of(c) }
+              }
+            }
+
+          has<Patient>(Appointment.PATIENT) {
+            filter(TokenClientParam("_tag"), *paramQueries.toTypedArray(), operation = Operation.OR)
+          }
+        }
 
         filters.reasonCode?.let {
           val codeableConcept =
@@ -174,29 +184,33 @@ constructor(
                 Coding().apply {
                   system = "https://d-tree.org"
                   code = it
-                }
+                },
               )
             }
           filter(Appointment.REASON_CODE, { value = of(codeableConcept) })
         }
       }
 
-    return searchResults.map { it.resource }.filter {
-      val patientAssignmentFilter =
-        !filters.myPatients ||
-          (it.practitionerRef()?.reference == currentPractitioner?.asReference()?.reference)
-      val patientCategoryFilter =
-        filters.patientCategory == null || (patientCategoryMatches(it, filters.patientCategory))
+    return searchResults
+      .map { it.resource }
+      .filter {
+        val patientAssignmentFilter =
+          !filters.myPatients ||
+            (it.practitionerRef()?.reference ==
+              currentPractitioner?.asReference(ResourceType.Practitioner)?.reference)
+        val patientCategoryFilter =
+          filters.patientCategory == null || (patientCategoryMatches(it, filters.patientCategory))
 
-      val appointmentReasonFilter =
-        filters.reasonCode == null ||
-          (it.reasonCode.flatMap { cc -> cc.coding }.any { c -> c.code == filters.reasonCode })
-      it.status == Appointment.AppointmentStatus.BOOKED &&
-        it.hasStart() &&
-        patientAssignmentFilter &&
-        patientCategoryFilter &&
-        appointmentReasonFilter
-    }
+        val appointmentReasonFilter =
+          filters.reasonCode == null ||
+            (it.reasonCode.flatMap { cc -> cc.coding }.any { c -> c.code == filters.reasonCode })
+        it.status == Appointment.AppointmentStatus.BOOKED &&
+          it.hasStart() &&
+          patientAssignmentFilter &&
+          patientCategoryFilter &&
+          appointmentReasonFilter &&
+          it.patientRef() != null
+      }
   }
 
   private suspend fun transformAppointment(appointment: Appointment): RegisterData {
@@ -214,11 +228,11 @@ constructor(
       age = patient.extractAge(),
       healthStatus =
         patient.extractHealthStatusFromMeta(
-          applicationConfiguration().patientTypeFilterTagViaMetaCodingSystem
+          applicationConfiguration().patientTypeFilterTagViaMetaCodingSystem,
         ),
       isPregnant = defaultRepository.isPatientPregnant(patient),
       isBreastfeeding = defaultRepository.isPatientBreastfeeding(patient),
-      reasons = appointment.reasonCode.flatMap { cc -> cc.coding.map { coding -> coding.code } }
+      reasons = appointment.reasonCode.flatMap { cc -> cc.coding.map { coding -> coding.code } },
     )
   }
 
@@ -226,7 +240,7 @@ constructor(
     currentPage: Int,
     loadAll: Boolean,
     appFeatureName: String?,
-    filters: RegisterFilter
+    filters: RegisterFilter,
   ): List<RegisterData> =
     searchAppointments(filters, loadAll = true)
       .map { transformAppointment(it) }
@@ -235,21 +249,23 @@ constructor(
           compareBy {
             it as RegisterData.AppointmentRegisterData
             it.identifier
-          }
-        )
+          },
+        ),
       )
       .let {
         if (!loadAll) {
           val from = currentPage * PaginationConstant.DEFAULT_PAGE_SIZE
           val to = from + PaginationConstant.DEFAULT_PAGE_SIZE
           it.safeSubList(from..to)
-        } else it
+        } else {
+          it
+        }
       }
 
   override suspend fun loadRegisterData(
     currentPage: Int,
     loadAll: Boolean,
-    appFeatureName: String?
+    appFeatureName: String?,
   ): List<RegisterData> {
     val appointments =
       fhirEngine.search<Appointment> {
@@ -271,15 +287,17 @@ constructor(
           compareBy {
             it as RegisterData.AppointmentRegisterData
             it.identifier
-          }
-        )
+          },
+        ),
       )
       .let {
         if (!loadAll) {
           val from = currentPage * PaginationConstant.DEFAULT_PAGE_SIZE
           val to = from + PaginationConstant.DEFAULT_PAGE_SIZE
           it.safeSubList(from..to)
-        } else it
+        } else {
+          it
+        }
       }
   }
 

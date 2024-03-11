@@ -23,7 +23,7 @@ import org.hl7.fhir.r4.model.Coding
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.data.local.tracing.TracingRepository
-import org.smartregister.fhircore.engine.util.DefaultDispatcherProvider
+import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 
 @Singleton
@@ -34,8 +34,8 @@ constructor(
   defaultRepository: DefaultRepository,
   tracingRepository: TracingRepository,
   configurationRegistry: ConfigurationRegistry,
-  dispatcherProvider: DefaultDispatcherProvider,
-  sharedPreferencesHelper: SharedPreferencesHelper
+  dispatcherProvider: DispatcherProvider,
+  sharedPreferencesHelper: SharedPreferencesHelper,
 ) :
   TracingRegisterDao(
     fhirEngine,
@@ -43,9 +43,13 @@ constructor(
     tracingRepository,
     configurationRegistry,
     dispatcherProvider,
-    sharedPreferencesHelper
+    sharedPreferencesHelper,
   ) {
 
-  override val tracingCoding: Coding =
-    Coding("https://d-tree.org", "phone-tracing", "Phone Tracing")
+  override val tracingCoding: Coding = taskCode
+
+  companion object {
+    val taskCode: Coding =
+      Coding("https://d-tree.org/fhir/contact-tracing", "phone-tracing", "Phone Tracing")
+  }
 }
