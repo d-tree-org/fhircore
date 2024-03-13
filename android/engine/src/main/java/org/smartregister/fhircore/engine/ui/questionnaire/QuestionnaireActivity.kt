@@ -58,7 +58,6 @@ import org.smartregister.fhircore.engine.ui.base.AlertDialogue
 import org.smartregister.fhircore.engine.ui.base.AlertDialogue.showConfirmAlert
 import org.smartregister.fhircore.engine.ui.base.AlertDialogue.showProgressAlert
 import org.smartregister.fhircore.engine.ui.base.BaseMultiLanguageActivity
-import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl.DEFAULT_PROVIDER
 import org.smartregister.fhircore.engine.util.DefaultDispatcherProvider
 import org.smartregister.fhircore.engine.util.extension.FieldType
 import org.smartregister.fhircore.engine.util.extension.decodeResourceFromString
@@ -187,7 +186,8 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
         .setQuestionnaire(questionnaireString)
         .showReviewPageBeforeSubmit(questionnaire.isPaginated)
         .setShowSubmitButton(true)
-        .setCustomQuestionnaireItemViewHolderFactoryMatchersProvider(DEFAULT_PROVIDER)
+        .setCustomQuestionnaireItemViewHolderFactoryMatchersProvider(
+          QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl.DEFAULT_PROVIDER)
         .setIsReadOnly(questionnaireType.isReadOnly())
     questionnaireResponse?.let {
       it.distinctifyLinkId()
