@@ -317,7 +317,7 @@ constructor(
       .filter { it.status == CarePlan.CarePlanStatus.ACTIVE }
       .apply {
         val sortByLastUpdated = sortedBy { it.meta.lastUpdated }
-        return if (size > 1) {
+        return if (size > 1 || size == 1) {
           listOf(sortByLastUpdated.first())
         } else {
           listOf()
