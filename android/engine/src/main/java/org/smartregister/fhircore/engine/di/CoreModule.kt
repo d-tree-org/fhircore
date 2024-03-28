@@ -97,6 +97,6 @@ class CoreModule {
   @Provides
   fun provideAudiEventRepository(
     defaultRepository: DefaultRepository,
-    sharedPreferencesHelper: SharedPreferencesHelper
+    sharedPreferencesHelper: SharedPreferencesHelper,
   ): AuditEventRepository = AuditEventRepository(defaultRepository, sharedPreferencesHelper)
 }

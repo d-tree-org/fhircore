@@ -177,10 +177,8 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
 
   private fun scheduleAuthWorkers() {
     val isAuthenticated = tokenAuthenticator.sessionActive()
-    if(isAuthenticated){
-      with(configService) {
-        scheduleAuditEvent(applicationContext)
-      }
+    if (isAuthenticated) {
+      with(configService) { scheduleAuditEvent(applicationContext) }
     }
   }
 
