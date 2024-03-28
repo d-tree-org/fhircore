@@ -26,55 +26,13 @@ class AuditEventWorker
 constructor(
     @Assisted val appContext: Context,
     @Assisted workerParameters: WorkerParameters,
-    val fhirEngine: FhirEngine,
-    val sharedPreferences: SharedPreferencesHelper,
-    val defaultRepository: DefaultRepository
+    private val auditEventRepository: AuditEventRepository
     ) : CoroutineWorker(appContext, workerParameters) {
 
     override suspend fun doWork(): Result {
         Timber.e("AuditEventWorker is running")
-        createAuditEvent()
+        auditEventRepository.createAuditEvent()
         return Result.success()
-    }
-
-    private suspend fun createAuditEvent(){
-        // Get Practitioner Resource
-        val practitionerID =
-            sharedPreferences.read(key = SharedPreferenceKey.PRACTITIONER_ID.name, defaultValue = null)
-        val practitioner = defaultRepository.loadResource<Practitioner>(practitionerID!!)
-
-        // Create AuditEvent Resource
-        val auditEvent = AuditEvent().apply {
-            id = UUID.randomUUID().toString()
-            type = Coding().apply {
-                system = "http://dicom.nema.org/resources/ontology/DCM"
-                code ="110114"
-                display = "User Authentication"
-            }
-            subtype = listOf(
-                Coding().apply {
-                    system = "http://dicom.nema.org/resources/ontology/DCM"
-                    code = "110122"
-                    display = "Login"
-                }
-            )
-            outcome = AuditEvent.AuditEventOutcome._0
-            action = AuditEvent.AuditEventAction.C
-            recorded = Date()
-            agent = listOf(
-                AuditEvent.AuditEventAgentComponent().apply {
-                    who = practitioner?.asReference()
-                    requestor = true
-                }
-            )
-            source = AuditEvent.AuditEventSourceComponent().apply {
-                site = "https://d-tree.org"
-                observer = practitioner?.asReference()
-            }
-        }
-
-        // Save AuditEvent Resource
-        defaultRepository.addOrUpdate(true, auditEvent,)
     }
 
     companion object{
