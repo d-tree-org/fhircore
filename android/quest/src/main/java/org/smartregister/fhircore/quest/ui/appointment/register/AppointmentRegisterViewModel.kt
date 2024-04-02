@@ -263,6 +263,10 @@ constructor(
     } else {
       configurationRegistry.context.resources.getString(R.string.search_progress_message)
     }
+
+  fun clearFilters() {
+    _filtersMutableStateFlow.update { AppointmentFilterState.default() }
+  }
 }
 
 data class AppointmentFilterState(

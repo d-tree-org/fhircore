@@ -288,6 +288,10 @@ constructor(
     return state.toFilterList(healthModule)
   }
 
+  fun clearFilters() {
+    _filtersMutableStateFlow.update { TracingRegisterFilterState.default(healthModule) }
+  }
+
   override fun progressMessage() =
     if (searchText.value.isEmpty()) {
       ""
