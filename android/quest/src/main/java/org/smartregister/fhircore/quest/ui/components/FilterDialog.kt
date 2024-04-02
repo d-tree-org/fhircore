@@ -66,7 +66,7 @@ fun FilterDialog(
         Row(
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically,
-          modifier = Modifier.fillMaxWidth()
+          modifier = Modifier.fillMaxWidth(),
         ) {
           Text(
             text = stringResource(id = R.string.filters).uppercase(),
