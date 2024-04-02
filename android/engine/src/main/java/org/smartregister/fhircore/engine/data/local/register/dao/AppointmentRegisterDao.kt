@@ -21,6 +21,7 @@ import ca.uhn.fhir.rest.param.ParamPrefixEnum
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.logicalId
 import com.google.android.fhir.search.Operation
+import com.google.android.fhir.search.Order
 import com.google.android.fhir.search.filter.TokenParamFilterCriterion
 import com.google.android.fhir.search.has
 import com.google.android.fhir.search.search
@@ -89,13 +90,41 @@ constructor(
     configurationRegistry.retrieveConfiguration(AppConfigClassification.APPLICATION)
 
   override suspend fun countRegisterData(appFeatureName: String?): Long {
+    val dateOfAppointment = Calendar.getInstance().time
     return fhirEngine
       .search<Appointment> {
-        filter(Appointment.STATUS, { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) })
+        filter(
+          Appointment.STATUS,
+          { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) },
+          { value = of(Appointment.AppointmentStatus.NOSHOW.toCode()) },
+        )
+        filter(
+          Appointment.DATE,
+          {
+            value = of(DateTimeType(dateOfAppointment))
+            prefix = ParamPrefixEnum.GREATERTHAN_OR_EQUALS
+          },
+        )
+        filter(
+          Appointment.DATE,
+          {
+            value =
+              of(
+                DateTimeType(dateOfAppointment).apply {
+                  add(
+                    Calendar.DATE,
+                    1,
+                  )
+                },
+              )
+            prefix = ParamPrefixEnum.LESSTHAN
+          },
+        )
       }
       .map { it.resource }
       .count {
-        it.status == Appointment.AppointmentStatus.BOOKED &&
+        (it.status == Appointment.AppointmentStatus.BOOKED ||
+          it.status == Appointment.AppointmentStatus.NOSHOW) &&
           it.hasStart() &&
           it.patientRef() != null &&
           it.practitionerRef() != null
@@ -129,7 +158,11 @@ constructor(
 
         if (page >= 0) from = page * PaginationConstant.DEFAULT_PAGE_SIZE
 
-        filter(Appointment.STATUS, { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) })
+        filter(
+          Appointment.STATUS,
+          { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) },
+          { value = of(Appointment.AppointmentStatus.NOSHOW.toCode()) },
+        )
 
         filter(
           Appointment.DATE,
@@ -141,7 +174,15 @@ constructor(
         filter(
           Appointment.DATE,
           {
-            value = of(DateTimeType(filters.dateOfAppointment).apply { add(Calendar.DATE, 1) })
+            value =
+              of(
+                DateTimeType(filters.dateOfAppointment).apply {
+                  add(
+                    Calendar.DATE,
+                    1,
+                  )
+                },
+              )
             prefix = ParamPrefixEnum.LESSTHAN
           },
         )
@@ -189,6 +230,8 @@ constructor(
             }
           filter(Appointment.REASON_CODE, { value = of(codeableConcept) })
         }
+
+        sort(Appointment.DATE, Order.ASCENDING)
       }
 
     return searchResults
@@ -218,7 +261,8 @@ constructor(
     val patient = defaultRepository.loadResource(refPatient) as Patient
 
     return RegisterData.AppointmentRegisterData(
-      logicalId = appointment.logicalId,
+      logicalId = patient.logicalId,
+      appointmentLogicalId = appointment.logicalId,
       name = patient.extractName(),
       identifier =
         patient.identifier
