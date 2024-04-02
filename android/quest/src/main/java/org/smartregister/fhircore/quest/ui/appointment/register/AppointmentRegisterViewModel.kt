@@ -58,13 +58,13 @@ import org.smartregister.fhircore.engine.data.local.AppointmentRegisterFilter
 import org.smartregister.fhircore.engine.data.local.register.AppRegisterRepository
 import org.smartregister.fhircore.engine.sync.OnSyncListener
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
+import org.smartregister.fhircore.engine.ui.filter.DateFilterOption
+import org.smartregister.fhircore.engine.ui.filter.FilterOption
 import org.smartregister.fhircore.quest.R
 import org.smartregister.fhircore.quest.data.patient.model.PatientPagingSourceState
 import org.smartregister.fhircore.quest.data.register.RegisterPagingSource
 import org.smartregister.fhircore.quest.navigation.MainNavigationScreen
 import org.smartregister.fhircore.quest.navigation.NavigationArg
-import org.smartregister.fhircore.quest.ui.DateFilterOption
-import org.smartregister.fhircore.quest.ui.FilterOption
 import org.smartregister.fhircore.quest.ui.StandardRegisterEvent
 import org.smartregister.fhircore.quest.ui.StandardRegisterViewModel
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData

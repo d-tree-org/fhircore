@@ -41,7 +41,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import org.smartregister.fhircore.quest.ui.DateFilterOption
+import org.smartregister.fhircore.engine.ui.filter.DateFilterOption
 import org.smartregister.fhircore.quest.ui.LocalDatePickerDialog
 import org.smartregister.fhircore.quest.ui.LocalExposedDropdownMenuBox
 import org.smartregister.fhircore.quest.ui.PageRegisterScreen
@@ -66,6 +66,7 @@ fun AppointmentRegisterScreen(
     registerViewModel = registerViewModel,
     filterNavClickAction = { showFiltersDialog = true },
     activeFilters = activeFilters,
+    showFilterValues = true,
   )
 
   if (showFiltersDialog) {

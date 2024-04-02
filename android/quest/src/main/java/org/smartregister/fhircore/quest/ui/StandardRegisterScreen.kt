@@ -57,6 +57,7 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import org.smartregister.fhircore.engine.ui.components.register.RegisterFooter
 import org.smartregister.fhircore.engine.ui.components.register.RegisterHeader
+import org.smartregister.fhircore.engine.ui.filter.FilterOption
 import org.smartregister.fhircore.engine.ui.theme.GreyTextColor
 import org.smartregister.fhircore.quest.R
 import org.smartregister.fhircore.quest.ui.patient.register.components.RegisterList
@@ -70,6 +71,7 @@ fun PageRegisterScreen(
   registerViewModel: StandardRegisterViewModel,
   filterNavClickAction: () -> Unit,
   activeFilters: List<FilterOption> = listOf(),
+  showFilterValues: Boolean = false,
 ) {
   val searchTextState = registerViewModel.searchText.collectAsState()
   val searchText by remember { searchTextState }
@@ -114,9 +116,12 @@ fun PageRegisterScreen(
     Box(modifier = modifier.padding(innerPadding)) {
       // Only show counter during search
       var iModifier = Modifier.padding(top = 0.dp)
-      if (searchText.isNotEmpty()) {
+      if (searchText.isNotEmpty() || (showFilterValues && activeFilters.isNotEmpty())) {
         iModifier = Modifier.padding(top = 32.dp)
-        RegisterHeader(resultCount = pagingItems.itemCount)
+        RegisterHeader(
+          resultCount = if (searchText.isEmpty()) -1 else pagingItems.itemCount,
+          activeFilters = activeFilters
+        )
       }
 
       val isRefreshing by registerViewModel.isRefreshing.collectAsState()
@@ -211,5 +216,6 @@ fun PreviewTopSection() {
     onSearchTextChanged = {},
     onNavIconClick = {},
     onFilterIconClick = {},
+    activeFilters = listOf(),
   )
 }

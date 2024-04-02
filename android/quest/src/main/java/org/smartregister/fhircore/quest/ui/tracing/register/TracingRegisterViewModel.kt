@@ -57,6 +57,7 @@ import org.smartregister.fhircore.engine.data.local.TracingRegisterFilter
 import org.smartregister.fhircore.engine.data.local.register.AppRegisterRepository
 import org.smartregister.fhircore.engine.sync.OnSyncListener
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
+import org.smartregister.fhircore.engine.ui.filter.FilterOption
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.quest.R
@@ -66,7 +67,6 @@ import org.smartregister.fhircore.quest.data.register.RegisterPagingSource.Compa
 import org.smartregister.fhircore.quest.data.register.RegisterPagingSource.Companion.DEFAULT_PAGE_SIZE
 import org.smartregister.fhircore.quest.navigation.MainNavigationScreen
 import org.smartregister.fhircore.quest.navigation.NavigationArg
-import org.smartregister.fhircore.quest.ui.FilterOption
 import org.smartregister.fhircore.quest.ui.StandardRegisterEvent
 import org.smartregister.fhircore.quest.ui.StandardRegisterViewModel
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData

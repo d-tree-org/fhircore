@@ -49,6 +49,7 @@ fun TracingRegisterScreen(
     registerViewModel = registerViewModel,
     filterNavClickAction = { showFiltersDialog = true },
     activeFilters = activeFilters,
+    showFilterValues = true,
   )
 
   if (showFiltersDialog) {
