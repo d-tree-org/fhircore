@@ -62,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import org.smartregister.fhircore.quest.R
+import org.smartregister.fhircore.quest.ui.DateFilterOption
 import org.smartregister.fhircore.quest.ui.LocalDatePickerDialog
 import org.smartregister.fhircore.quest.ui.LocalExposedDropdownMenuBox
 import org.smartregister.fhircore.quest.ui.PageRegisterScreen
@@ -83,6 +84,7 @@ fun AppointmentRegisterScreen(
     navController = navController,
     registerViewModel = registerViewModel,
     filterNavClickAction = { showFiltersDialog = true },
+    activeFilters = currentFilterState.toFilterList()
   )
 
   if (showFiltersDialog) {
@@ -201,15 +203,15 @@ fun FilterAppointmentsModal(
 @Composable
 fun AppointmentDatePicker(
   fragmentManager: FragmentManager,
-  selectedDate: AppointmentDate,
-  onDatePicked: (AppointmentDate) -> Unit,
+  selectedDate: DateFilterOption,
+  onDatePicked: (DateFilterOption) -> Unit,
   onDateCancel: () -> Unit,
 ) {
   LocalDatePickerDialog(
     fragmentManager = fragmentManager,
     datePickerTag = "APPOINTMENT_DATE_PICKER",
     selectedDate = selectedDate.value,
-    onDatePicked = { onDatePicked.invoke(AppointmentDate(it)) },
+    onDatePicked = { onDatePicked.invoke(DateFilterOption(it)) },
     onDateCancel = { onDateCancel.invoke() },
   )
 }
@@ -217,8 +219,8 @@ fun AppointmentDatePicker(
 @Composable
 fun AppointmentDateField(
   fragmentManager: FragmentManager,
-  date: AppointmentDate,
-  onNewDateSelected: (AppointmentDate) -> Unit,
+  date: DateFilterOption,
+  onNewDateSelected: (DateFilterOption) -> Unit,
 ) {
   val interactionSource = remember { MutableInteractionSource() }
   val isPressed by interactionSource.collectIsPressedAsState()
@@ -231,7 +233,7 @@ fun AppointmentDateField(
   }
 
   OutlinedTextField(
-    value = date.formmatted().toString(),
+    value = date.text(),
     onValueChange = { /*No-op*/},
     colors = TextFieldDefaults.outlinedTextFieldColors(textColor = Color.DarkGray),
     maxLines = 1,

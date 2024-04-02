@@ -16,6 +16,20 @@
 
 package org.smartregister.fhircore.quest.ui
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 interface FilterOption {
   fun text(): String
+}
+
+data class DateFilterOption(val value: Date) : FilterOption {
+  override fun text(): String {
+    return SimpleDateFormat(FORMAT_STRING, Locale.getDefault()).format(value)
+  }
+
+  companion object {
+    private const val FORMAT_STRING = "dd - MM - yyyy"
+  }
 }
