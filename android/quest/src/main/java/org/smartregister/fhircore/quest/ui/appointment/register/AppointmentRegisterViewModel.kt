@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.apache.commons.lang3.time.DateUtils
+import org.smartregister.fhircore.engine.appfeature.AppFeature
 import org.smartregister.fhircore.engine.appfeature.model.HealthModule
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.app.AppConfigClassification
@@ -60,6 +61,7 @@ import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.quest.R
 import org.smartregister.fhircore.quest.data.patient.model.PatientPagingSourceState
 import org.smartregister.fhircore.quest.data.register.RegisterPagingSource
+import org.smartregister.fhircore.quest.navigation.MainNavigationScreen
 import org.smartregister.fhircore.quest.navigation.NavigationArg
 import org.smartregister.fhircore.quest.ui.DateFilterOption
 import org.smartregister.fhircore.quest.ui.FilterOption
@@ -252,7 +254,15 @@ constructor(
         _filtersMutableStateFlow.update { newFilterState }
       }
       is StandardRegisterEvent.OpenProfile -> {
-        // No-op
+        val urlParams =
+          NavigationArg.bindArgumentsOf(
+            Pair(NavigationArg.FEATURE, AppFeature.PatientManagement.name),
+            Pair(NavigationArg.HEALTH_MODULE, HealthModule.HIV),
+            Pair(NavigationArg.PATIENT_ID, event.patientId),
+          )
+        event.navController.navigate(
+          route = MainNavigationScreen.PatientProfile.route + urlParams,
+        )
       }
     }
   }
