@@ -120,7 +120,7 @@ fun PageRegisterScreen(
         iModifier = Modifier.padding(top = 32.dp)
         RegisterHeader(
           resultCount = if (searchText.isEmpty()) -1 else pagingItems.itemCount,
-          activeFilters = activeFilters
+          activeFilters = activeFilters,
         )
       }
 

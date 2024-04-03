@@ -19,12 +19,9 @@ package org.smartregister.fhircore.engine.ui.components.register
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.Chip
 import androidx.compose.material.ExperimentalMaterialApi
@@ -49,29 +46,28 @@ const val SEARCH_HEADER_TEXT_TAG = "searchHeaderTestTag"
 fun RegisterHeader(
   modifier: Modifier = Modifier,
   resultCount: Int,
-  activeFilters: List<FilterOption> = listOf()
+  activeFilters: List<FilterOption> = listOf(),
 ) {
   val scrollState = rememberScrollState()
   Row(
     horizontalArrangement = Arrangement.spacedBy(2.dp),
     verticalAlignment = Alignment.CenterVertically,
-    modifier = modifier
-      .background(color = PersonalDataBackgroundColor)
-      .fillMaxWidth()
-      .horizontalScroll(scrollState),
+    modifier =
+      modifier
+        .background(color = PersonalDataBackgroundColor)
+        .fillMaxWidth()
+        .horizontalScroll(scrollState),
   ) {
     if (resultCount != -1) {
       Text(
         text = stringResource(id = R.string.search_result, resultCount),
         color = GreyTextColor,
         modifier =
-        modifier
-          .testTag(SEARCH_HEADER_TEXT_TAG)
-          .padding(horizontal = 16.dp, vertical = 8.dp),
+          modifier.testTag(SEARCH_HEADER_TEXT_TAG).padding(horizontal = 16.dp, vertical = 8.dp),
       )
     }
     repeat(activeFilters.size) {
-      Chip(onClick = { /*TODO*/ }) {
+      Chip(onClick = { /*TODO*/}) {
         Text(
           text = activeFilters[it].text(),
           color = GreyTextColor,
