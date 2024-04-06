@@ -124,7 +124,7 @@ dependencies {
     exclude(group = "org.slf4j", module = "jcl-over-slf4j")
   }
 
-  api("org.smartregister:knowledge:0.1.0-alpha03-preview3-SNAPSHOT") {
+  api("org.smartregister:knowledge:0.1.0-alpha03-preview3.1-SNAPSHOT") {
     exclude(group = "org.slf4j", module = "jcl-over-slf4j")
   }
 
@@ -183,7 +183,7 @@ dependencies {
     exclude(group = "com.google.android.fhir", module = "common")
     exclude(group = "com.google.android.fhir", module = "engine")
   }
-  api("org.smartregister:data-capture:1.1.0-preview6-SNAPSHOT") {
+  api("org.smartregister:data-capture:1.1.0-preview7-SNAPSHOT") {
     isTransitive = true
     exclude(group = "ca.uhn.hapi.fhir")
     exclude(group = "com.google.android.fhir", module = "engine")
