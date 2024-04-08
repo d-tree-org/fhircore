@@ -38,7 +38,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.robolectric.Shadows
-import org.smartregister.fhircore.engine.app.AppConfigService
+import org.smartregister.fhircore.engine.app.TestConfigService
 import org.smartregister.fhircore.engine.app.fakes.Faker
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
@@ -83,7 +83,7 @@ class UserProfileViewModelTest : RobolectricTest() {
     accountAuthenticator = mockk()
     secureSharedPreference = mockk()
     sharedPreferencesHelper = mockk()
-    configService = AppConfigService(context = context)
+    configService = TestConfigService(context = context)
     fhirResourceDataSource = spyk(FhirResourceDataSource(resourceService))
 
     every { tokenAuthenticator.sessionActive() } returns true
@@ -184,8 +184,6 @@ class UserProfileViewModelTest : RobolectricTest() {
     val languages = userProfileViewModel.languages
     Assert.assertEquals("English", languages[0].displayName)
     Assert.assertEquals("en", languages[0].tag)
-    Assert.assertEquals("Swahili", languages[1].displayName)
-    Assert.assertEquals("sw", languages[1].tag)
   }
 
   @Test
@@ -194,7 +192,5 @@ class UserProfileViewModelTest : RobolectricTest() {
 
     Assert.assertEquals("English", languages[0].displayName)
     Assert.assertEquals("en", languages[0].tag)
-    Assert.assertEquals("Swahili", languages[1].displayName)
-    Assert.assertEquals("sw", languages[1].tag)
   }
 }

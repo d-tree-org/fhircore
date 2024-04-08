@@ -23,30 +23,18 @@ import org.junit.Test
 
 class AppFeatureConfigTest {
 
-  lateinit var appFeatureConfig: AppFeatureConfig
+  private lateinit var appFeatureConfig: AppFeatureConfig
 
   @Before
   fun setUp() {
     appFeatureConfig =
       AppFeatureConfig(
-        appId = "quest",
-        classification = "app_feature",
-        appFeatures = listOf(mockk(), mockk(), mockk()),
+        features = listOf(mockk(), mockk(), mockk()),
       )
   }
 
   @Test
-  fun testGetAppId_shouldReturn_test() {
-    Assert.assertEquals("quest", appFeatureConfig.appId)
-  }
-
-  @Test
-  fun testGetClassification_shouldReturn_test_configuration() {
-    Assert.assertEquals("app_feature", appFeatureConfig.classification)
-  }
-
-  @Test
   fun testGetAppFeatures_shouldReturn_3() {
-    Assert.assertEquals(3, appFeatureConfig.appFeatures.size)
+    Assert.assertEquals(3, appFeatureConfig.features.size)
   }
 }

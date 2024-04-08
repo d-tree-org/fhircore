@@ -99,8 +99,6 @@ class AppointmentRegisterDaoTest : RobolectricTest() {
     coEvery { fhirEngine.get(ResourceType.Patient, "1234") } returns
       buildPatient("1", "doe", "john", 10, patientType = "exposed-infant")
 
-    coEvery { configurationRegistry.retrieveDataFilterConfiguration(any()) } returns emptyList()
-
     every {
       sharedPreferencesHelper.read<Practitioner>(LOGGED_IN_PRACTITIONER, decodeWithGson = true)
     } returns Practitioner().apply { id = "123" }
@@ -291,10 +289,5 @@ class AppointmentRegisterDaoTest : RobolectricTest() {
     Assert.assertEquals(2, data.size)
     Assert.assertEquals("appointment2", data.elementAt(0).logicalId)
     Assert.assertEquals("appointment1", data.elementAt(1).logicalId)
-  }
-
-  @Test
-  fun testGetRegisterDataFilters() {
-    Assert.assertNotNull(appointmentRegisterDao.getRegisterDataFilters())
   }
 }

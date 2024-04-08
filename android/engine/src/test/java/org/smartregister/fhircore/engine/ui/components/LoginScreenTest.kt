@@ -33,7 +33,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.smartregister.fhircore.engine.R
-import org.smartregister.fhircore.engine.configuration.view.loginViewConfigurationOf
 import org.smartregister.fhircore.engine.robolectric.RobolectricTest
 import org.smartregister.fhircore.engine.ui.login.APP_NAME_TEXT_TAG
 import org.smartregister.fhircore.engine.ui.login.ForgotPasswordDialog
@@ -56,12 +55,10 @@ class LoginScreenTest : RobolectricTest() {
   private val loadingConfig = MutableLiveData(false)
   private val loginError: LiveData<LoginErrorState?> = MutableLiveData(null)
   private val showProgressBar = MutableLiveData(false)
-  private val loginConfig = loginViewConfigurationOf()
 
   @Before
   fun setUp() {
     loginViewModel = mockk {
-      every { loginViewConfiguration } returns MutableLiveData(loginConfig)
       every { username } returns this@LoginScreenTest.username
       every { password } returns this@LoginScreenTest.password
       every { loadingConfig } returns this@LoginScreenTest.loadingConfig
@@ -85,7 +82,6 @@ class LoginScreenTest : RobolectricTest() {
     // verifying app name heading properties
     composeRule.onNodeWithTag(APP_NAME_TEXT_TAG).assertExists()
     composeRule.onNodeWithTag(APP_NAME_TEXT_TAG).assertIsDisplayed()
-    composeRule.onNodeWithTag(APP_NAME_TEXT_TAG).assertTextEquals(loginConfig.applicationName)
 
     // verify username input field properties
     composeRule.onNodeWithTag(USERNAME_FIELD_TAG).assertExists()

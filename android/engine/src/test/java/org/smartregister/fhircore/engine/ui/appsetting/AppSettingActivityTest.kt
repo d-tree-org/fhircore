@@ -22,6 +22,7 @@ import com.google.gson.Gson
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
@@ -35,9 +36,7 @@ import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.app.fakes.Faker
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
 import org.smartregister.fhircore.engine.robolectric.RobolectricTest
-import org.smartregister.fhircore.engine.util.IS_LOGGED_IN
 import org.smartregister.fhircore.engine.util.SecureSharedPreference
-import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 
 @HiltAndroidTest
@@ -56,7 +55,7 @@ class AppSettingActivityTest : RobolectricTest() {
 
   @BindValue val accountAuthenticator = mockk<AccountAuthenticator>()
 
-  @BindValue var configurationRegistry = Faker.buildTestConfigurationRegistry()
+  @BindValue var configurationRegistry = spyk(Faker.buildTestConfigurationRegistry())
 
   private lateinit var appSettingActivityActivity: AppSettingActivity
 
@@ -74,87 +73,8 @@ class AppSettingActivityTest : RobolectricTest() {
   }
 
   @Test
-  fun testAppSettingActivity_withAppId_hasNotBeenSubmitted() {
-    every { accountAuthenticator.hasActiveSession() } returns false
-
-    Assert.assertEquals(
-      false,
-      appSettingActivityActivity.sharedPreferencesHelper.read(IS_LOGGED_IN, false),
-    )
-    Assert.assertEquals(
-      null,
-      appSettingActivityActivity.sharedPreferencesHelper.read(
-        SharedPreferenceKey.APP_ID.name,
-        null,
-      ),
-    )
-    Assert.assertEquals(false, appSettingActivityActivity.accountAuthenticator.hasActiveSession())
-  }
-
-  @Test
-  fun testAppSettingActivity_withAppId_hasBeenSubmitted_withUser_hasNotLoggedIn() {
-    sharedPreferencesHelper.write(SharedPreferenceKey.APP_ID.name, "default")
-    every { accountAuthenticator.hasActiveSession() } returns false
-
-    Assert.assertEquals(
-      false,
-      appSettingActivityActivity.sharedPreferencesHelper.read(IS_LOGGED_IN, false),
-    )
-    Assert.assertEquals(
-      "default",
-      appSettingActivityActivity.sharedPreferencesHelper.read(
-        SharedPreferenceKey.APP_ID.name,
-        null,
-      ),
-    )
-    Assert.assertEquals(false, appSettingActivityActivity.accountAuthenticator.hasActiveSession())
-  }
-
-  @Test
-  fun testAppSettingActivity_withAppId_hasBeenSubmitted_withUser_hasLoggedIn() {
-    sharedPreferencesHelper.write(IS_LOGGED_IN, true)
-    sharedPreferencesHelper.write(SharedPreferenceKey.APP_ID.name, "default")
-    every { accountAuthenticator.hasActiveSession() } returns true
-
-    Assert.assertEquals(
-      true,
-      appSettingActivityActivity.sharedPreferencesHelper.read(IS_LOGGED_IN, false),
-    )
-    Assert.assertEquals(
-      "default",
-      appSettingActivityActivity.sharedPreferencesHelper.read(
-        SharedPreferenceKey.APP_ID.name,
-        null,
-      ),
-    )
-    Assert.assertEquals(true, appSettingActivityActivity.accountAuthenticator.hasActiveSession())
-  }
-
-  @Test
-  fun testAppSettingActivity_withAppId_hasBeenSubmitted_withUser_hasLoggedIn_withSessionToken_hasExpired() {
-    sharedPreferencesHelper.write(IS_LOGGED_IN, true)
-    sharedPreferencesHelper.write(SharedPreferenceKey.APP_ID.name, "default")
-    every { accountAuthenticator.hasActiveSession() } returns false
-
-    Assert.assertEquals(
-      true,
-      appSettingActivityActivity.sharedPreferencesHelper.read(IS_LOGGED_IN, false),
-    )
-    Assert.assertEquals(
-      "default",
-      appSettingActivityActivity.sharedPreferencesHelper.read(
-        SharedPreferenceKey.APP_ID.name,
-        null,
-      ),
-    )
-    Assert.assertEquals(false, appSettingActivityActivity.accountAuthenticator.hasActiveSession())
-  }
-
-  @Test
   fun testThatConfigsAreLoadedWhenAppSettingsIsLaunched() {
-    appSettingActivityActivity.let { activity ->
-      Assert.assertTrue(activity != null)
-      Assert.assertTrue(configurationRegistry.workflowPointsMap.isNotEmpty())
-    }
+    coVerify { configurationRegistry.loadConfigurations(any()) }
+    Assert.assertNotNull(configurationRegistry.getAppConfigs())
   }
 }

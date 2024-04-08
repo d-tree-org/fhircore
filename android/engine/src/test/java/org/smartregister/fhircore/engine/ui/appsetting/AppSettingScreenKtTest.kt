@@ -20,11 +20,14 @@ import android.content.Context
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import io.mockk.spyk
+import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
 import org.smartregister.fhircore.engine.R
+import org.smartregister.fhircore.engine.domain.util.DataLoadState
 import org.smartregister.fhircore.engine.robolectric.RobolectricTest
 
 class AppSettingScreenKtTest : RobolectricTest() {
@@ -41,55 +44,36 @@ class AppSettingScreenKtTest : RobolectricTest() {
 
   @get:Rule val composeRule = createComposeRule()
 
-  private var listenersSpy = spyk<Listeners>()
-
   @Test
   fun testAppSettingScreenLayout() {
     composeRule.setContent {
       AppSettingScreen(
-        appId = appId,
-        onAppIdChanged = listenersSpy.onAppIdChanged,
-        fetchConfiguration = listenersSpy.fetchConfiguration,
-        error = "",
-        state = state,
-      )
-    }
-
-    composeRule.onNodeWithText(context.getString(R.string.fhir_core_app)).assertExists()
-    composeRule.onNodeWithText(context.getString(R.string.application_id)).assertExists()
-    composeRule.onNodeWithText(context.getString(R.string.load_configurations)).assertExists()
-  }
-
-  @Test
-  fun testLoadConfigurationButtonListenerAction() {
-    composeRule.setContent {
-      AppSettingScreen(
-        appId = appId,
-        onAppIdChanged = listenersSpy.onAppIdChanged,
-        fetchConfiguration = listenersSpy.fetchConfiguration,
-        error = "",
-        state = state,
+        goToHome = {},
+        retry = {},
+        state = DataLoadState.Loading,
       )
     }
 
     composeRule
-      .onNodeWithText(context.getString(R.string.load_configurations))
-      .assertHasClickAction()
+      .onNodeWithText(context.getString(com.google.android.fhir.R.string.app_name))
+      .assertExists()
   }
 
   @Test
   fun testErrorString() {
-    val error = "theError"
+    var retried = false
     composeRule.setContent {
       AppSettingScreen(
-        appId = appId,
-        onAppIdChanged = listenersSpy.onAppIdChanged,
-        fetchConfiguration = listenersSpy.fetchConfiguration,
-        error = error,
-        state = state,
+        goToHome = {},
+        retry = { retried = true },
+        state = DataLoadState.Error(InternetConnectionException()),
       )
     }
 
-    composeRule.onNodeWithText(error).assertExists()
+    composeRule.onNodeWithText("Retry").assertHasClickAction()
+
+    composeRule.onNodeWithText("Retry").performClick()
+
+    Assert.assertTrue(retried)
   }
 }

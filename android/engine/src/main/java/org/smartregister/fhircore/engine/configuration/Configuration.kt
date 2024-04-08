@@ -32,10 +32,7 @@ import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireConfig
  * @property classification Used to categorize multiple configurations of the same type. E.g. two
  *   RegisterViewConfigurations used in an application with two registers.
  */
-interface Configuration {
-  val appId: String
-  val classification: String
-}
+interface Configuration
 
 @Serializable
 data class AppConfiguration(
@@ -48,7 +45,6 @@ data class AppConfiguration(
 @Serializable
 data class SyncConfig(
   @SerializedName("resourceType") var resourceType: String,
-  @SerializedName("classification") var classification: String,
   @SerializedName("parameter") var parameter: ArrayList<Parameter> = arrayListOf(),
 )
 

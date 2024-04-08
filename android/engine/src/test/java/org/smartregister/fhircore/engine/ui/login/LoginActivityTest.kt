@@ -38,19 +38,17 @@ import io.mockk.verify
 import javax.inject.Inject
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyInt
 import org.robolectric.Robolectric
-import org.robolectric.Shadows
 import org.robolectric.util.ReflectionHelpers
 import org.smartregister.fhircore.engine.R
+import org.smartregister.fhircore.engine.app.fakes.Faker
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
-import org.smartregister.fhircore.engine.configuration.view.loginViewConfigurationOf
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.data.remote.auth.KeycloakService
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceDataSource
@@ -61,7 +59,6 @@ import org.smartregister.fhircore.engine.robolectric.ActivityRobolectricTest
 import org.smartregister.fhircore.engine.rule.CoroutineTestRule
 import org.smartregister.fhircore.engine.trace.FakePerformanceReporter
 import org.smartregister.fhircore.engine.trace.PerformanceReporter
-import org.smartregister.fhircore.engine.ui.pin.PinSetupActivity
 import org.smartregister.fhircore.engine.util.DefaultDispatcherProvider
 import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.FORCE_LOGIN_VIA_USERNAME_FROM_PIN_SETUP
@@ -131,6 +128,8 @@ class LoginActivityTest : ActivityRobolectricTest() {
           secureSharedPreference = secureSharedPreference,
           dispatcherProvider = dispatcherProvider,
           fhirResourceDataSource = fhirResourceDataSource,
+          appConfigs = Faker.appConfigService(),
+          configurationRegistry = Faker.buildTestConfigurationRegistry(),
         ),
       )
 
@@ -144,10 +143,10 @@ class LoginActivityTest : ActivityRobolectricTest() {
         fhirResourceDataSource,
         sharedPreferencesHelper,
         DefaultDispatcherProvider(),
+        appConfigService = Faker.appConfigService(),
       )
 
     loginActivity.configurationRegistry = configurationRegistry
-    loginActivity.configurationRegistry.appId = "default"
     loginService = loginActivity.loginService
   }
 
@@ -195,7 +194,6 @@ class LoginActivityTest : ActivityRobolectricTest() {
           .get(),
       )
     loginActivity.configurationRegistry = configurationRegistry
-    loginActivity.configurationRegistry.appId = "default"
     loginService = loginActivity.loginService
 
     loginViewModel.navigateToHome()
@@ -204,7 +202,6 @@ class LoginActivityTest : ActivityRobolectricTest() {
     loginActivity =
       spyk(Robolectric.buildActivity(LoginActivity::class.java).create().resume().get())
     loginActivity.configurationRegistry = configurationRegistry
-    loginActivity.configurationRegistry.appId = "default"
     loginService = loginActivity.loginService
   }
 
@@ -229,7 +226,6 @@ class LoginActivityTest : ActivityRobolectricTest() {
           .get(),
       )
     loginActivity.configurationRegistry = configurationRegistry
-    loginActivity.configurationRegistry.appId = "default"
     loginService = loginActivity.loginService
     every { loginActivity.setResult(any()) } just runs
     loginViewModel.onUsernameUpdated("newTestUser")
@@ -240,38 +236,15 @@ class LoginActivityTest : ActivityRobolectricTest() {
     loginActivity =
       spyk(Robolectric.buildActivity(LoginActivity::class.java).create().resume().get())
     loginActivity.configurationRegistry = configurationRegistry
-    loginActivity.configurationRegistry.appId = "default"
     loginService = loginActivity.loginService
   }
 
   @Test
   fun testNavigateToHomeShouldVerifyExpectedIntentWhenForcedLogin() {
     sharedPreferencesHelper.write(FORCE_LOGIN_VIA_USERNAME_FROM_PIN_SETUP, true)
-    val loginConfig = loginViewConfigurationOf(enablePin = true)
-    loginViewModel.updateViewConfigurations(loginConfig)
     loginViewModel.navigateToHome()
 
     verify { loginService.activateAuthorisedFeatures() }
-  }
-
-  @Test
-  fun testNavigateToPinSetupShouldVerifyExpectedIntent() {
-    val loginConfig = loginViewConfigurationOf(enablePin = true)
-    loginViewModel.updateViewConfigurations(loginConfig)
-    loginViewModel.navigateToHome()
-    val expectedIntent = Intent(getActivity(), PinSetupActivity::class.java)
-    val actualIntent = Shadows.shadowOf(application).nextStartedActivity
-    Assert.assertEquals(expectedIntent.component, actualIntent.component)
-  }
-
-  @Test
-  fun testGetApplicationConfiguration() {
-    runBlocking {
-      configurationRegistry.loadConfigurationsLocally("${configurationRegistry.appId}/debug") {
-        Assert.assertTrue(it)
-      }
-    }
-    Assert.assertNotNull(loginActivity.getApplicationConfiguration())
   }
 
   @Test(expected = RuntimeException::class)
@@ -291,8 +264,8 @@ class LoginActivityTest : ActivityRobolectricTest() {
   }
 
   class TestLoginService : LoginService {
-    override lateinit var loginActivity: AppCompatActivity
+    override fun navigateToHome(startingActivity: AppCompatActivity) {}
 
-    override fun navigateToHome() {}
+    override fun activateAuthorisedFeatures() {}
   }
 }

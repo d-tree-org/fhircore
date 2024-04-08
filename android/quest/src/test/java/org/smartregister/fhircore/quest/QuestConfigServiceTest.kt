@@ -35,7 +35,7 @@ class QuestConfigServiceTest : RobolectricTest() {
   @get:Rule val hiltRule = HiltAndroidRule(this)
 
   @BindValue
-  var configurationRegistry: ConfigurationRegistry = Faker.buildTestConfigurationRegistry("g6pd")
+  var configurationRegistry: ConfigurationRegistry = Faker.buildTestConfigurationRegistry()
 
   private lateinit var configService: ConfigService
 

@@ -17,9 +17,8 @@
 package org.smartregister.fhircore.quest.app.fakes
 
 import com.google.android.fhir.FhirEngine
-import com.google.android.fhir.SearchResult
-import com.google.android.fhir.search.Search
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
 import java.io.File
@@ -29,7 +28,6 @@ import java.util.Date
 import kotlinx.coroutines.runBlocking
 import org.hl7.fhir.r4.model.Address
 import org.hl7.fhir.r4.model.Binary
-import org.hl7.fhir.r4.model.Composition
 import org.hl7.fhir.r4.model.DateType
 import org.hl7.fhir.r4.model.Enumerations
 import org.hl7.fhir.r4.model.HumanName
@@ -38,8 +36,8 @@ import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.StringType
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
+import org.smartregister.fhircore.engine.configuration.app.AppConfigService
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireConfig
-import org.smartregister.fhircore.engine.util.extension.decodeResourceFromString
 import org.smartregister.fhircore.quest.data.patient.PatientRepository
 import org.smartregister.fhircore.quest.data.patient.model.PatientItem
 import org.smartregister.fhircore.quest.robolectric.RobolectricTest.Companion.readFile
@@ -116,11 +114,6 @@ object Faker {
     coEvery { patientRepository.fetchPregnancyCondition(any()) } returns ""
   }
 
-  fun initPatientRepositoryEmptyMocks(patientRepository: PatientRepository) {
-    coEvery { patientRepository.fetchDemographics(any()) } returns Patient()
-    coEvery { patientRepository.fetchTestForms(any()) } returns emptyList()
-  }
-
   val systemPath =
     (System.getProperty("user.dir") +
       File.separator +
@@ -136,37 +129,25 @@ object Faker {
     fhirEngine: FhirEngine,
     configurationRegistry: ConfigurationRegistry,
   ) {
-    val composition =
-      getBasePath(appId, "composition").readFile(systemPath).decodeResourceFromString()
-        as Composition
-    coEvery { fhirEngine.search<Composition>(any<Search>()) } returns
-      listOf(SearchResult(composition, included = null, revIncluded = null))
-
     coEvery { fhirEngine.get(ResourceType.Binary, any()) } answers
       {
-        val sectionComponent =
-          composition.section.find {
-            this.args[1].toString() == it.focus.reference.substringAfter("Binary/")
-          }
-        val configName = sectionComponent!!.focus.identifier.value
-        Binary().apply {
-          content = getBasePath(appId, configName).readFile(systemPath).toByteArray()
-        }
+        Binary().apply { content = getBasePath(appId).readFile(systemPath).toByteArray() }
       }
 
-    runBlocking { configurationRegistry.loadConfigurations(appId) {} }
+    runBlocking { configurationRegistry.loadConfigurations() }
   }
 
-  private fun getBasePath(appId: String, classification: String): String {
-    return "/configs/$appId/config_$classification.json"
+  private fun getBasePath(appId: String): String {
+    return "/configs/config_$appId.json"
   }
 
   fun buildTestConfigurationRegistry(
     appId: String? = null,
   ): ConfigurationRegistry {
     val fhirEngine: FhirEngine = mockk()
+    val appConfigService = mockk<AppConfigService>() { every { getAppId() } returns APP_DEBUG }
     val configurationRegistry =
-      spyk(ConfigurationRegistry(mockk(), fhirEngine, mockk(), mockk(), mockk()))
+      spyk(ConfigurationRegistry(mockk(), fhirEngine, mockk(), mockk(), mockk(), appConfigService))
 
     loadTestConfigurationRegistryData(appId ?: APP_DEBUG, fhirEngine, configurationRegistry)
 

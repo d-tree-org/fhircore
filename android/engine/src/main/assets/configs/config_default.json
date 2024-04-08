@@ -1,0 +1,236 @@
+{
+  "appConfig": {
+    "languages": [
+      "en"
+    ],
+    "syncInterval": 15,
+    "remoteSyncPageSize": 100,
+    "syncStrategy": [
+      "Location",
+      "Organization",
+      "CareTeam",
+      "Practitioner"
+    ],
+    "patientTypeFilterTagViaMetaCodingSystem": "https://d-tree.org/fhir/patient-meta-tag",
+    "taskFilterTagViaMetaCodingSystem": "https://d-tree.org/fhir/task-filter-tag",
+    "count": "100",
+    "locationHierarchyIdentifier": "eac8a2bb-8681-4528-b24a-ccf41e230c77",
+    "registrationForm": "patient-demographic-registration"
+  },
+  "appFeatures": {
+    "features": [
+      {
+        "feature": "PatientManagement",
+        "active": true,
+        "settings": {
+          "registerTitle": "HIV",
+          "registerFormId": "131335"
+        },
+        "target": "CHW",
+        "healthModule": "HIV"
+      },
+      {
+        "feature": "PatientManagement",
+        "active": true,
+        "settings": {
+          "registerTitle": "Home Tracing"
+        },
+        "target": "CHW",
+        "healthModule": "HOME_TRACING"
+      },
+      {
+        "feature": "PatientManagement",
+        "active": true,
+        "settings": {
+          "registerTitle": "Phone Tracing"
+        },
+        "target": "CHW",
+        "healthModule": "PHONE_TRACING"
+      },
+      {
+        "feature": "PatientManagement",
+        "active": true,
+        "settings": {
+          "registerTitle": "Appointment"
+        },
+        "target": "CHW",
+        "healthModule": "APPOINTMENT"
+      },
+      {
+        "feature": "InAppReporting",
+        "settings": {},
+        "active": false
+      },
+      {
+        "feature": "DeviceToDeviceSync",
+        "settings": {},
+        "active": true
+      }
+    ]
+  },
+  "syncConfig": {
+    "resourceType": "Parameters",
+    "parameter": [
+      {
+        "resource": {
+          "resourceType": "SearchParameter",
+          "name": "organization",
+          "code": "organization",
+          "base": [
+            "Patient"
+          ],
+          "type": "token",
+          "expression": "#organization"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "SearchParameter",
+          "name": "organization",
+          "code": "subject.organization",
+          "base": [
+            "Encounter",
+            "Observation",
+            "Condition",
+            "CarePlan",
+            "List",
+            "Task"
+          ],
+          "type": "token",
+          "expression": "#organization"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "SearchParameter",
+          "name": "publisher",
+          "code": "publisher",
+          "base": [
+            "Questionnaire"
+          ],
+          "type": "token",
+          "expression": "#publisher"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "SearchParameter",
+          "name": "_id",
+          "code": "_id",
+          "base": [
+            "StructureMap"
+          ]
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "SearchParameter",
+          "name": "count",
+          "code": "_count",
+          "base": [
+            "Patient",
+            "Encounter",
+            "Observation",
+            "Condition",
+            "CarePlan",
+            "List",
+            "Questionnaire",
+            "StructureMap",
+            "Binary",
+            "Task",
+            "Practitioner"
+          ],
+          "type": "token",
+          "expression": "#count"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "SearchParameter",
+          "name": "organization",
+          "code": "patient.organization",
+          "base": [
+            "RelatedPerson"
+          ],
+          "type": "token",
+          "expression": "#organization"
+        }
+      }
+    ]
+  },
+  "formConfigs": [
+    {
+      "form": "patient-demographic-registration-questionnaire",
+      "title": "Registration",
+      "identifier": "patient-demographic-registration-questionnaire",
+      "saveButtonText": "Save Client",
+      "setPractitionerDetails": true,
+      "setOrganizationDetails": true
+    },
+    {
+      "form": "patient-demographic-registration",
+      "title": "Registration",
+      "identifier": "patient-demographic-registration",
+      "saveButtonText": "Save Client",
+      "setPractitionerDetails": true,
+      "setOrganizationDetails": true
+    },
+    {
+      "form": "anc-patient-registration",
+      "title": "Enroll as ANC Patient",
+      "identifier": "1924",
+      "saveButtonText": "Mark as ANC client",
+      "setPractitionerDetails": true,
+      "setOrganizationDetails": true
+    },
+    {
+      "form": "family-member-registration",
+      "title": "Add Family Member",
+      "identifier": "82953",
+      "saveButtonText": "ADD FAMILY MEMBER",
+      "setPractitionerDetails": true,
+      "setOrganizationDetails": true
+    },
+    {
+      "form": "non-anc-patient-vital-signs_metric",
+      "title": "Add Vital Signs ",
+      "identifier": "1921"
+    },
+    {
+      "form": "non-anc-patient-vital-signs_standard",
+      "title": "Add Vital Signs ",
+      "identifier": "2007"
+    },
+    {
+      "form": "family-registration",
+      "title": "Add Family",
+      "identifier": "82952",
+      "saveButtonText": "ADD FAMILY",
+      "setPractitionerDetails": true,
+      "setOrganizationDetails": true
+    },
+    {
+      "form": "family-patient_bmi_compute",
+      "title": "Compute BMI",
+      "identifier": "1999"
+    },
+    {
+      "form": "remove-family",
+      "title": "Remove Family",
+      "identifier": "101644"
+    },
+    {
+      "form": "edit-patient-profile",
+      "title": "Edit Patient Profile",
+      "identifier": "patient-edit-profile",
+      "saveButtonText": "Save Person Details"
+    },
+    {
+      "form": "art-client-index-case-testing",
+      "title": "Index Case Testing",
+      "identifier": "art-client-index-case-testing",
+      "setPractitionerDetails": true,
+      "setOrganizationDetails": true
+    }
+  ]
+}

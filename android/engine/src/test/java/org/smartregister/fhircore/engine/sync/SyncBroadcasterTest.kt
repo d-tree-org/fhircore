@@ -56,7 +56,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.smartregister.fhircore.engine.R
-import org.smartregister.fhircore.engine.app.AppConfigService
+import org.smartregister.fhircore.engine.app.TestConfigService
 import org.smartregister.fhircore.engine.app.fakes.Faker
 import org.smartregister.fhircore.engine.data.remote.shared.TokenAuthenticator
 import org.smartregister.fhircore.engine.robolectric.RobolectricTest
@@ -212,7 +212,7 @@ class SyncBroadcasterTest : RobolectricTest() {
   fun runSyncWhenNetworkStateFalseEmitsSyncFailed() = runTest {
     val configurationRegistry = Faker.buildTestConfigurationRegistry()
     val context = ApplicationProvider.getApplicationContext<HiltTestApplication>()
-    val configService = AppConfigService(context = context)
+    val configService = TestConfigService(context = context)
     val sharedSyncStatus: MutableSharedFlow<SyncJobStatus> = MutableSharedFlow()
     syncBroadcaster =
       SyncBroadcaster(
@@ -246,7 +246,7 @@ class SyncBroadcasterTest : RobolectricTest() {
   fun shouldEmitSyncFailedWhenNetworkAndTokenSessionIsNotActive() = runTest {
     val configurationRegistry = Faker.buildTestConfigurationRegistry()
     val context = ApplicationProvider.getApplicationContext<HiltTestApplication>()
-    val configService = AppConfigService(context = context)
+    val configService = TestConfigService(context = context)
     val sharedSyncStatus: MutableSharedFlow<SyncJobStatus> = MutableSharedFlow()
     val tokenAuthenticatorAlt = mockk<TokenAuthenticator>()
     every { tokenAuthenticatorAlt.sessionActive() } returns false

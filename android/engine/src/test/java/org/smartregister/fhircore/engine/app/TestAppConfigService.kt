@@ -16,15 +16,13 @@
 
 package org.smartregister.fhircore.engine.app
 
-import androidx.appcompat.app.AppCompatActivity
 import javax.inject.Inject
-import org.smartregister.fhircore.engine.ui.login.LoginService
+import javax.inject.Singleton
+import org.smartregister.fhircore.engine.configuration.app.AppConfigService
 
-class AppLoginService @Inject constructor() : LoginService {
+@Singleton
+class TestAppConfigService @Inject constructor() : AppConfigService {
+  override fun getAppId(): String = "default"
 
-  override lateinit var loginActivity: AppCompatActivity
-
-  override fun navigateToHome() {
-    // Do nothing
-  }
+  override fun getBaseFhirUrl(): String = "https://sample.url/fhir/"
 }

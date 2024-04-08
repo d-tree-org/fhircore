@@ -24,8 +24,6 @@ import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry.Com
 
 @Serializable
 data class ApplicationConfiguration(
-  override val appId: String = "",
-  override val classification: String = "",
   var theme: String = "",
   var languages: List<String> = listOf("en"),
   var syncInterval: Long = 30,
@@ -43,8 +41,6 @@ data class ApplicationConfiguration(
 /**
  * A function providing a DSL for configuring [ApplicationConfiguration] used in a FHIR application
  *
- * @param appId Set unique identifier for the app
- * @param classification Set the
  * @param languages Sets the languages for the app
  * @param syncInterval Sets the periodic sync interval in seconds. Default 30.
  * @param applicationName Sets the application display name
@@ -54,8 +50,6 @@ data class ApplicationConfiguration(
  * @param count Sets the application maximum records when downloading resource drawable folder
  */
 fun applicationConfigurationOf(
-  appId: String = "",
-  classification: String = "",
   theme: String = "",
   languages: List<String> = listOf("en"),
   syncInterval: Long = 30,
@@ -67,8 +61,6 @@ fun applicationConfigurationOf(
   taskFilterTagViaMetaCodingSystem: String = "",
 ): ApplicationConfiguration =
   ApplicationConfiguration(
-    appId = appId,
-    classification = classification,
     theme = theme,
     languages = languages,
     syncInterval = syncInterval,

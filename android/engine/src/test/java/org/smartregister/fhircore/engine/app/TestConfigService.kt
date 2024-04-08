@@ -26,7 +26,7 @@ import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.sync.ResourceTag
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 
-class AppConfigService @Inject constructor(@ApplicationContext val context: Context) :
+class TestConfigService @Inject constructor(@ApplicationContext val context: Context) :
   ConfigService {
   override fun provideAuthConfiguration() =
     AuthConfiguration(

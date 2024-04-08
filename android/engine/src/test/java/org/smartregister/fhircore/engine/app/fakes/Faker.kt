@@ -18,8 +18,6 @@ package org.smartregister.fhircore.engine.app.fakes
 
 import androidx.test.core.app.ApplicationProvider
 import com.google.android.fhir.FhirEngine
-import com.google.android.fhir.SearchResult
-import com.google.android.fhir.search.Search
 import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.spyk
@@ -30,19 +28,18 @@ import kotlinx.coroutines.runBlocking
 import org.hl7.fhir.r4.model.Binary
 import org.hl7.fhir.r4.model.Bundle
 import org.hl7.fhir.r4.model.Coding
-import org.hl7.fhir.r4.model.Composition
 import org.hl7.fhir.r4.model.DateType
 import org.hl7.fhir.r4.model.Enumerations
 import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.StringType
+import org.smartregister.fhircore.engine.app.TestAppConfigService
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.data.local.register.dao.HivRegisterDao.Companion.ORGANISATION_DISPLAY
 import org.smartregister.fhircore.engine.data.local.register.dao.HivRegisterDao.Companion.ORGANISATION_SYSTEM
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceDataSource
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
 import org.smartregister.fhircore.engine.robolectric.RobolectricTest.Companion.readFile
-import org.smartregister.fhircore.engine.util.extension.decodeResourceFromString
 
 object Faker {
   private const val APP_DEBUG = "default/debug"
@@ -60,29 +57,19 @@ object Faker {
     fhirEngine: FhirEngine,
     configurationRegistry: ConfigurationRegistry,
   ) {
-    val composition =
-      getBasePath("composition").readFile(systemPath).decodeResourceFromString() as Composition
-    coEvery { fhirEngine.search<Composition>(any<Search>()) } returns
-      listOf(SearchResult(composition, included = null, revIncluded = null))
     coEvery { fhirEngine.get(ResourceType.Binary, any()) } answers
       {
-        val sectionComponent =
-          composition.section.find {
-            this.args[1].toString() == it.focus.reference.substringAfter("Binary/")
-          }
-        val configName = sectionComponent!!.focus.identifier.value
-        Binary().apply { content = getBasePath(configName).readFile(systemPath).toByteArray() }
+        val binaryResId = secondArg<String>()
+        Binary().apply { content = getBasePath(binaryResId).readFile(systemPath).toByteArray() }
       }
-    runBlocking {
-      configurationRegistry.loadConfigurations(
-        appId = APP_DEBUG.substringBefore("/"),
-      ) {}
-    }
+    runBlocking { configurationRegistry.loadConfigurations() }
   }
 
-  private fun getBasePath(configName: String): String {
-    return "/configs/default/config_$configName.json"
+  private fun getBasePath(id: String): String {
+    return "/configs/config_$id.json"
   }
+
+  fun appConfigService() = TestAppConfigService()
 
   fun buildTestConfigurationRegistry(): ConfigurationRegistry {
     val fhirResourceService = mockk<FhirResourceService>()
@@ -90,19 +77,10 @@ object Faker {
     coEvery { fhirResourceService.getResource(any()) } returns Bundle()
     val fhirEngine: FhirEngine = mockk()
 
-    val composition =
-      getBasePath("composition").readFile(systemPath).decodeResourceFromString() as Composition
-    coEvery { fhirEngine.search<Composition>(any<Search>()) } returns
-      listOf(SearchResult(composition, included = null, revIncluded = null))
-
     coEvery { fhirEngine.get(ResourceType.Binary, any()) } answers
       {
-        val sectionComponent =
-          composition.section.find {
-            this.args[1].toString() == it.focus.reference.substringAfter("Binary/")
-          }
-        val configName = sectionComponent!!.focus.identifier.value
-        Binary().apply { content = getBasePath(configName).readFile(systemPath).toByteArray() }
+        val binaryResId = secondArg<String>()
+        Binary().apply { content = getBasePath(binaryResId).readFile(systemPath).toByteArray() }
       }
 
     val configurationRegistry =
@@ -113,14 +91,11 @@ object Faker {
           sharedPreferencesHelper = mockk(),
           dispatcherProvider = mockk(),
           context = ApplicationProvider.getApplicationContext(),
+          appConfigService = appConfigService(),
         ),
       )
 
-    runBlocking {
-      configurationRegistry.loadConfigurations(
-        appId = APP_DEBUG.substringBefore("/"),
-      ) {}
-    }
+    runBlocking { configurationRegistry.loadConfigurations() }
 
     return configurationRegistry
   }

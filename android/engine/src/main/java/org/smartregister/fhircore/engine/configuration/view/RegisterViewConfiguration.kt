@@ -27,8 +27,6 @@ import org.smartregister.fhircore.engine.configuration.Configuration
 @Serializable
 @Stable
 data class RegisterViewConfiguration(
-  override val appId: String = "",
-  override val classification: String = "",
   val appTitle: String = "",
   val newClientButtonText: String = "",
   val registrationForm: String = "patient-registration",
@@ -46,15 +44,11 @@ data class RegisterViewConfiguration(
  */
 @Stable
 fun Context.registerViewConfigurationOf(
-  appId: String = "",
-  classification: String = "",
   appTitle: String = this.getString(R.string.default_app_title),
   newClientButtonText: String = this.getString(R.string.register_new_client),
   registrationForm: String = "patient-registration",
 ): RegisterViewConfiguration {
   return RegisterViewConfiguration(
-    appId = appId,
-    classification = classification,
     appTitle = appTitle,
     newClientButtonText = newClientButtonText,
     registrationForm = registrationForm,

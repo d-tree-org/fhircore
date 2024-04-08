@@ -67,7 +67,9 @@ constructor(
     }
   }
 
-  fun getAppConfigs(): ApplicationConfiguration = applicationConfiguration.value?.appConfig!!
+  fun getAppConfigs(): ApplicationConfiguration =
+    applicationConfiguration.value?.appConfig
+      ?: throw IllegalStateException("Please call 'loadConfigurations' first")
 
   fun getAppFeatureConfigs(): AppFeatureConfig? = applicationConfiguration.value?.appFeatures
 

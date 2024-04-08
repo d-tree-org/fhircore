@@ -25,8 +25,6 @@ class ApplicationConfigurationTest {
   fun testApplicationConfiguration() {
     val applicationConfiguration =
       ApplicationConfiguration(
-        appId = "ancApp",
-        classification = "classification",
         theme = "dark theme",
         languages = listOf("en"),
         syncInterval = 15,
@@ -36,8 +34,6 @@ class ApplicationConfigurationTest {
         count = "100",
         taskFilterTagViaMetaCodingSystem = "task-filter-tag",
       )
-    Assert.assertEquals("ancApp", applicationConfiguration.appId)
-    Assert.assertEquals("classification", applicationConfiguration.classification)
     Assert.assertEquals("dark theme", applicationConfiguration.theme)
     Assert.assertEquals(15, applicationConfiguration.syncInterval)
     Assert.assertEquals("Test App", applicationConfiguration.applicationName)
@@ -57,8 +53,6 @@ class ApplicationConfigurationTest {
   fun testApplicationConfigurationOf() {
     val applicationConfiguration =
       applicationConfigurationOf(
-        appId = "ancApp",
-        classification = "classification",
         theme = "dark theme",
         languages = listOf("en"),
         syncInterval = 15,
@@ -68,8 +62,6 @@ class ApplicationConfigurationTest {
         count = "100",
         taskFilterTagViaMetaCodingSystem = "task-filter-tag",
       )
-    Assert.assertEquals("ancApp", applicationConfiguration.appId)
-    Assert.assertEquals("classification", applicationConfiguration.classification)
     Assert.assertEquals("dark theme", applicationConfiguration.theme)
     Assert.assertEquals(15, applicationConfiguration.syncInterval)
     Assert.assertEquals("Test App", applicationConfiguration.applicationName)

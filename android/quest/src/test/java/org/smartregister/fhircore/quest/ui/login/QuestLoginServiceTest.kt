@@ -53,7 +53,7 @@ class QuestLoginServiceTest : RobolectricTest() {
   @Before
   fun setUp() {
     hiltRule.inject()
-    runBlocking { configurationRegistry = Faker.buildTestConfigurationRegistry("quest") }
+    runBlocking { configurationRegistry = Faker.buildTestConfigurationRegistry() }
     loginService = spyk(questLoginService)
     loginActivity = Robolectric.buildActivity(LoginActivity::class.java).get()
   }

@@ -126,7 +126,9 @@ class RegisterContentTest : RobolectricTest() {
         codingList.add(Coding("https://www.d-tree.org", "p-category", "hello"))
         meta.tag.apply { addAll(codingList) }
       }
-    val result = runBlocking { ResourceMapper.populate(questionnaire, patient) }
+    val result = runBlocking {
+      ResourceMapper.populate(questionnaire, mapOf(patient.resourceType.name to patient))
+    }
     Assert.assertEquals(
       "p-category",
       result.item.first().itemFirstRep.answerFirstRep.valueCoding.code,

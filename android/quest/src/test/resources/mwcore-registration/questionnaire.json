@@ -21,6 +21,22 @@
     {
       "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-entryMode",
       "valueCode": "prior-edit"
+    },
+    {
+      "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-launchContext",
+      "extension": [
+        {
+          "url": "name",
+          "valueCoding": {
+            "system": "http://hl7.org/fhir/uv/sdc/CodeSystem/launchContext",
+            "code": "patient"
+          }
+        },
+        {
+          "url": "type",
+          "valueCode": "Patient"
+        }
+      ]
     }
   ],
   "item": [
@@ -50,7 +66,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.meta.tag.where(system='https://www.d-tree.org').first()"
+                "expression": "%patient.meta.tag.where(system='https://www.d-tree.org').first()"
               }
             }
           ],
@@ -65,7 +81,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.name.given"
+                "expression": "%patient.name.given"
               }
             }
           ],
@@ -90,7 +106,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.name.given"
+                "expression": "%patient.name.given"
               }
             }
           ],
@@ -115,7 +131,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.name.family"
+                "expression": "%patient.name.family"
               }
             }
           ],
@@ -130,7 +146,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.gender"
+                "expression": "%patient.gender"
               }
             },
             {
@@ -166,7 +182,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.birthDate"
+                "expression": "%patient.birthDate"
               }
             }
           ],
@@ -204,7 +220,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.address.district"
+                "expression": "%patient.address.district"
               }
             },
             {
@@ -321,7 +337,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.address.state"
+                "expression": "%patient.address.state"
               }
             },
             {
@@ -578,7 +594,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.address.state"
+                "expression": "%patient.address.state"
               }
             },
             {
@@ -619,7 +635,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.address.state"
+                "expression": "%patient.address.state"
               }
             },
             {
@@ -660,7 +676,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.address.state"
+                "expression": "%patient.address.state"
               }
             },
             {
@@ -701,7 +717,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.address.state"
+                "expression": "%patient.address.state"
               }
             },
             {
@@ -742,7 +758,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.address.text"
+                "expression": "%patient.address.text"
               }
             }
           ],
@@ -807,7 +823,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.telecom.count() > 0"
+                "expression": "%patient.telecom.count() > 0"
               }
             }
           ],
@@ -863,7 +879,7 @@
                   "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
                   "valueExpression": {
                     "language": "text/fhirpath",
-                    "expression": "Patient.telecom[0].value"
+                    "expression": "%patient.telecom[0].value"
                   }
                 },
                 {
@@ -902,7 +918,7 @@
                   "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
                   "valueExpression": {
                     "language": "text/fhirpath",
-                    "expression": "Patient.telecom[0].value"
+                    "expression": "%patient.telecom[0].value"
                   }
                 },
                 {
@@ -1054,7 +1070,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.telecom.count() > 1"
+                "expression": "%patient.telecom.count() > 1"
               }
             }
           ],
@@ -1118,7 +1134,7 @@
                   "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
                   "valueExpression": {
                     "language": "text/fhirpath",
-                    "expression": "Patient.telecom[1].value"
+                    "expression": "%patient.telecom[1].value"
                   }
                 },
                 {
@@ -1157,7 +1173,7 @@
                   "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
                   "valueExpression": {
                     "language": "text/fhirpath",
-                    "expression": "Patient.telecom[1].value"
+                    "expression": "%patient.telecom[1].value"
                   }
                 },
                 {
@@ -1309,7 +1325,7 @@
               "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
               "valueExpression": {
                 "language": "text/fhirpath",
-                "expression": "Patient.id"
+                "expression": "%patient.id"
               }
             },
             {

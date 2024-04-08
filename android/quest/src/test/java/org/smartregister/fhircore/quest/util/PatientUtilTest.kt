@@ -51,7 +51,7 @@ import org.smartregister.fhircore.quest.robolectric.RobolectricTest
 class PatientUtilTest : RobolectricTest() {
 
   @BindValue
-  var configurationRegistry: ConfigurationRegistry = Faker.buildTestConfigurationRegistry("g6pd")
+  var configurationRegistry: ConfigurationRegistry = Faker.buildTestConfigurationRegistry()
 
   @Inject lateinit var fhirEngine: FhirEngine
 

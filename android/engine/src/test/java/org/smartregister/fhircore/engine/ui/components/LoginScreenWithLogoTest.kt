@@ -26,7 +26,6 @@ import io.mockk.mockk
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.smartregister.fhircore.engine.configuration.view.loginViewConfigurationOf
 import org.smartregister.fhircore.engine.robolectric.RobolectricTest
 import org.smartregister.fhircore.engine.ui.login.APP_LOGO_TAG
 import org.smartregister.fhircore.engine.ui.login.LoginErrorState
@@ -43,12 +42,10 @@ class LoginScreenWithLogoTest : RobolectricTest() {
   private val loadingConfig = MutableLiveData(false)
   private val loginErrorState: LiveData<LoginErrorState?> = MutableLiveData(null)
   private val showProgressBar = MutableLiveData(false)
-  private val loginConfig = loginViewConfigurationOf(showLogo = true)
 
   @Before
   fun setUp() {
     loginViewModelWithLogo = mockk {
-      every { loginViewConfiguration } returns MutableLiveData(loginConfig)
       every { username } returns this@LoginScreenWithLogoTest.username
       every { password } returns this@LoginScreenWithLogoTest.password
       every { loginErrorState } returns this@LoginScreenWithLogoTest.loginErrorState

@@ -169,7 +169,6 @@ class QuestionnaireViewModelTest : RobolectricTest() {
       )
 
     val configurationRegistry = mockk<ConfigurationRegistry>()
-    every { configurationRegistry.appId } returns "appId"
 
     questionnaireViewModel =
       spyk(

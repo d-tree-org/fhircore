@@ -34,6 +34,9 @@ class HomeTracingRegisterDaoTest {
   @Test
   fun getTracingCoding() {
     Assert.assertEquals("home-tracing", homeTracingRegisterDao.tracingCoding.code)
-    Assert.assertEquals("https://d-tree.org", homeTracingRegisterDao.tracingCoding.system)
+    Assert.assertEquals(
+      "https://d-tree.org/fhir/contact-tracing",
+      homeTracingRegisterDao.tracingCoding.system
+    )
   }
 }

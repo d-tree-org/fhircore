@@ -38,7 +38,7 @@ class ConfigServiceTest : RobolectricTest() {
   @Inject lateinit var gson: Gson
 
   private val application = ApplicationProvider.getApplicationContext<Application>()
-  val configService = AppConfigService(ApplicationProvider.getApplicationContext())
+  val configService = TestConfigService(ApplicationProvider.getApplicationContext())
   private lateinit var sharedPreferencesHelper: SharedPreferencesHelper
 
   @Before
@@ -54,7 +54,7 @@ class ConfigServiceTest : RobolectricTest() {
 
     val resourceTags = configService.provideResourceTags(sharedPreferencesHelper)
     val practitionerTag =
-      resourceTags.firstOrNull { it.system == AppConfigService.PRACTITIONER_SYSTEM }
+      resourceTags.firstOrNull { it.system == TestConfigService.PRACTITIONER_SYSTEM }
 
     Assert.assertEquals(practitionerId, practitionerTag?.code)
   }
@@ -66,7 +66,7 @@ class ConfigServiceTest : RobolectricTest() {
     sharedPreferencesHelper.write(ResourceType.Location.name, listOf(locationId1, locationId2))
 
     val resourceTags = configService.provideResourceTags(sharedPreferencesHelper)
-    val locationTags = resourceTags.filter { it.system == AppConfigService.LOCATION_SYSTEM }
+    val locationTags = resourceTags.filter { it.system == TestConfigService.LOCATION_SYSTEM }
 
     Assert.assertTrue(locationTags.any { it.code == locationId1 })
     Assert.assertTrue(locationTags.any { it.code == locationId2 })
@@ -82,7 +82,8 @@ class ConfigServiceTest : RobolectricTest() {
     )
 
     val resourceTags = configService.provideResourceTags(sharedPreferencesHelper)
-    val organizationTags = resourceTags.filter { it.system == AppConfigService.ORGANIZATION_SYSTEM }
+    val organizationTags =
+      resourceTags.filter { it.system == TestConfigService.ORGANIZATION_SYSTEM }
 
     Assert.assertTrue(organizationTags.any { it.code == organizationId1 })
     Assert.assertTrue(organizationTags.any { it.code == organizationId2 })
@@ -95,7 +96,7 @@ class ConfigServiceTest : RobolectricTest() {
     sharedPreferencesHelper.write(ResourceType.CareTeam.name, listOf(careTeamId1, careTeamId2))
 
     val resourceTags = configService.provideResourceTags(sharedPreferencesHelper)
-    val organizationTags = resourceTags.filter { it.system == AppConfigService.CARETEAM_SYSTEM }
+    val organizationTags = resourceTags.filter { it.system == TestConfigService.CARETEAM_SYSTEM }
 
     Assert.assertTrue(organizationTags.any { it.code == careTeamId1 })
     Assert.assertTrue(organizationTags.any { it.code == careTeamId2 })

@@ -152,7 +152,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
 
     questionnaireFragment.apply { arguments = bundleOf(Pair("questionnaire", questionnaireString)) }
 
-    every { questionnaireFragment.getQuestionnaireResponse() } returns QuestionnaireResponse()
+    coEvery { questionnaireFragment.getQuestionnaireResponse() } returns QuestionnaireResponse()
 
     val controller = Robolectric.buildActivity(QuestionnaireActivity::class.java, intent)
     questionnaireActivity = controller.create().resume().get()
@@ -169,7 +169,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
   }
 
   @Test
-  fun testActivityShouldNotNull() {
+  fun testActivityShouldNotNull() = runTest {
     Assert.assertNotNull(
       questionnaireActivity.supportFragmentManager.findFragmentByTag(QUESTIONNAIRE_FRAGMENT_TAG),
     )
@@ -177,7 +177,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
   }
 
   @Test
-  fun testIntentArgsShouldInsertValues() {
+  fun testIntentArgsShouldInsertValues() = runTest {
     val questionnaireResponse = QuestionnaireResponse()
     val patient = Patient().apply { id = "my-patient-id" }
     val populationResources = ArrayList<Resource>()
@@ -353,7 +353,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
   }
 
   @Test
-  fun testReadOnlyIntentShouldBeReadToReadOnlyFlag() {
+  fun testReadOnlyIntentShouldBeReadToReadOnlyFlag() = runTest {
     Assert.assertFalse(questionnaireActivity.questionnaireType.isReadOnly())
 
     intent =
@@ -364,7 +364,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
       }
 
     val questionnaireFragment = spyk<QuestionnaireFragment>()
-    every { questionnaireFragment.getQuestionnaireResponse() } returns QuestionnaireResponse()
+    coEvery { questionnaireFragment.getQuestionnaireResponse() } returns QuestionnaireResponse()
 
     val controller = Robolectric.buildActivity(QuestionnaireActivity::class.java, intent)
     questionnaireActivity = controller.create().resume().get()
@@ -373,7 +373,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
   }
 
   @Test
-  fun testReadOnlyIntentShouldChangeSaveButtonToDone() {
+  fun testReadOnlyIntentShouldChangeSaveButtonToDone() = runTest {
     intent =
       Intent().apply {
         putExtra(QuestionnaireActivity.QUESTIONNAIRE_TITLE_KEY, "Patient registration")
@@ -390,7 +390,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
     val questionnaireFragment = spyk<QuestionnaireFragment>()
     questionnaireFragment.apply { arguments = bundleOf(Pair("questionnaire", questionnaireString)) }
 
-    every { questionnaireFragment.getQuestionnaireResponse() } returns QuestionnaireResponse()
+    coEvery { questionnaireFragment.getQuestionnaireResponse() } returns QuestionnaireResponse()
 
     val controller = Robolectric.buildActivity(QuestionnaireActivity::class.java, intent)
     questionnaireActivity = controller.create().resume().get()
@@ -457,7 +457,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
   }
 
   @Test
-  fun testHandleQuestionnaireSubmitShouldShowProgressAndCallExtractAndSaveResources() {
+  fun testHandleQuestionnaireSubmitShouldShowProgressAndCallExtractAndSaveResources() = runTest {
     ReflectionHelpers.setField(questionnaireActivity, "questionnaire", Questionnaire())
     questionnaireActivity.handleQuestionnaireSubmit()
 
@@ -486,7 +486,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
     val questionnaire = buildQuestionnaireWithConstraints()
 
     coEvery { questionnaireViewModel.defaultRepository.addOrUpdate(resource = any()) } just runs
-    every { questionnaireFragment.getQuestionnaireResponse() } returns
+    coEvery { questionnaireFragment.getQuestionnaireResponse() } returns
       QuestionnaireResponse().apply {
         addItem().apply { linkId = "1" }
         addItem().apply { linkId = "2" }
@@ -516,7 +516,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
   }
 
   @Test
-  fun testOnClickSaveButtonShouldShowSubmitConfirmationAlert() {
+  fun testOnClickSaveButtonShouldShowSubmitConfirmationAlert() = runTest {
     ReflectionHelpers.setField(
       questionnaireActivity,
       "questionnaire",
@@ -535,7 +535,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
   }
 
   @Test
-  fun testOnClickSaveWithExperimentalButtonShouldShowTestOnlyConfirmationAlert() {
+  fun testOnClickSaveWithExperimentalButtonShouldShowTestOnlyConfirmationAlert() = runTest {
     ReflectionHelpers.setField(
       questionnaireActivity,
       "questionnaire",
@@ -565,7 +565,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
   }
 
   @Test
-  fun testValidQuestionnaireResponseShouldReturnTrueForValidData() {
+  fun testValidQuestionnaireResponseShouldReturnTrueForValidData() = runTest {
     val questionnaire = buildQuestionnaireWithConstraints()
 
     val questionnaireResponse = QuestionnaireResponse()
@@ -584,7 +584,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
   }
 
   @Test
-  fun testValidQuestionnaireResponseShouldReturnFalseForInvalidData() {
+  fun testValidQuestionnaireResponseShouldReturnFalseForInvalidData() = runTest {
     val questionnaire = buildQuestionnaireWithConstraints()
 
     val questionnaireResponse = QuestionnaireResponse()

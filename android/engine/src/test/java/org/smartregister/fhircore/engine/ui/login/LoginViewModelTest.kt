@@ -44,6 +44,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.robolectric.annotation.Config
 import org.smartregister.fhircore.engine.HiltActivityForTest
+import org.smartregister.fhircore.engine.app.fakes.Faker
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.data.remote.auth.KeycloakService
@@ -113,6 +114,8 @@ internal class LoginViewModelTest : RobolectricTest() {
           secureSharedPreference = secureSharedPreference,
           dispatcherProvider = dispatcherProvider,
           fhirResourceDataSource = fhirResourceDataSource,
+          appConfigs = Faker.appConfigService(),
+          configurationRegistry = Faker.buildTestConfigurationRegistry(),
         ),
       )
   }

@@ -60,7 +60,6 @@ import org.junit.Test
 import org.smartregister.fhircore.engine.app.fakes.Faker
 import org.smartregister.fhircore.engine.app.fakes.Faker.buildPatient
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
-import org.smartregister.fhircore.engine.configuration.WorkflowPointConfiguration
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.configuration.app.applicationConfigurationOf
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
@@ -233,13 +232,6 @@ internal class HivRegisterDaoTest : RobolectricTest() {
           else -> emptyList()
         }
       }
-
-    every { configurationRegistry.retrieveDataFilterConfiguration(any()) } returns emptyList()
-
-    val workflowPointConfiguration = mockk<WorkflowPointConfiguration>()
-    every { configurationRegistry.workflowPointsMap[any()] } returns workflowPointConfiguration
-    every { configurationRegistry.configurationsMap[any()] } returns
-      applicationConfigurationOf(patientTypeFilterTagViaMetaCodingSystem = "https://d-tree.org")
 
     every { configurationRegistry.getAppConfigs() } returns
       applicationConfigurationOf(patientTypeFilterTagViaMetaCodingSystem = "https://d-tree.org")
@@ -495,11 +487,6 @@ internal class HivRegisterDaoTest : RobolectricTest() {
         }
       assertEquals("", hivRegisterDao.hivPatientIdentifier(patient))
     }
-
-  @Test
-  fun testGetRegisterDataFilters() {
-    assertNotNull(hivRegisterDao.getRegisterDataFilters("1234"))
-  }
 
   @Test
   fun testCountRegisterData() = runTest {

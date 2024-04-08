@@ -108,7 +108,6 @@ class TracingRegisterDaoTest : RobolectricTest() {
           configService = configService,
         ),
       )
-    coEvery { configurationRegistry.retrieveDataFilterConfiguration(any()) } returns emptyList()
 
     every {
       sharedPreferencesHelper.read<Practitioner>(LOGGED_IN_PRACTITIONER, decodeWithGson = true)

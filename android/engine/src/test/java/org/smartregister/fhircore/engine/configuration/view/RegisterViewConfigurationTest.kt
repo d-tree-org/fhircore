@@ -28,13 +28,10 @@ class RegisterViewConfigurationTest : RobolectricTest() {
   fun testRegisterViewConfiguration() {
     val registerViewConfiguration =
       RegisterViewConfiguration(
-        appId = "anc",
-        classification = "clasification",
         appTitle = "appTitle",
         newClientButtonText = "newClientButtonText",
         registrationForm = "patient-registration",
       )
-    Assert.assertEquals("anc", registerViewConfiguration.appId)
     Assert.assertEquals("appTitle", registerViewConfiguration.appTitle)
     Assert.assertEquals("newClientButtonText", registerViewConfiguration.newClientButtonText)
   }
@@ -42,7 +39,6 @@ class RegisterViewConfigurationTest : RobolectricTest() {
   @Test
   fun testDefaultRegisterViewConfiguration() {
     val registerViewConfiguration = RegisterViewConfiguration("anc", "classification")
-    Assert.assertEquals("anc", registerViewConfiguration.appId)
     Assert.assertEquals("", registerViewConfiguration.appTitle)
     Assert.assertEquals("", registerViewConfiguration.newClientButtonText)
   }
@@ -58,14 +54,10 @@ class RegisterViewConfigurationTest : RobolectricTest() {
     val registerViewConfigurationOf =
       ApplicationProvider.getApplicationContext<Application>()
         .registerViewConfigurationOf(
-          appId = "anc",
-          classification = "clasification",
           appTitle = "appTitle",
           newClientButtonText = "newClientButtonText",
           registrationForm = "patient-reg-form",
         )
-    Assert.assertEquals("anc", registerViewConfigurationOf.appId)
-    Assert.assertEquals("clasification", registerViewConfigurationOf.classification)
     Assert.assertEquals("appTitle", registerViewConfigurationOf.appTitle)
     Assert.assertEquals("newClientButtonText", registerViewConfigurationOf.newClientButtonText)
     Assert.assertEquals("patient-reg-form", registerViewConfigurationOf.registrationForm)
@@ -75,8 +67,6 @@ class RegisterViewConfigurationTest : RobolectricTest() {
   fun testDefaultRegisterViewConfigurationOf() {
     val registerViewConfigurationOf =
       ApplicationProvider.getApplicationContext<Application>().registerViewConfigurationOf()
-    Assert.assertEquals("", registerViewConfigurationOf.appId)
-    Assert.assertEquals("", registerViewConfigurationOf.classification)
     Assert.assertEquals("Fhir App", registerViewConfigurationOf.appTitle)
     Assert.assertEquals("Register new client", registerViewConfigurationOf.newClientButtonText)
     Assert.assertEquals("patient-registration", registerViewConfigurationOf.registrationForm)
