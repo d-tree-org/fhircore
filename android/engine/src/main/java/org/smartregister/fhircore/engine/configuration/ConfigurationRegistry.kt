@@ -69,6 +69,8 @@ constructor(
 
   fun getAppConfigs(): ApplicationConfiguration = applicationConfiguration.value?.appConfig!!
 
+  fun getQuestionnairePublisher() = appConfigService.getQuestionnairePublisher()
+
   fun getAppFeatureConfigs(): AppFeatureConfig? = applicationConfiguration.value?.appFeatures
 
   fun getSyncConfigs(): SyncConfig? = applicationConfiguration.value?.syncConfig

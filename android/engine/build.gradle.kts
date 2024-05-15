@@ -104,7 +104,7 @@ dependencies {
   implementation("androidx.fragment:fragment-ktx:1.6.2")
   api("io.jsonwebtoken:jjwt:0.9.1")
   implementation("androidx.security:security-crypto:1.1.0-alpha06")
-  api("org.smartregister:fhir-common-utils:0.0.8-SNAPSHOT") {
+  api("org.smartregister:fhir-common-utils:1.0.0-SNAPSHOT") {
     exclude(group = "org.slf4j", module = "jcl-over-slf4j")
   }
   implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")

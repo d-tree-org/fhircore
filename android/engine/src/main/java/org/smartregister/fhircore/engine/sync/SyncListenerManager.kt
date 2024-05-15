@@ -107,7 +107,7 @@ constructor(
         val expressionValue =
           when (paramName) {
             ConfigurationRegistry.ORGANIZATION -> userInfo?.organization
-            ConfigurationRegistry.PUBLISHER -> userInfo?.questionnairePublisher
+            ConfigurationRegistry.PUBLISHER -> configurationRegistry.getQuestionnairePublisher()
             ConfigurationRegistry.ID -> paramExpression
             ConfigurationRegistry.COUNT -> appConfig.count
             else -> null

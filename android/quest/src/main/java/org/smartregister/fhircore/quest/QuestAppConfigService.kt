@@ -26,6 +26,8 @@ class QuestAppConfigService @Inject constructor() : AppConfigService {
     return BuildConfig.APP_ID
   }
 
+  override fun getQuestionnairePublisher() = BuildConfig.QUESTIONNAIRE_PUBLISHER
+
   override fun getBaseFhirUrl(): String {
     return BuildConfig.FHIR_BASE_URL
   }
