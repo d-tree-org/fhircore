@@ -93,7 +93,8 @@ class ProfileViewDataMapper @Inject constructor(@ApplicationContext val context:
           guardians = inputModel.guardians,
           currentCarePlan = inputModel.currentCarePlan,
           tasks =
-            inputModel.tasks.map {
+            inputModel.tasks.mapNotNull {
+              if (it.outcomeReference.isEmpty()) return@mapNotNull null
               PatientProfileRowItem(
                 id = it.outcomeReference.first().extractId(),
                 actionFormId = if (it.canBeCompleted()) it.getQuestionnaire() else null,

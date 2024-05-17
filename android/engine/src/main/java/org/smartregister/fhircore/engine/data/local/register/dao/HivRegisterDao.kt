@@ -109,7 +109,7 @@ constructor(
       .map { it.resource }
       .filter(this::isValidPatient)
       .map { transformPatientToHivRegisterData(it) }
-      .filterNot { it.healthStatus == HealthStatus.DEFAULT }
+//      .filterNot { it.healthStatus == HealthStatus.DEFAULT }
   }
 
   override suspend fun searchByName(
@@ -136,9 +136,10 @@ constructor(
       .mapNotNull { patient ->
         if (isValidPatient(patient)) {
           val transFormedPatient = transformPatientToHivRegisterData(patient)
-          if (transFormedPatient.healthStatus != HealthStatus.DEFAULT) {
-            return@mapNotNull transFormedPatient
-          }
+//          if (transFormedPatient.healthStatus != HealthStatus.DEFAULT) {
+//            return@mapNotNull transFormedPatient
+//          }
+          return@mapNotNull transFormedPatient
         }
         return@mapNotNull null
       }
