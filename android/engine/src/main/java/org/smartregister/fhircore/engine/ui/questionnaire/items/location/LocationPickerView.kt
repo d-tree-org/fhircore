@@ -37,6 +37,7 @@ import org.hl7.fhir.r4.model.StringType
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.domain.model.LocationHierarchy
 import org.smartregister.fhircore.engine.ui.questionnaire.items.CustomQuestItemDataProvider
+import timber.log.Timber
 
 class LocationPickerView(
   private val context: Context,
@@ -58,6 +59,10 @@ class LocationPickerView(
   private var physicalLocatorInputEditText: TextInputEditText? = null
   var headerView: HeaderView? = null
 
+  val helperText: TextView
+  private var errorView: LinearLayout
+  private var errorText: TextView
+
   private var initialValue: String? = null
 
   init {
@@ -67,10 +72,14 @@ class LocationPickerView(
     physicalLocatorInputLayout = itemView.findViewById(R.id.physical_locator_input_layout)
     physicalLocatorInputEditText = itemView.findViewById(R.id.physical_locator_edit_text)
 
+    helperText = itemView.findViewById(R.id.location_helper_text)
+    errorView = itemView.findViewById(R.id.item_error_view)
+    errorText = itemView.findViewById(R.id.error_text)
+
     cardView?.setOnClickListener { showDropdownDialog() }
     physicalLocatorInputEditText?.doAfterTextChanged { editable: Editable? ->
       lifecycleScope.launch {
-        physicalLocator = editable.toString()
+        physicalLocator = editable.toString().ifBlank { null }
         onUpdate()
       }
     }
@@ -110,6 +119,11 @@ class LocationPickerView(
   }
 
   private fun onUpdate() {
+    Timber.e(physicalLocator)
+    if (physicalLocator == null || selectedHierarchy == null) {
+      onLocationChanged?.invoke(StringType(null))
+      return
+    }
     val strValue =
       "${selectedHierarchy?.identifier ?: "-"}|${selectedHierarchy?.name ?: "-"}|${physicalLocator ?: "-"}"
     onLocationChanged?.invoke(StringType(strValue))
@@ -122,11 +136,15 @@ class LocationPickerView(
   private fun initData() {
     customQuestItemDataProvider?.let {
       val locations = it.fetchLocationHierarchies()
-      updateLocationData(locations = locations)
+      updateLocationData(locations = locations, isDefault = true)
     }
   }
 
-  private fun updateLocationData(locations: List<LocationHierarchy>) {
+  private fun updateLocationData(
+    locations: List<LocationHierarchy>,
+    isDefault: Boolean = false,
+    parent: LocationHierarchy? = null,
+  ) {
     rootLayout?.let { rootLayout ->
       val mainLayout =
         LayoutInflater.from(context).inflate(R.layout.custom_material_spinner, rootLayout, false)
@@ -138,6 +156,12 @@ class LocationPickerView(
         )
       layoutParams.bottomMargin = 16
       mainLayout.layoutParams = layoutParams
+
+      if (parent != null) {
+        val helperText = mainLayout.findViewById<TextView>(R.id.helper_text)
+        helperText.visibility = View.VISIBLE
+        helperText.text = context.getString(R.string.select_locations_in, parent.name)
+      }
 
       val adapter = LocationHierarchyAdapter(context, locations)
       dropdown.setAdapter(adapter)
@@ -153,6 +177,9 @@ class LocationPickerView(
         val selected = locations.first()
         dropdown.setText(selected.name, false)
         onOptionSelected(selected, dropdown)
+        if (isDefault) {
+          dropdown.isEnabled = false
+        }
       }
     }
   }
@@ -167,7 +194,7 @@ class LocationPickerView(
           ?.updateLocations(selectedLocation.children)
       } else {
         dropdownMap[selectedLocation.identifier] = dropdown
-        updateLocationData(selectedLocation.children)
+        updateLocationData(selectedLocation.children, parent = selectedLocation)
       }
     } else if (selectedLocation != null) {
       this.selectedHierarchy = LocationData.fromHierarchy(selectedLocation)
@@ -179,6 +206,7 @@ class LocationPickerView(
   }
 
   fun initLocation(initialAnswer: String?) {
+    Timber.e("$initialAnswer $initialValue")
     if (initialAnswer != null && initialValue == null) {
       val elements = initialAnswer.split("|")
       val locationId = elements.getOrNull(0)
@@ -187,15 +215,37 @@ class LocationPickerView(
           locationNameText?.text = it
           it
         }
-      elements.getOrNull(2)?.let {
-        physicalLocator = it
-        physicalLocatorInputEditText?.setText(it)
-      }
       if (locationId != null && locationName != null) {
         selectedHierarchy = LocationData(locationId, locationName)
       }
+      elements.getOrNull(2)?.let {
+        physicalLocator = it
+        if (it != "-") {
+          physicalLocatorInputEditText?.setText(it)
+        }
+      }
       initialValue = initialAnswer
     }
+  }
+
+  fun showError(validationErrorMessage: String?) {
+    if (validationErrorMessage == null) {
+      errorView.visibility = View.GONE
+      return
+    }
+
+    errorView.visibility = View.VISIBLE
+    errorText.text = validationErrorMessage
+  }
+
+  fun setRequiredOrOptionalText(requiredOrOptionalText: String?) {
+    physicalLocatorInputLayout?.let { it.helperText = requiredOrOptionalText }
+    if (requiredOrOptionalText == null) {
+      helperText.visibility = View.GONE
+      return
+    }
+    helperText.text = requiredOrOptionalText
+    helperText.visibility = View.VISIBLE
   }
 }
 

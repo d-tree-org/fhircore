@@ -91,7 +91,7 @@ constructor(
   fun loadSyncParams(): Map<ResourceType, Map<String, String>> {
     val userInfo =
       sharedPreferencesHelper.read<UserClaimInfo>(SharedPreferenceKey.USER_CLAIM_INFO.name)
-    val pairs = mutableListOf<Pair<ResourceType, Map<String, String>>>()
+    val resourceTypeParamsMap = linkedMapOf<ResourceType, List<Pair<String, String>>>()
 
     val appConfig = configurationRegistry.getAppConfigs()
 
@@ -123,113 +123,105 @@ constructor(
         // ],..]
         sp.base.forEach { base ->
           val resourceType = ResourceType.fromCode(base)
-          val pair = pairs.find { it.first == resourceType }
-          if (pair == null) {
-            pairs.add(
-              Pair(
-                resourceType,
-                expressionValue?.let { mapOf(sp.code to expressionValue) } ?: mapOf(),
-              ),
-            )
-          } else {
-            expressionValue?.let {
-              // add another parameter if there is a matching resource type
-              // e.g. [(Patient, {organization=105})] to [(Patient, {organization=105, _count=100})]
-              val updatedPair = pair.second.toMutableMap().apply { put(sp.code, expressionValue) }
-              val index = pairs.indexOfFirst { it.first == resourceType }
-              resourceType.filterBasedOnPerResourceType(pairs)
-              pairs.set(index, Pair(resourceType, updatedPair))
+          expressionValue?.let { value ->
+            resourceTypeParamsMap.merge(resourceType, listOf(sp.code to value)) { list1, list2 ->
+              //                resourceType.filterBasedOnPerResourceType(this)
+              return@merge list1.toMutableList().apply { addAll(list2) }
             }
           }
         }
       }
 
-    val syncConfigParams = sharedPreferencesHelper.filterByResourceLocation(pairs)
-    Timber.i("SYNC CONFIG $syncConfigParams")
+    filterBasedOnPerResourceType().forEach { (type, filters) ->
+      resourceTypeParamsMap.merge(type, filters) { list1, list2 ->
+        return@merge list1.toMutableList().apply { addAll(list2) }
+      }
+    }
+    val filterByLocationParams =
+      sharedPreferencesHelper.filterByResourceLocation(resourceTypeParamsMap)
 
-    return mapOf(*syncConfigParams.toTypedArray())
+    val mergeSyncConfigParams =
+      resourceTypeParamsMap
+        //        .filter { it.key == ResourceType.Patient }
+        .map {
+          val resourceType = it.key
+          val paramsMap = linkedMapOf<String, String>("_total" to "none")
+          paramsMap.putAll(filterByLocationParams.getOrDefault(resourceType, emptyList()))
+          paramsMap.putAll(it.value)
+          resourceType to paramsMap
+        }
+        .toMap()
+
+    val orderedSyncConfigParams =
+      linkedMapOf<ResourceType, Map<String, String>>().apply {
+        put(
+          ResourceType.Binary,
+          mergeSyncConfigParams.getOrDefault(ResourceType.Binary, emptyMap()),
+        )
+        put(
+          ResourceType.StructureMap,
+          mergeSyncConfigParams.getOrDefault(ResourceType.StructureMap, emptyMap()),
+        )
+        put(
+          ResourceType.Questionnaire,
+          mergeSyncConfigParams.getOrDefault(ResourceType.Questionnaire, emptyMap()),
+        )
+        putAll(mergeSyncConfigParams)
+      }
+
+    Timber.i("SYNC CONFIG $orderedSyncConfigParams")
+    return orderedSyncConfigParams
   }
 }
 
-private fun ResourceType.filterBasedOnPerResourceType(
-  pairs: MutableList<Pair<ResourceType, Map<String, String>>>,
-) =
-  when (this) {
-    ResourceType.RelatedPerson ->
-      pairs.addParam(resourceType = this, param = RelatedPerson.SP_ACTIVE, value = true.toString())
-    ResourceType.Patient ->
-      pairs.addParam(resourceType = this, param = Patient.SP_ACTIVE, value = true.toString())
-
-    //    ResourceType.CarePlan ->
-    //      pairs.addParam(
-    //        resourceType = this,
-    //        param = CarePlan.SP_STATUS,
-    //        value = CarePlan.CarePlanStatus.ACTIVE.toString().lowercase(),
-    //      )
-
-    ResourceType.Observation ->
-      pairs.addParam(
-        resourceType = this,
-        param = Observation.SP_STATUS,
-        value = Observation.ObservationStatus.FINAL.toString().lowercase(),
-      )
-
-    //    ResourceType.Task ->
-    //      pairs.addParam(
-    //        resourceType = this,
-    //        param = Task.SP_STATUS,
-    //        value =
-    //          String.format(
-    //            "%s,%s",
-    //            Task.TaskStatus.FAILED.toString().lowercase(),
-    //            Task.TaskStatus.INPROGRESS.toString().lowercase()
-    //          )
-    //      )
-
-    ResourceType.Appointment ->
-      pairs.addParam(
-        resourceType = this,
-        param = Appointment.SP_STATUS,
-        value = Appointment.AppointmentStatus.BOOKED.toString().lowercase(),
-      )
-    ResourceType.Encounter ->
-      pairs.addParam(
-        resourceType = this,
-        param = Encounter.SP_STATUS,
-        value = Encounter.EncounterStatus.INPROGRESS.toString().lowercase(),
-      )
-    ResourceType.List ->
-      pairs.addParam(
-        resourceType = this,
-        param = ListResource.SP_STATUS,
-        value = ListResource.ListStatus.CURRENT.toString().lowercase(),
-      )
-    else -> Unit
+private fun filterBasedOnPerResourceType(): Map<ResourceType, List<Pair<String, String>>> {
+  return mutableMapOf<ResourceType, List<Pair<String, String>>>().apply {
+    put(ResourceType.RelatedPerson, listOf(RelatedPerson.SP_ACTIVE to true.toString()))
+    put(ResourceType.Patient, listOf(Patient.SP_ACTIVE to true.toString()))
+    put(
+      ResourceType.Observation,
+      listOf(
+        Observation.SP_STATUS to Observation.ObservationStatus.PRELIMINARY.toString().lowercase(),
+      ),
+    )
+    put(
+      ResourceType.Appointment,
+      listOf(
+        Appointment.SP_STATUS to
+          "${Appointment.AppointmentStatus.BOOKED.toString().lowercase()},${Appointment.AppointmentStatus.PROPOSED.toString().lowercase()}",
+      ),
+    )
+    put(
+      ResourceType.Encounter,
+      listOf(Encounter.SP_STATUS to Encounter.EncounterStatus.INPROGRESS.toString().lowercase()),
+    )
+    put(
+      ResourceType.List,
+      listOf(ListResource.SP_STATUS to ListResource.ListStatus.CURRENT.toString().lowercase()),
+    )
+    //    put(ResourceType.CarePlan, mapOf(CarePlan.SP_STATUS to
+    // CarePlan.CarePlanStatus.ACTIVE.toString().lowercase()))
+    //    put(ResourceType.Task, mapOf(Task.SP_STATUS to String.format(
+    //      "%s,%s",
+    //      Task.TaskStatus.FAILED.toString().lowercase(),
+    //      Task.TaskStatus.INPROGRESS.toString().lowercase()
+    //    )))
   }
+}
 
 private fun SharedPreferencesHelper.filterByResourceLocation(
-  pairs: MutableList<Pair<ResourceType, Map<String, String>>>,
-): MutableList<Pair<ResourceType, Map<String, String>>> {
-  val resourcesTemp = mutableListOf<Pair<ResourceType, Map<String, String>>>()
-  val results = mutableListOf<Pair<ResourceType, Map<String, String>>>()
-  resourcesTemp.addAll(pairs)
-
+  resourceTypePairsMap: Map<ResourceType, List<Pair<String, String>>>,
+): Map<ResourceType, List<Pair<String, String>>> {
   val organisationSystem = context.getString(R.string.sync_strategy_organization_system)
   val organisationTag = "$organisationSystem|${organisationCode()}"
 
-  resourcesTemp.forEach {
-    val resourceType = it.first
-    if (
-      resourceType != ResourceType.Practitioner &&
-        resourceType != ResourceType.Questionnaire &&
-        resourceType != ResourceType.StructureMap
-    ) {
-      val tags = mutableMapOf("_tag" to organisationTag)
-      it.second.entries.forEach { entry -> tags[entry.key] = entry.value }
-      results.add(Pair(resourceType, tags))
-    } else results.add(it)
-  }
-  return results
+  return resourceTypePairsMap
+    .filter {
+      it.key !in
+        arrayOf(ResourceType.Practitioner, ResourceType.Questionnaire, ResourceType.StructureMap)
+    }
+    .map { it.key to listOf("_tag" to organisationTag) }
+    .toMap()
 }
 
 private fun MutableList<Pair<ResourceType, Map<String, String>>>.addParam(

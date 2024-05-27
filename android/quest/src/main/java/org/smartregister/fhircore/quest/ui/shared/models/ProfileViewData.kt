@@ -27,7 +27,6 @@ import org.hl7.fhir.r4.model.Task
 import org.smartregister.fhircore.engine.data.domain.Guardian
 import org.smartregister.fhircore.engine.domain.model.FormButtonData
 import org.smartregister.fhircore.engine.domain.model.TracingAttempt
-import org.smartregister.fhircore.engine.util.extension.extractedTracingCategoryIsPhone
 import org.smartregister.fhircore.quest.ui.family.profile.model.FamilyMemberViewState
 
 sealed class ProfileViewData(
@@ -70,7 +69,7 @@ sealed class ProfileViewData(
     val tasksCompleted =
       currentCarePlan != null &&
         tasks.isNotEmpty() &&
-        tasks.all { it.subtitleStatus == Task.TaskStatus.COMPLETED.name }
+        tasks.all { it.subtitleStatus == CarePlan.CarePlanActivityStatus.COMPLETED.name }
 
     private val guardiansRelatedPersonResource = guardians.filterIsInstance<RelatedPerson>()
 
@@ -83,10 +82,6 @@ sealed class ProfileViewData(
       }
       list
     }
-
-    // todo : apply filter on tracingTask->meta to check patient is valid for Home or Phone Tracing
-    val validForHomeTrace = false
-    val validForPhoneTracing = tracingTask.extractedTracingCategoryIsPhone("https://d-tree.org")
   }
 
   data class FamilyProfileViewData(
