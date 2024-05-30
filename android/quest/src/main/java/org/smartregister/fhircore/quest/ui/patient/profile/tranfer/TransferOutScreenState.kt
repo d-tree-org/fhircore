@@ -16,6 +16,7 @@
 
 package org.smartregister.fhircore.quest.ui.patient.profile.tranfer
 
+import com.google.android.fhir.logicalId
 import org.hl7.fhir.r4.model.Patient
 import org.smartregister.fhircore.engine.util.SystemConstants
 import org.smartregister.fhircore.engine.util.extension.extractGivenName
@@ -30,9 +31,9 @@ data class TransferOutScreenState(
   companion object {
     fun fromPatient(patient: Patient): TransferOutScreenState {
       return TransferOutScreenState(
-        patientId = patient.id,
+        patientId = patient.logicalId,
         facilityId =
-          patient.meta.tag.firstOrNull { it.system == SystemConstants.LOCATION_TAG }?.id ?: "NA",
+          patient.meta.tag.firstOrNull { it.system == SystemConstants.LOCATION_TAG }?.code ?: "NA",
         firstName = patient.extractGivenName(),
         fullName = patient.extractName(),
       )

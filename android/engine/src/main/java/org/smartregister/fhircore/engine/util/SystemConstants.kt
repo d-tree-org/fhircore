@@ -54,6 +54,9 @@ object ReasonConstants {
   var interruptedTreatmentTracingCode =
     Coding(SystemConstants.REASON_CODE_SYSTEM, "interrupted-treatment", "Interrupted Treatment")
 
+  var pendingTransferOutCode =
+    Coding("https://d-tree.org/fhir/transfer-out-status", "pending", "Pending")
+
   const val TRACING_OUTCOME_CODE = "tracing-outcome"
   const val DATE_OF_AGREED_APPOINTMENT = "date-of-agreed-appointment"
 }

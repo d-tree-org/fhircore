@@ -22,6 +22,7 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.fhir.FhirEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -30,16 +31,35 @@ import kotlinx.coroutines.launch
 import org.hl7.fhir.r4.model.Patient
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.domain.util.DataLoadState
+import org.smartregister.fhircore.engine.trace.AnalyticReporter
+import org.smartregister.fhircore.engine.trace.AnalyticsKeys
+import org.smartregister.fhircore.engine.util.ReasonConstants
+import org.smartregister.fhircore.engine.util.SharedPreferenceKey
+import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
+import org.smartregister.fhircore.engine.util.extension.forceTagsUpdate
 import org.smartregister.fhircore.quest.navigation.NavigationArg
 import timber.log.Timber
 
 @HiltViewModel
 class TransferOutViewModel
 @Inject
-constructor(savedStateHandle: SavedStateHandle, private val defaultRepository: DefaultRepository) :
-  ViewModel() {
+constructor(
+  savedStateHandle: SavedStateHandle,
+  private val defaultRepository: DefaultRepository,
+  private val fhirEngine: FhirEngine,
+  private val analytics: AnalyticReporter,
+  private val sharedPreferencesHelper: SharedPreferencesHelper,
+) : ViewModel() {
   private val patientId: String = savedStateHandle[NavigationArg.PATIENT_ID]!!
   val state = MutableStateFlow<DataLoadState<TransferOutScreenState>>(DataLoadState.Loading)
+  val updateState = MutableStateFlow<DataLoadState<Boolean>>(DataLoadState.Idle)
+
+  private val currentPractitioner by lazy {
+    sharedPreferencesHelper.read(
+      key = SharedPreferenceKey.PRACTITIONER_ID.name,
+      defaultValue = null,
+    )
+  }
 
   init {
     fetchPatientDetails()
@@ -64,27 +84,50 @@ constructor(savedStateHandle: SavedStateHandle, private val defaultRepository: D
   fun transferPatient(context: Context) {
     viewModelScope.launch(Dispatchers.IO) {
       try {
+        updateState.value = DataLoadState.Loading
         val value = state.value
-        if (value is DataLoadState.Success) {
-          val data = value.data
-          val email = "ss@ddd.ccc"
-          val subject = "Request for Patient Transfer out for ${data.fullName}"
-          val body =
-            """
+        if (value !is DataLoadState.Success) {
+          updateState.value = DataLoadState.Error(java.lang.Exception())
+          return@launch
+        }
+        val data = value.data
+        val patient = defaultRepository.loadResource<Patient>(data.patientId)
+        if (patient == null) {
+          updateState.value = DataLoadState.Error(java.lang.Exception())
+          return@launch
+        }
+        patient.active = false
+        val meta = patient.meta
+        meta.addTag(ReasonConstants.pendingTransferOutCode)
+        patient.meta = meta
+        fhirEngine.forceTagsUpdate(patient)
+        analytics.log(
+          AnalyticsKeys.TRANSFER_OUT,
+          mapOf(Pair("patient", patient.id), Pair("practitioner", currentPractitioner ?: "")),
+        )
+        val email = "cphiri@d-tree.org"
+        val subject = "Request for Patient Transfer out for ${data.fullName}"
+        val body =
+          """
           Where is the patient transferring to?
           
+          
+          
           Do you have any additional information you want to add?
+          
+          
           
           --------- Do not edit below this line ---------
           Current facility: ${data.facilityId}
           Patient id: ${data.patientId}
-          Patient name: ${data.fullName}
+          Practitioner: $currentPractitioner 
                     """
-              .trimIndent()
-          composeEmail(context, arrayOf(email), subject, body)
-        }
+            .trimIndent()
+        composeEmail(context, arrayOf(email), subject, body)
+        updateState.value = DataLoadState.Success(true)
       } catch (e: Exception) {
         Timber.e(e)
+        updateState.value = DataLoadState.Error(e)
       }
     }
   }
@@ -94,7 +137,7 @@ private fun composeEmail(
   context: Context,
   addresses: Array<String>,
   subject: String,
-  body: String
+  body: String,
 ) {
   val intent =
     Intent(Intent.ACTION_SENDTO).apply {

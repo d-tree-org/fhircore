@@ -16,6 +16,7 @@
 
 package org.smartregister.fhircore.quest.ui.patient.profile.tranfer
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +25,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
@@ -36,6 +39,7 @@ import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -46,7 +50,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -65,7 +68,14 @@ fun TransferOutScreen(
   onBackPress: () -> Boolean,
 ) {
   val state by viewModel.state.collectAsState()
+  val uploadState by viewModel.updateState.collectAsState()
   val context = LocalContext.current
+
+  LaunchedEffect(uploadState) {
+    if (uploadState is DataLoadState.Success) {
+      onBackPress()
+    }
+  }
 
   Scaffold(
     topBar = {
@@ -85,7 +95,7 @@ fun TransferOutScreen(
       when (state) {
         is DataLoadState.Success -> {
           val data = (state as DataLoadState.Success<TransferOutScreenState>).data
-          TransferOutScreenContainer(data) { viewModel.transferPatient(context) }
+          TransferOutScreenContainer(data, uploadState) { viewModel.transferPatient(context) }
         }
         is DataLoadState.Error -> {
           Column(
@@ -125,7 +135,11 @@ fun TransferOutScreen(
 }
 
 @Composable
-fun TransferOutScreenContainer(data: TransferOutScreenState, onClick: () -> Unit) {
+fun TransferOutScreenContainer(
+  data: TransferOutScreenState,
+  uploadState: DataLoadState<Boolean>,
+  onClick: () -> Unit,
+) {
   val paragraphStyle = ParagraphStyle(textIndent = TextIndent(restLine = 12.sp))
   val steps =
     listOf(
@@ -150,7 +164,6 @@ fun TransferOutScreenContainer(data: TransferOutScreenState, onClick: () -> Unit
           append(" to a new facility?")
         },
       style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.Normal),
-      textAlign = TextAlign.Center,
     )
     Spacer(Modifier.height(12.dp))
     Text(
@@ -167,16 +180,51 @@ fun TransferOutScreenContainer(data: TransferOutScreenState, onClick: () -> Unit
           appendLine()
           appendLine()
           withStyle(
-            style = MaterialTheme.typography.subtitle2.copy(
-              color = MaterialTheme.colors.error
-            ).toSpanStyle(),
+            style =
+              MaterialTheme.typography.subtitle2
+                .copy(
+                  color = MaterialTheme.colors.error,
+                )
+                .toSpanStyle(),
           ) {
-          appendLine("Note: Once the process starts the patient will be disabled and will not be accessible from within the app")
+            appendLine(
+              "Note: Once the process starts the patient will not be accessible. The transfer out process is not immediate and might take up to 24 hours before the client is accessible at the target facility",
+            )
           }
         },
     )
-    Spacer(Modifier.height(20.dp))
-    Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(text = "Transfer Out") }
+    Spacer(Modifier.height(10.dp))
+    if (uploadState is DataLoadState.Error) {
+      Box(
+        modifier =
+          Modifier.fillMaxWidth()
+            .background(
+              color = MaterialTheme.colors.error,
+              shape = RoundedCornerShape(12.dp),
+            )
+            .padding(12.dp),
+      ) {
+        Text(
+          text = "Something went wrong while, transferring out the patient, please try again..",
+          color = MaterialTheme.colors.onError,
+        )
+      }
+      Spacer(Modifier.height(10.dp))
+    }
+
+    Button(
+      onClick = onClick,
+      modifier = Modifier.fillMaxWidth(),
+      enabled = uploadState !is DataLoadState.Loading,
+    ) {
+      if (uploadState is DataLoadState.Loading) {
+        CircularProgressIndicator()
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = "Preparing information....")
+      } else {
+        Text(text = "Transfer Out")
+      }
+    }
   }
 }
 
@@ -194,7 +242,7 @@ private fun TransferOutScreenContainerPreview() {
     Box(
       modifier = Modifier.padding(innerPadding).fillMaxSize(),
     ) {
-      TransferOutScreenContainer(data) {}
+      TransferOutScreenContainer(data, DataLoadState.Loading) {}
     }
   }
 }
