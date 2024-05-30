@@ -74,6 +74,7 @@ fun TransferOutScreen(
   LaunchedEffect(uploadState) {
     if (uploadState is DataLoadState.Success) {
       onBackPress()
+      onBackPress()
     }
   }
 

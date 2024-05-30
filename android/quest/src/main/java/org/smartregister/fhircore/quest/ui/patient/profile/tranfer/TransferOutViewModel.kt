@@ -29,8 +29,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.hl7.fhir.r4.model.Patient
+import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
+import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.domain.util.DataLoadState
+import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.engine.trace.AnalyticReporter
 import org.smartregister.fhircore.engine.trace.AnalyticsKeys
 import org.smartregister.fhircore.engine.util.ReasonConstants
@@ -49,10 +52,16 @@ constructor(
   private val fhirEngine: FhirEngine,
   private val analytics: AnalyticReporter,
   private val sharedPreferencesHelper: SharedPreferencesHelper,
+  configurationRegistry: ConfigurationRegistry,
+  private val syncBroadcaster: SyncBroadcaster
+
 ) : ViewModel() {
   private val patientId: String = savedStateHandle[NavigationArg.PATIENT_ID]!!
   val state = MutableStateFlow<DataLoadState<TransferOutScreenState>>(DataLoadState.Loading)
   val updateState = MutableStateFlow<DataLoadState<Boolean>>(DataLoadState.Idle)
+
+  private val applicationConfiguration: ApplicationConfiguration =
+    configurationRegistry.getAppConfigs()
 
   private val currentPractitioner by lazy {
     sharedPreferencesHelper.read(
@@ -105,7 +114,7 @@ constructor(
           AnalyticsKeys.TRANSFER_OUT,
           mapOf(Pair("patient", patient.id), Pair("practitioner", currentPractitioner ?: "")),
         )
-        val email = "cphiri@d-tree.org"
+        val email = applicationConfiguration.supportEmail
         val subject = "Request for Patient Transfer out for ${data.fullName}"
         val body =
           """
@@ -125,6 +134,7 @@ constructor(
             .trimIndent()
         composeEmail(context, arrayOf(email), subject, body)
         updateState.value = DataLoadState.Success(true)
+        syncBroadcaster.runSync()
       } catch (e: Exception) {
         Timber.e(e)
         updateState.value = DataLoadState.Error(e)
