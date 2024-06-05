@@ -16,6 +16,9 @@
 
 package org.smartregister.fhircore.quest.ui.patient.profile
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,6 +92,16 @@ fun PatientProfileScreen(
   val syncing by remember { patientProfileViewModel.isSyncing }
   val tasksId = profileViewData.tasks.map { it.actionFormId }
 
+  val launchQuestionnaireActivityForResults =
+    rememberLauncherForActivityResult(
+      contract = ActivityResultContracts.StartActivityForResult(),
+      onResult = {
+        if (it.resultCode == Activity.RESULT_OK && it.data != null) {
+          patientProfileViewModel.reFetch()
+        }
+      },
+    )
+
   LaunchedEffect(taskId) {
     taskId?.let { patientProfileViewModel.fetchPatientProfileDataWithChildren() }
   }
@@ -103,7 +116,7 @@ fun PatientProfileScreen(
           }
         },
         actions = {
-          IconButton(onClick = { patientProfileViewModel.reSync() }, enabled = !syncing) {
+          IconButton(onClick = { patientProfileViewModel.reFetch() }, enabled = !syncing) {
             Icon(
               imageVector = Icons.Outlined.Refresh,
               contentDescription = null,
@@ -204,8 +217,8 @@ fun PatientProfileScreen(
                 ProfileActionableItem(
                   it,
                   onActionClick = { taskFormId, taskId ->
-                    patientProfileViewModel.onEvent(
-                      PatientProfileEvent.OpenTaskForm(
+                    launchQuestionnaireActivityForResults.launch(
+                      patientProfileViewModel.createLaunchTaskIntent(
                         context = context,
                         taskFormId = taskFormId,
                         taskId = taskId,
@@ -228,8 +241,11 @@ fun PatientProfileScreen(
                 FormButton(
                   formButtonData = it,
                   onFormClick = { questionnaireId, _ ->
-                    patientProfileViewModel.onEvent(
-                      PatientProfileEvent.LoadQuestionnaire(questionnaireId, context),
+                    launchQuestionnaireActivityForResults.launch(
+                      patientProfileViewModel.createLaunchQuestionnaireIntent(
+                        context = context,
+                        questionnaireId = questionnaireId,
+                      ),
                     )
                   },
                 )
@@ -285,10 +301,10 @@ fun PatientProfileScreen(
           modifier = Modifier.fillMaxWidth().padding(0.dp),
           shape = RectangleShape,
           onClick = {
-            patientProfileViewModel.onEvent(
-              PatientProfileEvent.FinishVisit(
+            launchQuestionnaireActivityForResults.launch(
+              patientProfileViewModel.createLaunchTaskIntent(
                 context = context,
-                formId = PatientProfileViewModel.PATIENT_FINISH_VISIT,
+                taskFormId = PatientProfileViewModel.PATIENT_FINISH_VISIT,
               ),
             )
           },

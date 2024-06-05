@@ -17,6 +17,8 @@
 package org.smartregister.fhircore.quest.ui.patient.profile
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.os.bundleOf
@@ -158,8 +160,8 @@ constructor(
     }
   }
 
-  fun reSync() {
-    syncBroadcaster.runSync()
+  fun reFetch() {
+    fetchPatientProfileDataWithChildren()
   }
 
   private fun filterGuardianVisitTasks() {
@@ -363,6 +365,27 @@ constructor(
           )
       }
     }
+  }
+
+  fun createLaunchTaskIntent(context: Context, taskFormId: String, taskId: String? = null): Intent {
+    val profile = patientProfileViewData.value
+    return QuestionnaireActivity.createQuestionnaireResultIntent(
+      context as Activity,
+      questionnaireId = taskFormId,
+      clientIdentifier = patientId,
+      backReference = taskId?.asReference(ResourceType.Task)?.reference,
+      populationResources = profile.populationResources,
+    )
+  }
+
+  fun createLaunchQuestionnaireIntent(context: Context, questionnaireId: String): Intent {
+    val profile = patientProfileViewData.value
+    return QuestionnaireActivity.createQuestionnaireIntent(
+      context = context,
+      questionnaireId = questionnaireId,
+      clientIdentifier = patientId,
+      populationResources = profile.populationResources,
+    )
   }
 
   fun handleVisitType(isClientVisit: Boolean) {
