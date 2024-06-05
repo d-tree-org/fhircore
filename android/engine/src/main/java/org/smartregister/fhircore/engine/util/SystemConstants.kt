@@ -37,7 +37,7 @@ object SystemConstants {
   fun getIdentifierSystemFromPatientType(patientType: String): String {
     return when (patientType) {
       "client-already-on-art",
-      "newly-diagnosed-client" -> {
+      "newly-diagnosed-client", -> {
         "https://d-tree.org/fhir/patient-identifier-art"
       }
       "exposed-infant" -> {
