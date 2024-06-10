@@ -310,21 +310,28 @@ fun Patient.extractSecondaryIdentifier(): String? {
 }
 
 fun Patient.extractOfficialIdentifier(): String? {
-  val patientType =
+  val patientTypes =
     this.meta.tag
-      .firstOrNull { it.system == SystemConstants.PATIENT_TYPE_FILTER_TAG_VIA_META_CODINGS_SYSTEM }
-      ?.code
+      .filter { it.system == SystemConstants.PATIENT_TYPE_FILTER_TAG_VIA_META_CODINGS_SYSTEM }
+      .map { it.code }
+  val patientType: String? = SystemConstants.getCodeByPriority(patientTypes)
   return if (this.hasIdentifier() && patientType != null) {
-    val actualId =
-      this.identifier.lastOrNull {
-        it.system == SystemConstants.getIdentifierSystemFromPatientType(patientType)
+    var actualId: Identifier? = null
+    var hasNewSystem = false
+    for (pId in this.identifier) {
+      if (pId.system?.contains("https://d-tree.org/fhir/patient-identifier") == true) {
+        hasNewSystem = true
       }
-    if (actualId != null) {
-      actualId.value
-    } else {
+      if (pId.system == SystemConstants.getIdentifierSystemFromPatientType(patientType)) {
+        actualId = pId
+      }
+    }
+    if (!hasNewSystem) {
       this.identifier
         .lastOrNull { it.use == Identifier.IdentifierUse.OFFICIAL && it.system != "WHO-HCID" }
         ?.value
+    } else {
+      actualId?.value
     }
   } else {
     null
