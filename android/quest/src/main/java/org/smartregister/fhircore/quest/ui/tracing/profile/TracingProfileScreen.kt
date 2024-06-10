@@ -16,7 +16,10 @@
 
 package org.smartregister.fhircore.quest.ui.tracing.profile
 
+import android.app.Activity
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +41,7 @@ import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
@@ -68,6 +72,7 @@ import androidx.navigation.NavHostController
 import org.hl7.fhir.r4.model.RelatedPerson
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.domain.model.TracingAttempt
+import org.smartregister.fhircore.engine.domain.util.DataLoadState
 import org.smartregister.fhircore.engine.ui.theme.LoginButtonColor
 import org.smartregister.fhircore.engine.ui.theme.LoginFieldBackgroundColor
 import org.smartregister.fhircore.engine.ui.theme.PatientProfileSectionsBackgroundColor
@@ -91,7 +96,7 @@ fun TracingProfileScreen(
 ) {
   val taskId by appViewModel.completedTaskId.collectAsState()
 
-  LaunchedEffect(taskId) { taskId?.let { viewModel.fetchTracingData() } }
+  LaunchedEffect(taskId) { taskId?.let { viewModel.reSync() } }
 
   TracingProfilePage(
     navController,
@@ -113,7 +118,17 @@ fun TracingProfilePage(
   val profileViewData by remember { profileViewDataState }
   var showOverflowMenu by remember { mutableStateOf(false) }
   val viewState = tracingProfileViewModel.patientTracingProfileUiState.value
-  val syncing by remember { tracingProfileViewModel.isSyncing }
+  val loadingState by tracingProfileViewModel.loadingState.collectAsState()
+
+  val launchQuestionnaireActivityForResults =
+    rememberLauncherForActivityResult(
+      contract = ActivityResultContracts.StartActivityForResult(),
+      onResult = {
+        if (it.resultCode == Activity.RESULT_OK && it.data != null) {
+          tracingProfileViewModel.reSync()
+        }
+      },
+    )
 
   LaunchedEffect(profileViewData) {
     if (profileViewData.logicalId.isNotBlank() && profileViewData.hasFinishedAttempts) {
@@ -123,59 +138,64 @@ fun TracingProfilePage(
 
   Scaffold(
     topBar = {
-      TopAppBar(
-        title = { Text(stringResource(id = R2.string.patient_details)) },
-        navigationIcon = {
-          IconButton(onClick = { onBackPress() }) { Icon(Icons.Filled.ArrowBack, null) }
-        },
-        actions = {
-          IconButton(onClick = { tracingProfileViewModel.reSync() }, enabled = !syncing) {
-            Icon(
-              imageVector = Icons.Outlined.Refresh,
-              contentDescription = null,
-              tint = Color.White,
-            )
-          }
-          IconButton(onClick = { showOverflowMenu = !showOverflowMenu }) {
-            Icon(
-              imageVector = Icons.Outlined.MoreVert,
-              contentDescription = null,
-              tint = Color.White,
-            )
-          }
-          DropdownMenu(
-            expanded = showOverflowMenu,
-            onDismissRequest = { showOverflowMenu = false },
-          ) {
-            viewState.visibleOverflowMenuItems().forEach {
-              DropdownMenuItem(
-                onClick = {
-                  showOverflowMenu = false
-                  tracingProfileViewModel.onEvent(
-                    TracingProfileEvent.OverflowMenuClick(
-                      navController = navController,
-                      context,
-                      it.id,
-                    ),
-                  )
-                },
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                modifier =
-                  modifier
-                    .fillMaxWidth()
-                    .background(
-                      color =
-                        if (it.confirmAction) {
-                          it.titleColor.copy(alpha = 0.1f)
-                        } else Color.Transparent,
-                    ),
-              ) {
-                Text(text = stringResource(id = it.titleResource), color = it.titleColor)
+      Column(Modifier.fillMaxWidth()) {
+        TopAppBar(
+          title = { Text(stringResource(id = R2.string.patient_details)) },
+          navigationIcon = {
+            IconButton(onClick = { onBackPress() }) { Icon(Icons.Filled.ArrowBack, null) }
+          },
+          actions = {
+            IconButton(onClick = { tracingProfileViewModel.reSync() }) {
+              Icon(
+                imageVector = Icons.Outlined.Refresh,
+                contentDescription = null,
+                tint = Color.White,
+              )
+            }
+            IconButton(onClick = { showOverflowMenu = !showOverflowMenu }) {
+              Icon(
+                imageVector = Icons.Outlined.MoreVert,
+                contentDescription = null,
+                tint = Color.White,
+              )
+            }
+            DropdownMenu(
+              expanded = showOverflowMenu,
+              onDismissRequest = { showOverflowMenu = false },
+            ) {
+              viewState.visibleOverflowMenuItems().forEach {
+                DropdownMenuItem(
+                  onClick = {
+                    showOverflowMenu = false
+                    tracingProfileViewModel.onEvent(
+                      TracingProfileEvent.OverflowMenuClick(
+                        navController = navController,
+                        context,
+                        it.id,
+                      ),
+                    )
+                  },
+                  contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                  modifier =
+                    modifier
+                      .fillMaxWidth()
+                      .background(
+                        color =
+                          if (it.confirmAction) {
+                            it.titleColor.copy(alpha = 0.1f)
+                          } else Color.Transparent,
+                      ),
+                ) {
+                  Text(text = stringResource(id = it.titleResource), color = it.titleColor)
+                }
               }
             }
-          }
-        },
-      )
+          },
+        )
+        if (loadingState is DataLoadState.Loading) {
+          LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+      }
     },
     bottomBar = {
       Box(contentAlignment = Alignment.Center, modifier = modifier.fillMaxWidth()) {
@@ -186,10 +206,12 @@ fun TracingProfilePage(
               backgroundColor = LoginButtonColor,
               LoginFieldBackgroundColor,
             ),
-          enabled = !hasFinishedAttempts,
+          enabled = !hasFinishedAttempts && loadingState !is DataLoadState.Loading,
           onClick = {
-            if (!hasFinishedAttempts) {
-              tracingProfileViewModel.onEvent(TracingProfileEvent.LoadOutComesForm(context))
+            if (!hasFinishedAttempts && loadingState !is DataLoadState.Loading) {
+              launchQuestionnaireActivityForResults.launch(
+                tracingProfileViewModel.createOutcomesIntent(context = context),
+              )
             }
           },
           modifier = modifier.fillMaxWidth(),
@@ -232,8 +254,12 @@ fun TracingProfilePageView(
   onCall: (String) -> Unit,
   onCurrentAttemptClicked: (TracingAttempt) -> Unit,
 ) {
-  Column(modifier = modifier.fillMaxHeight().fillMaxWidth().padding(innerPadding)) {
-    Box(modifier = Modifier.padding(5.dp).weight(2.0f)) {
+  Column(
+    modifier = modifier.fillMaxHeight().fillMaxWidth().padding(innerPadding),
+  ) {
+    Box(
+      modifier = Modifier.padding(5.dp).weight(2.0f),
+    ) {
       Column(
         modifier =
           modifier
@@ -414,7 +440,9 @@ private fun TracingContactAddress(
   OutlineCard(
     modifier = modifier.fillMaxWidth(),
   ) {
-    Column(modifier = modifier.padding(horizontal = 4.dp).fillMaxWidth()) {
+    Column(
+      modifier = modifier.padding(horizontal = 4.dp).fillMaxWidth(),
+    ) {
       if (displayForHomeTrace) {
         TracingReasonItem(
           title = stringResource(R2.string.patient_district),

@@ -615,7 +615,7 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
     }
 
     fun createQuestionnaireResultIntent(
-      context: Activity,
+      context: Context,
       questionnaireId: String,
       clientIdentifier: String? = null,
       questionnaireType: QuestionnaireType = QuestionnaireType.DEFAULT,
