@@ -135,14 +135,14 @@ android {
       applicationIdSuffix = ".mwcore"
       versionNameSuffix = "-mwcore"
       versionCode = 1
-      versionName = "0.0.1"
+      versionName = "0.0.2-beta01"
     }
     create("mwcoreDev") {
       dimension = "apps"
       applicationIdSuffix = ".mwcoreDev"
       versionNameSuffix = "-mwcoreDev"
       versionCode = 36
-      versionName = "0.1.25"
+      versionName = "0.1.25-beta01"
     }
     create("mwcoreStaging") {
       dimension = "apps"

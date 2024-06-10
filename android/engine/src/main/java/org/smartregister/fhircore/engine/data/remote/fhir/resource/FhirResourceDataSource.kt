@@ -56,4 +56,7 @@ class FhirResourceDataSource @Inject constructor(private val resourceService: Fh
 
   suspend fun search(resourceType: String, searchParameters: Map<String, String>): Bundle =
     resourceService.searchResource(resourceType, searchParameters)
+
+  // NOTE: Using this to bypass the auth requirement on the _search endpoint in production
+  suspend fun queryByResourceId(resourceType: String, resourceId: String): Bundle = resourceService.queryByResourceId(resourceType, resourceId)
 }
