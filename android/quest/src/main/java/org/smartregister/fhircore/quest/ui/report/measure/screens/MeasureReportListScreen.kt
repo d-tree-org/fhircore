@@ -62,7 +62,7 @@ fun MeasureReportListScreen(
       TopAppBar(
         title = { Text(text = stringResource(org.smartregister.fhircore.engine.R.string.reports)) },
         navigationIcon = {
-          IconButton(onClick = { navController.popBackStack() }) {
+          IconButton(onClick = { navController.navigateUp() }) {
             Icon(Icons.Filled.ArrowBack, null)
           }
         },

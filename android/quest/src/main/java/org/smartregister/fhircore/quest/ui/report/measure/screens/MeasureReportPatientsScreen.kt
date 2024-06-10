@@ -65,7 +65,7 @@ fun MeasureReportPatientsScreen(
           onTextChanged = {
             measureReportViewModel.onEvent(MeasureReportEvent.OnSearchTextChanged(it))
           },
-          onBackPress = { navController.popBackStack() },
+          onBackPress = { navController.navigateUp() },
           searchTextState = measureReportViewModel.searchTextState,
         )
         Text(
@@ -89,7 +89,7 @@ fun MeasureReportPatientsScreen(
             measureReportPatientViewData = pagingItems[it]!!,
             onRowClick = { patientViewData ->
               measureReportViewModel.onEvent(MeasureReportEvent.OnPatientSelected(patientViewData))
-              navController.popBackStack()
+              navController.navigateUp()
             },
           )
           Divider(color = DividerColor, thickness = 1.dp)

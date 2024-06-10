@@ -168,7 +168,7 @@ fun FamilyProfileScreen(
           title = {},
           backgroundColor = MaterialTheme.colors.primary,
           navigationIcon = {
-            IconButton(onClick = { navController.popBackStack() }) {
+            IconButton(onClick = { navController.navigateUp() }) {
               Icon(Icons.Filled.ArrowBack, contentDescription = null)
             }
           },

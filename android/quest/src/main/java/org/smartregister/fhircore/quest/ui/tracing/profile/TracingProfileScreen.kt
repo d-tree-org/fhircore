@@ -97,7 +97,7 @@ fun TracingProfileScreen(
     navController,
     modifier = modifier,
     tracingProfileViewModel = viewModel,
-    onBackPress = { navController.popBackStack() },
+    onBackPress = { navController.navigateUp() },
   )
 }
 

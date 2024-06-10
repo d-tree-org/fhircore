@@ -61,7 +61,7 @@ fun <T : Any> TracingDataScaffoldList(
       TopAppBar(
         title = { Text(title) },
         navigationIcon = {
-          IconButton(onClick = { navController.popBackStack() }) {
+          IconButton(onClick = { navController.navigateUp() }) {
             Icon(Icons.Filled.ArrowBack, null)
           }
         },
