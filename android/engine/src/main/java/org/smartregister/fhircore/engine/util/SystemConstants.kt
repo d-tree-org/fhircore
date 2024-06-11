@@ -50,7 +50,7 @@ object SystemConstants {
   }
 
   fun getCodeByPriority(codes: List<String>): String? {
-    val priorityOrder = listOf("client-already-on-art", "exposed-infant")
+    val priorityOrder = listOf("client-already-on-art", "newly-diagnosed-client", "exposed-infant")
 
     if (codes.size == 1) {
       return codes[0]
