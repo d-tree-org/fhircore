@@ -333,6 +333,8 @@ constructor(
       val bundle = performExtraction(context, questionnaire, questionnaireResponse)
       questionnaireResponse.contained = mutableListOf()
       bundle.entry.forEach { bundleEntry ->
+        // NOTE: Some entry is null in a weird case
+        if (bundleEntry.resource == null) return@forEach
         // add organization to entities representing individuals in registration questionnaire
         if (bundleEntry.resource.resourceType.isIn(ResourceType.Patient, ResourceType.Group)) {
           if (questionnaireConfig.setOrganizationDetails) {
@@ -511,7 +513,10 @@ constructor(
 
   suspend fun saveBundleResources(bundle: Bundle) {
     if (!bundle.isEmpty) {
-      bundle.entry.forEach { defaultRepository.addOrUpdate(true, it.resource) }
+      bundle.entry.forEach {
+        if (it.resource == null) return@forEach
+        defaultRepository.addOrUpdate(true, it.resource)
+      }
     }
   }
 
