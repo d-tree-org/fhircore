@@ -181,8 +181,8 @@ constructor(val fhirEngine: FhirEngine, val transformSupportServices: TransformS
     status: Task.TaskStatus,
   ): CarePlan.CarePlanActivityStatus {
     return when (status) {
-      Task.TaskStatus.FAILED,
-      Task.TaskStatus.CANCELLED, -> CarePlan.CarePlanActivityStatus.CANCELLED
+      Task.TaskStatus.FAILED -> CarePlan.CarePlanActivityStatus.STOPPED
+      Task.TaskStatus.CANCELLED -> CarePlan.CarePlanActivityStatus.CANCELLED
       Task.TaskStatus.COMPLETED,
       Task.TaskStatus.ONHOLD,
       Task.TaskStatus.INPROGRESS,

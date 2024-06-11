@@ -309,6 +309,15 @@ fun Patient.extractSecondaryIdentifier(): String? {
   return null
 }
 
+fun Patient.extractPatientTypeCoding(): Coding? {
+  val patientTypes =
+    this.meta.tag.filter {
+      it.system == SystemConstants.PATIENT_TYPE_FILTER_TAG_VIA_META_CODINGS_SYSTEM
+    }
+  val patientType: String? = SystemConstants.getCodeByPriority(patientTypes.map { it.code })
+  return patientTypes.firstOrNull { patientType == it.code }
+}
+
 fun Patient.extractOfficialIdentifier(): String? {
   val patientTypes =
     this.meta.tag
@@ -356,10 +365,7 @@ fun Coding.toHealthStatus(): HealthStatus {
 }
 
 fun Patient.extractHealthStatusFromMeta(filterTag: String): HealthStatus {
-  val tagList =
-    this.meta.tag.filter { it.system.equals(filterTag, true) }.filterNot { it.code.isNullOrBlank() }
-  if (filterTag.isEmpty() || tagList.isEmpty()) return HealthStatus.DEFAULT
-  return tagList.map { it.toHealthStatus() }.minByOrNull { it.priority() }!!
+  return this.extractPatientTypeCoding()?.toHealthStatus() ?: HealthStatus.DEFAULT
 }
 
 suspend fun Patient.activeCarePlans(fhirEngine: FhirEngine): List<CarePlan> {
