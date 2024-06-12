@@ -48,6 +48,7 @@ import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.Binary
 import org.hl7.fhir.r4.model.Questionnaire
 import org.hl7.fhir.r4.model.Resource
+import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.StructureMap
 import org.smartregister.fhircore.engine.appointment.MissedFHIRAppointmentsWorker
 import org.smartregister.fhircore.engine.appointment.ProposedWelcomeServiceAppointmentsWorker
@@ -80,6 +81,7 @@ constructor(
 ) : ViewModel() {
 
   val resourceSaveState = MutableStateFlow<DataLoadState<Boolean>>(DataLoadState.Idle)
+  val cleanCorruptedState = MutableStateFlow<DataLoadState<Boolean>>(DataLoadState.Idle)
 
   suspend fun createResourceReport(context: Context) {
     viewModelScope.launch(Dispatchers.IO) {
@@ -251,6 +253,25 @@ constructor(
       .search<T> {}
       .map { it.resource }
       .map { ResourceField(it.logicalId, it.meta.versionId, it.meta.lastUpdated.asDdMmmYyyy()) }
+  }
+
+  fun clearCorruptedEvents() {
+    viewModelScope.launch {
+      try {
+        cleanCorruptedState.value = DataLoadState.Loading
+        val auditEvents =
+          fhirEngine.getUnsyncedLocalChanges().filter {
+            it.resourceType == ResourceType.AuditEvent.name
+          }
+        for (event in auditEvents) {
+          fhirEngine.purge(ResourceType.AuditEvent, event.resourceId, true)
+        }
+        cleanCorruptedState.value = DataLoadState.Success(true)
+      } catch (e: Exception) {
+        Timber.e(e)
+        cleanCorruptedState.value = DataLoadState.Error(e)
+      }
+    }
   }
 
   fun missedTask(context: Context) {
