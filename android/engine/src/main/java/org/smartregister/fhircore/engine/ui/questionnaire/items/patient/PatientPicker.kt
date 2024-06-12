@@ -75,7 +75,7 @@ class PatientPicker(
       CustomQuestPatientPickerDialogBinding.inflate(LayoutInflater.from(context), null, false)
     val dialog = AlertDialog.Builder(context).setView(dialogBinding.root).create()
     dialogBinding.submitButton.setOnClickListener {
-      val inputText = dialogBinding.inputEditText.text.toString()
+      val inputText = dialogBinding.patientSearchEditText.text.toString()
       viewModel.submitText(inputText)
     }
 
@@ -145,7 +145,7 @@ class PatientPicker(
 
 class ItemsAdapter(
   private val items: List<PickerPatient>,
-  val onPatientSelected: (PickerPatient) -> Unit
+  val onPatientSelected: (PickerPatient) -> Unit,
 ) : RecyclerView.Adapter<ItemsAdapter.ViewHolder>() {
 
   class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
