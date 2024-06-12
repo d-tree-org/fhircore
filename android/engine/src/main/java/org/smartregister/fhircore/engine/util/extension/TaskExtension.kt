@@ -16,6 +16,7 @@
 
 package org.smartregister.fhircore.engine.util.extension
 
+import org.hl7.fhir.r4.model.CarePlan
 import org.hl7.fhir.r4.model.Coding
 import org.hl7.fhir.r4.model.Task
 import org.smartregister.fhircore.engine.util.DateUtils
@@ -70,4 +71,17 @@ fun Task.getCarePlanId(): String? {
     .firstOrNull { it.system == SystemConstants.CARE_PLAN_REFERENCE_SYSTEM }
     ?.code
     ?.substringAfterLast(delimiter = '/', missingDelimiterValue = "")
+}
+
+fun Task.taskStatusToCarePlanActivityStatus(): CarePlan.CarePlanActivityStatus {
+  return when (status) {
+    Task.TaskStatus.FAILED -> CarePlan.CarePlanActivityStatus.STOPPED
+    Task.TaskStatus.CANCELLED -> CarePlan.CarePlanActivityStatus.CANCELLED
+    Task.TaskStatus.READY -> CarePlan.CarePlanActivityStatus.NOTSTARTED
+    Task.TaskStatus.COMPLETED,
+    Task.TaskStatus.ONHOLD,
+    Task.TaskStatus.INPROGRESS,
+    Task.TaskStatus.ENTEREDINERROR, -> CarePlan.CarePlanActivityStatus.fromCode(status.toCode())
+    else -> CarePlan.CarePlanActivityStatus.NULL
+  }
 }

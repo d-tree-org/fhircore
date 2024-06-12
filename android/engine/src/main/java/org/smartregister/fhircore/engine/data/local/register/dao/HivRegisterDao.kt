@@ -31,6 +31,7 @@ import javax.inject.Provider
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import org.hl7.fhir.r4.model.CarePlan
 import org.hl7.fhir.r4.model.CodeType
 import org.hl7.fhir.r4.model.CodeableConcept
 import org.hl7.fhir.r4.model.Coding
@@ -42,6 +43,7 @@ import org.hl7.fhir.r4.model.Reference
 import org.hl7.fhir.r4.model.RelatedPerson
 import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.ResourceType
+import org.hl7.fhir.r4.model.Task
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.data.domain.Guardian
 import org.smartregister.fhircore.engine.data.domain.PregnancyStatus
@@ -74,6 +76,7 @@ import org.smartregister.fhircore.engine.util.extension.getResourcesByIds
 import org.smartregister.fhircore.engine.util.extension.givenName
 import org.smartregister.fhircore.engine.util.extension.loadResource
 import org.smartregister.fhircore.engine.util.extension.shouldShowOnProfile
+import org.smartregister.fhircore.engine.util.extension.taskStatusToCarePlanActivityStatus
 import org.smartregister.fhircore.engine.util.extension.toAgeDisplay
 import org.smartregister.fhircore.engine.util.extension.yearsPassed
 import timber.log.Timber
@@ -243,12 +246,7 @@ constructor(
       showIdentifierInProfile = true,
       currentCarePlan = carePlan,
       healthStatus = patient.extractHealthStatusFromMeta(patientTypeMetaTagCodingSystem),
-      tasks =
-        carePlan
-          ?.activity
-          ?.filter { it.shouldShowOnProfile() }
-          ?.sortedWith(compareBy(nullsLast()) { it?.detail?.code?.text?.toBigIntegerOrNull() })
-          ?: listOf(),
+      tasks = fetchCarePlanActivities(carePlan),
       conditions = defaultRepository.activePatientConditions(patient.logicalId),
       otherPatients = patient.otherChildren(),
       guardians = patient.guardians(),
@@ -488,6 +486,37 @@ constructor(
         )
       }
       .filterNot { it.healthStatus == HealthStatus.DEFAULT }
+  }
+
+  private suspend fun fetchCarePlanActivities(
+    carePlan: CarePlan?
+  ): List<CarePlan.CarePlanActivityComponent> {
+    if (carePlan == null) return emptyList()
+    val activityOnList = mutableMapOf<String, CarePlan.CarePlanActivityComponent>()
+    val tasksToFetch = mutableListOf<String>()
+    for (planActivity in carePlan.activity) {
+      if (!planActivity.shouldShowOnProfile()) {
+        continue
+      }
+      val taskId = planActivity.outcomeReference.firstOrNull()?.extractId()
+      if (taskId != null) {
+        tasksToFetch.add(taskId)
+        activityOnList[taskId] = planActivity
+      }
+    }
+    if (tasksToFetch.isNotEmpty()) {
+      val tasks = fhirEngine.getResourcesByIds<Task>(tasksToFetch)
+      tasks.forEach { task ->
+        val planActivity: CarePlan.CarePlanActivityComponent? = activityOnList[task.logicalId]
+        if (planActivity != null) {
+          planActivity.detail?.status = task.taskStatusToCarePlanActivityStatus()
+          activityOnList[task.logicalId] = planActivity
+        }
+      }
+    }
+    return activityOnList.values.sortedWith(
+      compareBy(nullsLast()) { it.detail?.code?.text?.toBigIntegerOrNull() },
+    )
   }
 
   object ResourceValue {
