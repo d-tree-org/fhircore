@@ -216,7 +216,6 @@ class LocationPickerView(
   }
 
   fun initLocation(initialAnswer: String?) {
-    Timber.e("$initialAnswer $initialValue")
     if (initialAnswer != null && initialValue == null) {
       val elements = initialAnswer.split("|")
       val locationId = elements.getOrNull(0)
