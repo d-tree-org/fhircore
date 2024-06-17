@@ -108,14 +108,14 @@ class ResourcePurger(private val fhirEngine: FhirEngine) {
   private suspend fun onPurgeInActiveCarePlanWithTasks(carePlans: List<CarePlan>) =
     carePlans
       .filter { it.status != CarePlan.CarePlanStatus.ACTIVE }
-      .also { onPurgeCarePlanWithAssociatedTask(it) }
+      .also { onPurgeCarePlanWithAssociatedTask(it, false) }
 
   /** Purge Multiple [CarePlan.CarePlanStatus.ACTIVE] together with it's associated [Task] */
   private suspend fun onPurgeMultipleActiveCarePlanWithTasks(carePlans: List<CarePlan>) =
     carePlans
       .filter { it.status == CarePlan.CarePlanStatus.ACTIVE }
       .sortedBy { it.meta.lastUpdated }
-      .also { if (it.size > 1) onPurgeCarePlanWithAssociatedTask(it.subList(1, it.size)) }
+      .also { if (it.size > 1) onPurgeCarePlanWithAssociatedTask(it.subList(1, it.size), true) }
 
   // TODO: Filter out the care_plans in the query before hand
   private suspend fun onPurgeCarePlans() {
@@ -147,23 +147,25 @@ class ResourcePurger(private val fhirEngine: FhirEngine) {
       }
   }
 
-  private suspend fun onPurgeCarePlanWithAssociatedTask(carePlans: List<CarePlan>) {
-    carePlans
-      .asSequence()
-      .flatMap { it.activity }
-      .mapNotNull { it.outcomeReference.firstOrNull() }
-      .map { it.reference.substringAfter("/") }
-      .toSet()
-      .map { Task().apply { id = it } }
-      .toList()
-      .purge()
-    carePlans.map { it.setStatusEnteredInError() }.setStatusEnteredInError()
-  }
-
-  private suspend fun CarePlan.setStatusEnteredInError(): CarePlan {
-    val carePlan = setStatus(CarePlan.CarePlanStatus.ENTEREDINERROR)
-    fhirEngine.update(carePlan)
-    return carePlan
+  private suspend fun onPurgeCarePlanWithAssociatedTask(
+    carePlans: List<CarePlan>,
+    isError: Boolean = false
+  ) {
+    if (isError) {
+      // TODO: Should we also update the task statuses?
+      carePlans.setStatusEnteredInError()
+    } else {
+      carePlans
+        .asSequence()
+        .flatMap { it.activity }
+        .mapNotNull { it.outcomeReference.firstOrNull() }
+        .map { it.reference.substringAfter("/") }
+        .toSet()
+        .map { Task().apply { id = it } }
+        .toList()
+        .purge()
+      carePlans.purge()
+    }
   }
 
   private suspend fun Iterable<CarePlan>.setStatusEnteredInError() {

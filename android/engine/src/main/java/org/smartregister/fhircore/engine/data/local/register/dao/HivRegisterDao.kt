@@ -489,7 +489,7 @@ constructor(
   }
 
   private suspend fun fetchCarePlanActivities(
-    carePlan: CarePlan?
+    carePlan: CarePlan?,
   ): List<CarePlan.CarePlanActivityComponent> {
     if (carePlan == null) return emptyList()
     val activityOnList = mutableMapOf<String, CarePlan.CarePlanActivityComponent>()
