@@ -38,6 +38,7 @@ import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.codesystems.AdministrativeGender
 import org.smartregister.fhircore.engine.R
+import org.smartregister.fhircore.engine.data.domain.PhoneContact
 import org.smartregister.fhircore.engine.data.domain.PregnancyStatus
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.domain.model.HealthStatus
@@ -204,9 +205,16 @@ fun Patient.extractAddressText(): String {
   return with(addressFirstRep) { this.text ?: "" }
 }
 
-fun Patient.extractTelecom(): List<String> {
+fun Patient.extractTelecom(): List<PhoneContact> {
   if (!hasTelecom()) return emptyList()
-  return telecom.map { it.value }
+  return telecom.mapNotNull {
+    val raw = it.value.split("|")
+    if (raw.isNotEmpty()) {
+      PhoneContact(raw.getOrNull(1) ?: "", raw.getOrNull(2) ?: "")
+    } else {
+      PhoneContact(it.value, "Self")
+    }
+  }
 }
 
 fun Patient.extractGeneralPractitionerReference(): String {

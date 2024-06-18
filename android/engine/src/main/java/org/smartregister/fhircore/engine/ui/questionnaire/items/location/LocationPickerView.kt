@@ -228,7 +228,7 @@ class LocationPickerView(
     if (selectedLocation != null && selectedLocation.children.isNotEmpty()) {
       if (dropdownMap.containsKey(identifier)) {
         (dropdownMap[identifier]?.second?.adapter as LocationHierarchyAdapter?)?.updateLocations(
-          selectedLocation.children
+          selectedLocation.children,
         )
       } else {
         updateLocationData(selectedLocation.children, parent = selectedLocation)

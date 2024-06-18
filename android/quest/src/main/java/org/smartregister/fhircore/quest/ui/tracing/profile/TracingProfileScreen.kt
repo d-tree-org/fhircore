@@ -457,15 +457,17 @@ private fun TracingContactAddress(
           value = patientProfileViewData.addressPhysicalLocator,
         )
       } else {
-        TracingReasonItem(
-          title = stringResource(R2.string.patient_phone_number, 1),
-          value = patientProfileViewData.phoneContacts.firstOrNull() ?: "",
-        )
-        TracingReasonItem(
-          title = stringResource(R2.string.patient_phone_owner, 1),
-          value = stringResource(R2.string.patient),
-        )
-        CallRow { onCall(patientProfileViewData.phoneContacts.firstOrNull() ?: "") }
+        for (contact in patientProfileViewData.phoneContacts) {
+          TracingReasonItem(
+            title = stringResource(R2.string.patient_phone_number, 1),
+            value = contact.number,
+          )
+          TracingReasonItem(
+            title = stringResource(R2.string.patient_phone_owner, 1),
+            value = contact.owner,
+          )
+          CallRow { onCall(contact.number) }
+        }
       }
     }
   }
