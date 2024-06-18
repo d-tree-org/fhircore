@@ -209,10 +209,12 @@ fun Patient.extractTelecom(): List<PhoneContact> {
   if (!hasTelecom()) return emptyList()
   return telecom.mapNotNull {
     val raw = it.value.split("|")
-    if (raw.isNotEmpty()) {
+    if (raw.size > 1) {
       PhoneContact(raw.getOrNull(1) ?: "", raw.getOrNull(2) ?: "")
-    } else {
+    } else if (raw.size == 1) {
       PhoneContact(it.value, "Self")
+    } else {
+      null
     }
   }
 }
