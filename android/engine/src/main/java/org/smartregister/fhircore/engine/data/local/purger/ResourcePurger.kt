@@ -149,7 +149,7 @@ class ResourcePurger(private val fhirEngine: FhirEngine) {
 
   private suspend fun onPurgeCarePlanWithAssociatedTask(
     carePlans: List<CarePlan>,
-    isError: Boolean = false
+    isError: Boolean = false,
   ) {
     if (isError) {
       // TODO: Should we also update the task statuses?
