@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.quest.ui.patient.register.components
+package org.smartregister.fhircore.quest.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -44,16 +44,20 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
+import androidx.ui.res.stringResource
 import org.smartregister.fhircore.engine.domain.model.RegisterData
 import org.smartregister.fhircore.engine.ui.components.CircularProgressBar
 import org.smartregister.fhircore.engine.ui.components.ErrorMessage
 import org.smartregister.fhircore.engine.ui.theme.DividerColor
+import org.smartregister.fhircore.quest.R
+import org.smartregister.fhircore.quest.ui.patient.register.components.HivPatientRegisterListRow
+import org.smartregister.fhircore.quest.ui.patient.register.components.RegisterListRow
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 import timber.log.Timber
 
 @Composable
 fun RegisterList(
-  pagingItems: LazyPagingItems<RegisterViewData>,
+  pagingItems: LazyPagingItems<RegisterViewData.ListItemView>,
   onRowClick: (String) -> Unit,
   modifier: Modifier = Modifier,
   progressMessage: String = "",
@@ -64,7 +68,7 @@ fun RegisterList(
       key = pagingItems.itemKey { it.customKey ?: it.logicalId },
       contentType = pagingItems.itemContentType(),
     ) {
-      RegisterRowItem(registerViewData = pagingItems[it]!!, onRowClick = onRowClick)
+      RegisterRowItem(listItemViewData = pagingItems[it]!!, onRowClick = onRowClick)
     }
     pagingItems.apply {
       val finishedLoading =
@@ -108,7 +112,11 @@ fun RegisterList(
           val loadStateError = pagingItems.loadState.refresh as LoadState.Error
           item {
             ErrorMessage(
-              message = loadStateError.error.also { Timber.e(it) }.localizedMessage!!,
+              message =
+                loadStateError.error.also { Timber.e(it) }.localizedMessage
+                  ?: stringResource(
+                    R.string.error_occurred,
+                  ),
               onClickRetry = { retry() },
             )
           }
@@ -138,15 +146,15 @@ fun BoxedCircularProgressBar(progressMessage: String) {
 }
 
 @Composable
-fun RegisterRowItem(registerViewData: RegisterViewData, onRowClick: (String) -> Unit) {
-  when (registerViewData.registerType) {
+fun RegisterRowItem(listItemViewData: RegisterViewData.ListItemView, onRowClick: (String) -> Unit) {
+  when (listItemViewData.registerType) {
     RegisterData.HivRegisterData::class,
     RegisterData.TracingRegisterData::class,
     RegisterData.AppointmentRegisterData::class, -> {
-      HivPatientRegisterListRow(data = registerViewData, onItemClick = onRowClick)
+      HivPatientRegisterListRow(data = listItemViewData, onItemClick = onRowClick)
     }
     else -> {
-      RegisterListRow(registerViewData = registerViewData, onRowClick = onRowClick)
+      RegisterListRow(listItemViewData = listItemViewData, onRowClick = onRowClick)
       Divider(color = DividerColor, thickness = 1.dp)
     }
   }

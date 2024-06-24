@@ -26,9 +26,9 @@ import ca.uhn.fhir.context.FhirVersionEnum
 import ca.uhn.fhir.rest.gclient.TokenClientParam
 import ca.uhn.fhir.rest.param.ParamPrefixEnum
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.datacapture.mapping.ResourceMapper
 import com.google.android.fhir.datacapture.mapping.StructureMapExtractionContext
-import com.google.android.fhir.logicalId
 import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Order
 import com.google.android.fhir.search.search
@@ -43,7 +43,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.context.IWorkerContext
@@ -140,15 +139,34 @@ constructor(
     }
   }
 
-  suspend fun loadQuestionnaire(id: String, type: QuestionnaireType): Questionnaire? =
-    defaultRepository.loadResource<Questionnaire>(id)?.apply {
-      if (type.isReadOnly() || type.isEditMode()) {
-        item.prepareQuestionsForReadingOrEditing(QUESTIONNAIRE_RESPONSE_ITEM, type.isReadOnly())
-      }
+  suspend fun loadQuestionnaire(id: String, type: QuestionnaireType): Questionnaire? {
+    var questionnaire = ContentCache.getResource(ResourceType.Questionnaire.name + "/" + id)?.copy()
 
-      // TODO https://github.com/opensrp/fhircore/issues/991#issuecomment-1027872061
-      this.url = this.url ?: this.referenceValue()
+    if (questionnaire == null) {
+      questionnaire =
+        defaultRepository
+          .loadResource<Questionnaire>(id)
+          ?.apply {
+            if (type.isReadOnly() || type.isEditMode()) {
+              item.prepareQuestionsForReadingOrEditing(
+                QUESTIONNAIRE_RESPONSE_ITEM,
+                type.isReadOnly(),
+              )
+            }
+
+            // TODO https://github.com/opensrp/fhircore/issues/991#issuecomment-1027872061
+            this.url = this.url ?: this.referenceValue()
+          }
+          ?.also {
+            ContentCache.saveResource(
+              id,
+              it.copy(),
+            )
+          }
     }
+
+    return questionnaire as? Questionnaire
+  }
 
   suspend fun getQuestionnaireConfig(form: String, context: Context): QuestionnaireConfig {
     val loadConfig =
@@ -200,11 +218,16 @@ constructor(
       .getOrNull()
 
   suspend fun fetchStructureMap(structureMapUrl: String?): StructureMap? {
-    var structureMap: StructureMap? = null
+    var structureMap: Resource? = null
     structureMapUrl?.substringAfterLast("/")?.run {
-      structureMap = defaultRepository.loadResource(this)
+      structureMap = ContentCache.getResource(ResourceType.StructureMap.name + "/" + this)
+      structureMap =
+        structureMap
+          ?: defaultRepository.loadResource<StructureMap>(this)?.also {
+            it.let { ContentCache.saveResource(this, it) }
+          }
     }
-    return structureMap
+    return structureMap as? StructureMap
   }
 
   fun appendOrganizationInfo(resource: Resource) {
@@ -310,6 +333,8 @@ constructor(
       val bundle = performExtraction(context, questionnaire, questionnaireResponse)
       questionnaireResponse.contained = mutableListOf()
       bundle.entry.forEach { bundleEntry ->
+        // NOTE: Some entry is null in a weird case
+        if (bundleEntry.resource == null) return@forEach
         // add organization to entities representing individuals in registration questionnaire
         if (bundleEntry.resource.resourceType.isIn(ResourceType.Patient, ResourceType.Group)) {
           if (questionnaireConfig.setOrganizationDetails) {
@@ -488,7 +513,10 @@ constructor(
 
   suspend fun saveBundleResources(bundle: Bundle) {
     if (!bundle.isEmpty) {
-      bundle.entry.forEach { defaultRepository.addOrUpdate(true, it.resource) }
+      bundle.entry.forEach {
+        if (it.resource == null) return@forEach
+        defaultRepository.addOrUpdate(true, it.resource)
+      }
     }
   }
 

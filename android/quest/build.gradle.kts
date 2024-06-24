@@ -115,7 +115,7 @@ android {
     buildConfig = true
   }
 
-  composeOptions { kotlinCompilerExtensionVersion = "1.5.9" }
+  composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 
   testOptions {
     execution = "ANDROIDX_TEST_ORCHESTRATOR"
@@ -134,15 +134,15 @@ android {
       dimension = "apps"
       applicationIdSuffix = ".mwcore"
       versionNameSuffix = "-mwcore"
-      versionCode = 1
-      versionName = "0.0.1"
+      versionCode = 4
+      versionName = "0.0.4"
     }
     create("mwcoreDev") {
       dimension = "apps"
       applicationIdSuffix = ".mwcoreDev"
       versionNameSuffix = "-mwcoreDev"
-      versionCode = 36
-      versionName = "0.1.25"
+      versionCode = 35
+      versionName = "0.1.26"
     }
     create("mwcoreStaging") {
       dimension = "apps"

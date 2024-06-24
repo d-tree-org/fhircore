@@ -42,6 +42,7 @@ import org.smartregister.fhircore.engine.configuration.app.ApplicationConfigurat
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.engine.ui.login.LoginActivity
+import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.SecureSharedPreference
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
@@ -65,6 +66,7 @@ constructor(
   val sharedPreferencesHelper: SharedPreferencesHelper,
   val configurationRegistry: ConfigurationRegistry,
   val configService: ConfigService,
+  val dispatcherProvider: DispatcherProvider,
   val appFeatureManager: AppFeatureManager,
 ) : ViewModel() {
 
@@ -127,7 +129,7 @@ constructor(
               event.launchManualAuth(intent)
             }
           }
-        } catch (e: Exception) {}
+        } catch (_: Exception) {}
       }
       AppMainEvent.ResumeSync -> {
         run(resumeSync)
@@ -161,7 +163,9 @@ constructor(
   private val resumeSync = {
     syncBroadcaster.runSync()
     appMainUiState.value =
-      appMainUiState.value.copy(sideMenuOptions = sideMenuOptionFactory.retrieveSideMenuOptions())
+      appMainUiState.value.copy(
+        sideMenuOptions = sideMenuOptionFactory.retrieveSideMenuOptions(),
+      )
   }
 
   private fun loadCurrentLanguage() =

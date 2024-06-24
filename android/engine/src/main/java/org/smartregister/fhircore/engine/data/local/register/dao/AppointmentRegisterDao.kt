@@ -18,7 +18,7 @@ package org.smartregister.fhircore.engine.data.local.register.dao
 
 import ca.uhn.fhir.rest.param.ParamPrefixEnum
 import com.google.android.fhir.FhirEngine
-import com.google.android.fhir.logicalId
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Order
 import com.google.android.fhir.search.Search
@@ -27,6 +27,9 @@ import java.util.Calendar
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.max
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import org.hl7.fhir.r4.model.Appointment
 import org.hl7.fhir.r4.model.CodeableConcept
 import org.hl7.fhir.r4.model.DateTimeType
@@ -51,6 +54,7 @@ import org.smartregister.fhircore.engine.util.extension.extractAge
 import org.smartregister.fhircore.engine.util.extension.extractHealthStatusFromMeta
 import org.smartregister.fhircore.engine.util.extension.extractName
 import org.smartregister.fhircore.engine.util.extension.extractOfficialIdentifier
+import org.smartregister.fhircore.engine.util.extension.fetch
 import org.smartregister.fhircore.engine.util.extension.getPregnancyStatus
 import org.smartregister.fhircore.engine.util.extension.safeSubList
 
@@ -85,16 +89,30 @@ constructor(
   private fun applicationConfiguration(): ApplicationConfiguration =
     configurationRegistry.getAppConfigs()
 
-  override suspend fun countRegisterData(appFeatureName: String?): Long {
+  override suspend fun countRegisterData(): Flow<Long> {
+    var counter = 0L
+    var offset = 0
+    val pageCount = 100
     val dateOfAppointment = Calendar.getInstance().time
-    return fhirEngine
-      .search<Appointment> { genericFilter(dateOfAppointment) }
-      .map { it.resource }
-      .count { isAppointmentValid(it) }
-      .toLong()
+
+    return flow {
+      do {
+        val appointments =
+          fhirEngine.search<Appointment> {
+            genericFilter(dateOfAppointment)
+            from = offset
+            count = pageCount
+          }
+        offset += appointments.size
+        val validAppointmentCount =
+          appointments.map { it.resource }.count { isAppointmentValid(it) }
+        counter += validAppointmentCount
+        emit(counter)
+      } while (appointments.isNotEmpty())
+    }
   }
 
-  override suspend fun countRegisterFiltered(appFeatureName: String?, filters: RegisterFilter) =
+  override suspend fun countRegisterFiltered(filters: RegisterFilter): Long =
     searchAppointments(filters, loadAll = true).count().toLong()
 
   private suspend fun patientCategoryMatches(
@@ -117,11 +135,10 @@ constructor(
     filters as AppointmentRegisterFilter
 
     val searchResults =
-      fhirEngine.search<Appointment> {
-        if (!loadAll) count = PaginationConstant.DEFAULT_PAGE_SIZE
-
-        if (page >= 0) from = page * PaginationConstant.DEFAULT_PAGE_SIZE
-
+      fhirEngine.fetch<Appointment>(
+        offset = max(page, 0) * PaginationConstant.DEFAULT_PAGE_SIZE,
+        loadAll = loadAll,
+      ) {
         genericFilter(
           dateOfAppointment = filters.dateOfAppointment,
           reasonCode = filters.reasonCode,
@@ -262,7 +279,6 @@ constructor(
   override suspend fun loadRegisterFiltered(
     currentPage: Int,
     loadAll: Boolean,
-    appFeatureName: String?,
     filters: RegisterFilter,
   ): List<RegisterData> =
     searchAppointments(filters, loadAll = true)
@@ -278,7 +294,7 @@ constructor(
       .let {
         if (!loadAll) {
           val from = currentPage * PaginationConstant.DEFAULT_PAGE_SIZE
-          val to = from + PaginationConstant.DEFAULT_PAGE_SIZE
+          val to = from + PaginationConstant.DEFAULT_PAGE_SIZE + PaginationConstant.EXTRA_ITEM_COUNT
           it.safeSubList(from..to)
         } else {
           it
@@ -291,7 +307,7 @@ constructor(
     appFeatureName: String?,
   ): List<RegisterData> {
     val appointments =
-      fhirEngine.search<Appointment> {
+      fhirEngine.fetch<Appointment> {
         filter(Appointment.STATUS, { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) })
         filter(Appointment.DATE, { value = of(DateTimeType.today()) })
       }
@@ -320,7 +336,7 @@ constructor(
       .let {
         if (!loadAll) {
           val from = currentPage * PaginationConstant.DEFAULT_PAGE_SIZE
-          val to = from + PaginationConstant.DEFAULT_PAGE_SIZE
+          val to = from + PaginationConstant.DEFAULT_PAGE_SIZE + PaginationConstant.EXTRA_ITEM_COUNT
           it.safeSubList(from..to)
         } else {
           it

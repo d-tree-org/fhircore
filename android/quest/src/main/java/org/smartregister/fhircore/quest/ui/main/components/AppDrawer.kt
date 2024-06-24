@@ -38,7 +38,6 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -104,7 +103,9 @@ fun AppDrawer(
     verticalArrangement = Arrangement.SpaceBetween,
     modifier = modifier.fillMaxHeight().background(SideMenuDarkColor),
   ) {
-    Column(modifier.background(SideMenuDarkColor).padding(16.dp)) {
+    Column(
+      modifier.background(SideMenuDarkColor).padding(16.dp),
+    ) {
       Text(
         text = appTitle,
         fontSize = 22.sp,
@@ -116,13 +117,10 @@ fun AppDrawer(
           ->
           val title = stringResource(sideMenuOption.titleResource)
 
-          val (countValue, setCountValue) = remember { mutableStateOf(0L) }
-          LaunchedEffect(key1 = sideMenuOption.count) { setCountValue(sideMenuOption.count()) }
-
           SideMenuItem(
             iconResource = sideMenuOption.iconResource,
             title = title,
-            endText = countValue.toString(),
+            endText = if (sideMenuOption.showCount) "${sideMenuOption.count}" else "",
             showEndText = sideMenuOption.showCount,
             onSideMenuClick = {
               openDrawer(false)
@@ -139,6 +137,19 @@ fun AppDrawer(
           )
         }
       }
+
+      SideMenuItem(
+        iconResource = org.smartregister.fhircore.engine.R.drawable.ic_reports,
+        title = stringResource(R.string.counters),
+        showEndText = false,
+        onSideMenuClick = {
+          openDrawer(false)
+          navController.navigate(
+            route = MainNavigationScreen.Counters.route,
+          )
+        },
+      )
+
       if (enableReports) {
         SideMenuItem(
           iconResource = org.smartregister.fhircore.engine.R.drawable.ic_reports,
@@ -161,7 +172,7 @@ fun AppDrawer(
           },
         )
       }
-      if (languages.isNotEmpty()) {
+      if (languages.size > 1) {
         Box {
           SideMenuItem(
             iconResource = org.smartregister.fhircore.engine.R.drawable.ic_outline_language_white,
@@ -248,7 +259,9 @@ fun SideMenuItem(
   ) {
     val alpha = if (enabled) ContentAlpha.high else ContentAlpha.disabled
 
-    Row(modifier = modifier.padding(vertical = 16.dp).alpha(alpha)) {
+    Row(
+      modifier = modifier.padding(vertical = 16.dp).alpha(alpha),
+    ) {
       Icon(
         modifier = modifier.padding(end = 10.dp).size(24.dp).alpha(alpha),
         painter = painterResource(id = iconResource),
@@ -286,14 +299,14 @@ fun AppDrawerPreview() {
           appFeatureName = "AllFamilies",
           iconResource = org.smartregister.fhircore.engine.R.drawable.ic_user,
           titleResource = org.smartregister.fhircore.engine.R.string.clients,
-          count = suspend { 4 },
+          count = 4,
           showCount = true,
         ),
         SideMenuOption(
           appFeatureName = "ChildClients",
           iconResource = org.smartregister.fhircore.engine.R.drawable.ic_user,
           titleResource = org.smartregister.fhircore.engine.R.string.clients,
-          count = suspend { 16 },
+          count = 16,
           showCount = true,
         ),
         SideMenuOption(
@@ -328,14 +341,14 @@ fun AppDrawerPreviewSyncDisabled() {
           appFeatureName = "AllFamilies",
           iconResource = org.smartregister.fhircore.engine.R.drawable.ic_user,
           titleResource = org.smartregister.fhircore.engine.R.string.clients,
-          count = suspend { 4 },
+          count = 4,
           showCount = true,
         ),
         SideMenuOption(
           appFeatureName = "ChildClients",
           iconResource = org.smartregister.fhircore.engine.R.drawable.ic_user,
           titleResource = org.smartregister.fhircore.engine.R.string.clients,
-          count = suspend { 16 },
+          count = 16,
           showCount = true,
         ),
         SideMenuOption(

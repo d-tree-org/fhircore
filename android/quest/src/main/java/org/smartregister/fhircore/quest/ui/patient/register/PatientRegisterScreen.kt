@@ -29,7 +29,6 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -43,14 +42,13 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import org.hl7.fhir.r4.model.QuestionnaireResponse
 import org.smartregister.fhircore.engine.ui.components.register.LoaderDialog
-import org.smartregister.fhircore.engine.ui.components.register.RegisterFooter
 import org.smartregister.fhircore.engine.ui.components.register.RegisterHeader
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity
 import org.smartregister.fhircore.engine.util.extension.decodeResourceFromString
 import org.smartregister.fhircore.engine.util.extension.extractId
-import org.smartregister.fhircore.quest.R
+import org.smartregister.fhircore.quest.ui.components.RegisterFooter
+import org.smartregister.fhircore.quest.ui.components.RegisterList
 import org.smartregister.fhircore.quest.ui.main.components.TopScreenSection
-import org.smartregister.fhircore.quest.ui.patient.register.components.RegisterList
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 
 @Composable
@@ -66,6 +64,9 @@ fun PatientRegisterScreen(
   val firstTimeSync by remember { firstTimeSyncState }
   val searchTextState = patientRegisterViewModel.searchText.collectAsState()
   val searchText by remember { searchTextState }
+
+  val searchedTextState = patientRegisterViewModel.searchedText.collectAsState()
+  val searchedText by remember { searchedTextState }
   val patientRegistrationLauncher =
     rememberLauncherForActivityResult(
       contract = ActivityResultContracts.StartActivityForResult(),
@@ -86,8 +87,11 @@ fun PatientRegisterScreen(
       },
     )
 
-  val pagingItems: LazyPagingItems<RegisterViewData> =
-    patientRegisterViewModel.paginatedRegisterData.collectAsState().value.collectAsLazyPagingItems()
+  val pagingItems: LazyPagingItems<RegisterViewData.ListItemView> =
+    patientRegisterViewModel.pageRegisterListItemData
+      .collectAsState()
+      .value
+      .collectAsLazyPagingItems()
 
   Scaffold(
     topBar = {
@@ -108,39 +112,42 @@ fun PatientRegisterScreen(
       // Bottom section has a pagination footer and button with client registration action
       // Only show when filtering data is not active
       Column {
-        if (searchText.isEmpty()) {
+        if (searchedText.isEmpty() && pagingItems.itemCount > 0) {
+          val pageNavigationItems =
+            patientRegisterViewModel.pageNavigationItemViewData
+              .collectAsState()
+              .value
+              .collectAsLazyPagingItems()
+
           RegisterFooter(
-            resultCount = pagingItems.itemCount,
-            currentPage =
-              patientRegisterViewModel.currentPage.observeAsState(initial = 0).value.plus(1),
-            pagesCount = patientRegisterViewModel.countPages().observeAsState(initial = 1).value,
             previousButtonClickListener = {
               patientRegisterViewModel.onEvent(PatientRegisterEvent.MoveToPreviousPage)
             },
             nextButtonClickListener = {
               patientRegisterViewModel.onEvent(PatientRegisterEvent.MoveToNextPage)
             },
+            pageNavigationPagingItems = pageNavigationItems,
           )
-          // TODO activate this button action via config; now only activated for family register
-          if (
-            patientRegisterViewModel.isAppFeatureHousehold() ||
-              patientRegisterViewModel.isRegisterFormViaSettingExists()
-          ) {
-            Button(
-              modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-              onClick = {
-                patientRegistrationLauncher.launch(
-                  patientRegisterViewModel.patientRegisterQuestionnaireIntent(context),
-                )
-              },
-              enabled = !firstTimeSync,
-            ) {
-              Text(
-                text =
-                  stringResource(org.smartregister.fhircore.engine.R.string.register_new_client),
-                modifier = modifier.padding(8.dp),
+        }
+
+        if (
+          searchedText.isEmpty() &&
+            (patientRegisterViewModel.isAppFeatureHousehold() ||
+              patientRegisterViewModel.isRegisterFormViaSettingExists())
+        ) {
+          Button(
+            modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            onClick = {
+              patientRegistrationLauncher.launch(
+                patientRegisterViewModel.patientRegisterQuestionnaireIntent(context),
               )
-            }
+            },
+            enabled = !firstTimeSync,
+          ) {
+            Text(
+              text = stringResource(org.smartregister.fhircore.engine.R.string.register_new_client),
+              modifier = modifier.padding(8.dp),
+            )
           }
         }
       }
@@ -155,7 +162,7 @@ fun PatientRegisterScreen(
       }
       // Only show counter during search
       var iModifier = Modifier.padding(top = 0.dp)
-      if (searchText.isNotEmpty()) {
+      if (searchedText.isNotEmpty()) {
         iModifier = Modifier.padding(top = 32.dp)
         RegisterHeader(resultCount = pagingItems.itemCount)
       }

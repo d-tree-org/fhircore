@@ -41,8 +41,9 @@
     <string name="login_error">Login error: %1$s</string>
     <string name="str_next">NEXT</string>
     <string name="str_previous">PREVIOUS</string>
-    <string name="str_page_info">Page %1$d of %2$d</string>
-    <string name="search_result">%1$d RESULT(S)</string>
+    <string name="str_page_info">Page %1$d of %2$s</string>
+    <string name="str_page">Page %1$d</string>
+    <string name="search_result">SHOWING: %1$d RESULT(S)</string>
     <string name="no_results">No results</string>
     <string name="no_results_message">Sorry we can\'t find person with the provided name or ID</string>
     <string name="male">Male</string>
@@ -57,6 +58,7 @@
     <string name="error_loading_config">Error loading configuration. Details: %1$s</string>
     <string name="error_loading_form">Error loading form</string>
     <string name="error_saving_form">Error encountered cannot save form</string>
+    <string name="error_occured">Error occured while fetching data</string>
     <string name="form_progress_message">Processing data. Please wait</string>
     <string name="questionnaire_alert_back_pressed_message">Are you sure you want to go back?</string>
     <string name="questionnaire_alert_back_pressed_title">Discard changes</string>
@@ -160,4 +162,5 @@
     <string translatable="false" name="retry_extraction">Retry</string>
     <string translatable="false" name="error_extraction">An error occurred while extracting and saving the Questionnaire</string>
     <string name="select_locations_in">Select a location in %1$s</string>
+    <string name="no_patients_found">No patients found</string>
 </resources>

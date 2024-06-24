@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.work.WorkInfo
+import org.smartregister.fhircore.engine.domain.util.DataLoadState
 import org.smartregister.fhircore.engine.ui.settings.DevViewModel
 import org.smartregister.fhircore.engine.util.annotation.ExcludeFromJacocoGeneratedReport
 
@@ -44,6 +45,7 @@ fun DevMenu(viewModel: DevViewModel) {
   val appointmentList by viewModel.observeMissedAppointment(context).collectAsState(listOf())
   val interruptedList by viewModel.observeInterrupted(context).collectAsState(listOf())
   val resourcePurger by viewModel.observeResourcePurgerWorker(context).collectAsState(listOf())
+  val cleanState by viewModel.cleanCorruptedState.collectAsState()
 
   Column(
     modifier = Modifier.padding(16.dp).padding(vertical = 20.dp).fillMaxWidth(),
@@ -69,6 +71,11 @@ fun DevMenu(viewModel: DevViewModel) {
       text = "Run Resource Purger Worker",
       clickListener = @ExcludeFromJacocoGeneratedReport { viewModel.resourcePurger(context) },
     )
+    UserProfileRow(
+      iconAlt = { LoadableStateIcon(cleanState) },
+      text = "Run Clean corrupted resources",
+      clickListener = @ExcludeFromJacocoGeneratedReport { viewModel.clearCorruptedEvents() },
+    )
   }
 }
 
@@ -81,6 +88,18 @@ fun WorkerStateIcon(states: List<WorkInfo.State>) {
     WorkInfo.State.SUCCEEDED ->
       Icon(Icons.Outlined.CheckCircleOutline, contentDescription = "", tint = Color.Green)
     WorkInfo.State.FAILED ->
+      Icon(Icons.Outlined.ErrorOutline, contentDescription = "", tint = Color.Red)
+    else -> {}
+  }
+}
+
+@Composable
+fun <T> LoadableStateIcon(state: DataLoadState<T>) {
+  when (state) {
+    is DataLoadState.Loading -> CircularProgressIndicator(modifier = Modifier.size(18.dp))
+    is DataLoadState.Success ->
+      Icon(Icons.Outlined.CheckCircleOutline, contentDescription = "", tint = Color.Green)
+    is DataLoadState.Error ->
       Icon(Icons.Outlined.ErrorOutline, contentDescription = "", tint = Color.Red)
     else -> {}
   }

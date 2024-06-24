@@ -18,7 +18,10 @@ package org.smartregister.fhircore.quest.data.register
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
+import kotlinx.coroutines.withContext
 import org.smartregister.fhircore.engine.domain.repository.RegisterRepository
+import org.smartregister.fhircore.engine.domain.util.PaginationConstant
+import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.quest.data.patient.model.PatientPagingSourceState
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 import org.smartregister.fhircore.quest.util.mappers.RegisterViewDataMapper
@@ -30,6 +33,7 @@ import org.smartregister.fhircore.quest.util.mappers.RegisterViewDataMapper
 class RegisterPagingSource(
   private val registerRepository: RegisterRepository,
   private val registerViewDataMapper: RegisterViewDataMapper,
+  private val dispatcherProvider: DispatcherProvider,
 ) : PagingSource<Int, RegisterViewData>() {
 
   private var _patientPagingSourceState = PatientPagingSourceState()
@@ -50,42 +54,60 @@ class RegisterPagingSource(
     return try {
       val currentPage = params.key ?: _patientPagingSourceState.currentPage
       val registerData =
-        if (_patientPagingSourceState.searchFilter != null) {
-          registerRepository.searchByName(
-            currentPage = currentPage,
-            appFeatureName = _patientPagingSourceState.appFeatureName,
-            healthModule = _patientPagingSourceState.healthModule,
-            nameQuery = _patientPagingSourceState.searchFilter!!,
-          )
-        } else if (_patientPagingSourceState.requiresFilter) {
-          registerRepository.loadRegisterFiltered(
-            currentPage = currentPage,
-            appFeatureName = _patientPagingSourceState.appFeatureName,
-            healthModule = _patientPagingSourceState.healthModule,
-            filters = _patientPagingSourceState.filters!!,
-          )
-        } else {
-          registerRepository.loadRegisterData(
-            currentPage = currentPage,
-            appFeatureName = _patientPagingSourceState.appFeatureName,
-            healthModule = _patientPagingSourceState.healthModule,
-            loadAll = _patientPagingSourceState.loadAll,
-          )
+        withContext(dispatcherProvider.io()) {
+          when {
+            _patientPagingSourceState.searchFilter != null -> {
+              registerRepository.searchByName(
+                currentPage = currentPage,
+                appFeatureName = _patientPagingSourceState.appFeatureName,
+                healthModule = _patientPagingSourceState.healthModule,
+                nameQuery = _patientPagingSourceState.searchFilter!!,
+              )
+            }
+            _patientPagingSourceState.requiresFilter -> {
+              registerRepository.loadRegisterFiltered(
+                currentPage = currentPage,
+                healthModule = _patientPagingSourceState.healthModule,
+                filters = _patientPagingSourceState.filters!!,
+              )
+            }
+            else -> {
+              registerRepository.loadRegisterData(
+                currentPage = currentPage,
+                appFeatureName = _patientPagingSourceState.appFeatureName,
+                healthModule = _patientPagingSourceState.healthModule,
+                loadAll = _patientPagingSourceState.loadAll,
+              )
+            }
+          }
         }
 
-      val registerViewData =
-        registerData.map { registerViewDataMapper.transformInputToOutputModel(it) }
-      val prevKey =
-        when {
-          _patientPagingSourceState.loadAll -> if (currentPage == 0) null else currentPage - 1
-          else -> null
+      var registerViewData: MutableList<RegisterViewData> =
+        registerData.map { registerViewDataMapper.transformInputToOutputModel(it) }.toMutableList()
+      val prevKey: Int?
+      val nextKey: Int?
+      when {
+        _patientPagingSourceState.loadAll -> {
+          prevKey = if (currentPage == 0) null else currentPage - 1
+          nextKey = if (registerViewData.isNotEmpty()) currentPage + 1 else null
         }
-      val nextKey =
-        when {
-          _patientPagingSourceState.loadAll ->
-            if (registerViewData.isNotEmpty()) currentPage + 1 else null
-          else -> null
+        else -> {
+          prevKey = null
+          nextKey = null
+
+          val hasNext = registerViewData.size > PaginationConstant.DEFAULT_PAGE_SIZE
+          if (hasNext) {
+            registerViewData = registerViewData.subList(0, PaginationConstant.DEFAULT_PAGE_SIZE)
+          }
+          registerViewData.add(
+            RegisterViewData.PageNavigationItemView(
+              currentPage + 1,
+              hasNext,
+              hasPrev = currentPage > 0,
+            ),
+          )
         }
+      }
 
       LoadResult.Page(data = registerViewData, prevKey = prevKey, nextKey = nextKey)
     } catch (exception: Exception) {
@@ -99,10 +121,5 @@ class RegisterPagingSource(
 
   override fun getRefreshKey(state: PagingState<Int, RegisterViewData>): Int? {
     return state.anchorPosition
-  }
-
-  companion object {
-    const val DEFAULT_PAGE_SIZE = 20
-    const val DEFAULT_INITIAL_LOAD_SIZE = 20
   }
 }

@@ -47,7 +47,8 @@ class LocationPickerView(
 ) {
   private var customQuestItemDataProvider: CustomQuestItemDataProvider? = null
   private var rootLayout: LinearLayout? = null
-  private val dropdownMap = mutableMapOf<String, AutoCompleteTextView>()
+  private val dropdownMap = mutableMapOf<String, Pair<Int, AutoCompleteTextView>>()
+  private val dropDownLevel = mutableListOf<Int>()
 
   private var selectedHierarchy: LocationData? = null
   private var physicalLocator: String? = null
@@ -134,6 +135,7 @@ class LocationPickerView(
 
   private fun resetState() {
     dropdownMap.clear()
+    dropDownLevel.clear()
   }
 
   private fun initData() {
@@ -158,7 +160,7 @@ class LocationPickerView(
     rootLayout?.let { rootLayout ->
       val mainLayout =
         LayoutInflater.from(context).inflate(R.layout.custom_material_spinner, rootLayout, false)
-      val dropdown = mainLayout.findViewById<MaterialAutoCompleteTextView>(R.id.menu_auto_complete)
+      mainLayout.id = View.generateViewId()
       val layoutParams =
         LinearLayout.LayoutParams(
           ViewGroup.LayoutParams.MATCH_PARENT,
@@ -166,6 +168,8 @@ class LocationPickerView(
         )
       layoutParams.bottomMargin = 16
       mainLayout.layoutParams = layoutParams
+
+      val dropdown = mainLayout.findViewById<MaterialAutoCompleteTextView>(R.id.menu_auto_complete)
 
       if (parent != null) {
         val helperText = mainLayout.findViewById<TextView>(R.id.helper_text)
@@ -178,15 +182,23 @@ class LocationPickerView(
 
       dropdown.setOnItemClickListener { _, _, position, _ ->
         val selectedLocation = adapter.getItem(position)
-        onOptionSelected(selectedLocation, dropdown)
+        onOptionSelected(selectedLocation, mainLayout.id, dropdown)
       }
 
       rootLayout.addView(mainLayout)
+      dropDownLevel.add(mainLayout.id)
+
+      if (parent != null) {
+        dropdownMap[parent.identifier] = Pair(mainLayout.id, dropdown)
+      } else {
+        dropdownMap["-1"] = Pair(mainLayout.id, dropdown)
+      }
 
       if (locations.size == 1) {
         val selected = locations.first()
         dropdown.setText(selected.name, false)
-        onOptionSelected(selected, dropdown)
+        onOptionSelected(selected, mainLayout.id, dropdown)
+        dropdownMap[selected.identifier] = Pair(mainLayout.id, dropdown)
         if (isDefault) {
           dropdown.isEnabled = false
         }
@@ -196,14 +208,29 @@ class LocationPickerView(
 
   private fun onOptionSelected(
     selectedLocation: LocationHierarchy?,
+    layoutId: Int,
     dropdown: AutoCompleteTextView,
   ) {
+    val dropIndex = dropDownLevel.indexOf(layoutId)
+    if (dropIndex != -1 && dropIndex != dropDownLevel.size - 1) {
+      dropDownLevel.toList().subList(dropIndex + 1, dropDownLevel.size).forEach { idx ->
+        rootLayout?.let { layout ->
+          layout.removeView(layout.findViewById(idx))
+          dropDownLevel.removeAt(dropDownLevel.indexOf(idx))
+          val entry = dropdownMap.entries.firstOrNull { it.value.first == idx }
+          if (entry != null) {
+            dropdownMap.remove(entry.key)
+          }
+        }
+      }
+    }
+    val identifier = selectedLocation?.identifier
     if (selectedLocation != null && selectedLocation.children.isNotEmpty()) {
-      if (dropdownMap.containsKey(selectedLocation.identifier)) {
-        (dropdownMap[selectedLocation.identifier]?.adapter as LocationHierarchyAdapter?)
-          ?.updateLocations(selectedLocation.children)
+      if (dropdownMap.containsKey(identifier)) {
+        (dropdownMap[identifier]?.second?.adapter as LocationHierarchyAdapter?)?.updateLocations(
+          selectedLocation.children,
+        )
       } else {
-        dropdownMap[selectedLocation.identifier] = dropdown
         updateLocationData(selectedLocation.children, parent = selectedLocation)
       }
     } else if (selectedLocation != null) {
@@ -216,7 +243,6 @@ class LocationPickerView(
   }
 
   fun initLocation(initialAnswer: String?) {
-    Timber.e("$initialAnswer $initialValue")
     if (initialAnswer != null && initialValue == null) {
       val elements = initialAnswer.split("|")
       val locationId = elements.getOrNull(0)

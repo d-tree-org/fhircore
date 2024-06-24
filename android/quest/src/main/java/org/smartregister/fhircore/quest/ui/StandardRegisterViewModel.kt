@@ -16,24 +16,22 @@
 
 package org.smartregister.fhircore.quest.ui
 
-import androidx.lifecycle.LiveData
 import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 
 interface StandardRegisterViewModel {
   fun onEvent(event: StandardRegisterEvent)
 
-  fun countPages(): LiveData<Int>
-
   fun refresh()
 
   fun progressMessage(): String
 
   val isRefreshing: StateFlow<Boolean>
-  val currentPage: LiveData<Int>
-  val paginatedRegisterData: MutableStateFlow<Flow<PagingData<RegisterViewData>>>
+  val currentPage: StateFlow<Int>
+  val pageRegisterListItemData: StateFlow<Flow<PagingData<RegisterViewData.ListItemView>>>
+  val pageNavigationItemViewData:
+    StateFlow<Flow<PagingData<RegisterViewData.PageNavigationItemView>>>
   val searchText: StateFlow<String>
 }

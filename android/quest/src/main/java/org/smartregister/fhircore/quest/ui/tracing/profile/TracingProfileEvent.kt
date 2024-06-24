@@ -21,14 +21,6 @@ import androidx.navigation.NavHostController
 
 sealed class TracingProfileEvent {
 
-  data class LoadQuestionnaire(val questionnaireId: String, val context: Context) :
-    TracingProfileEvent()
-
-  data class LoadOutComesForm(val context: Context) : TracingProfileEvent()
-
-  data class OpenTaskForm(val context: Context, val taskFormId: String, val taskId: String) :
-    TracingProfileEvent()
-
   data class OpenTracingOutcomeScreen(
     val navController: NavHostController,
     val context: Context,

@@ -22,6 +22,7 @@ import com.google.android.fhir.datacapture.contrib.views.barcode.BarCodeReaderVi
 import com.google.android.fhir.datacapture.extensions.asStringValue
 import org.smartregister.fhircore.engine.ui.questionnaire.items.CustomQuestItemDataProvider
 import org.smartregister.fhircore.engine.ui.questionnaire.items.LocationPickerViewHolderFactory
+import org.smartregister.fhircore.engine.ui.questionnaire.items.patient.PatientPickerViewHolderFactory
 
 class QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl(
   private val customQuestItemDataProvider: CustomQuestItemDataProvider,
@@ -64,6 +65,22 @@ class QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl(
                     LocationPickerViewHolderFactory.WIDGET_TYPE_ALL,
                   )
             }
+        },
+        QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatcher(
+          PatientPickerViewHolderFactory(
+            customQuestItemDataProvider = customQuestItemDataProvider,
+          ),
+        ) { questionnaireItem ->
+          questionnaireItem.getExtensionByUrl(PatientPickerViewHolderFactory.WIDGET_EXTENSION).let {
+            if (it == null) {
+              false
+            } else
+              it.value.asStringValue() in
+                listOf(
+                  PatientPickerViewHolderFactory.WIDGET_TYPE_GUARDIAN,
+                  PatientPickerViewHolderFactory.WIDGET_TYPE_ALL,
+                )
+          }
         },
       )
     }

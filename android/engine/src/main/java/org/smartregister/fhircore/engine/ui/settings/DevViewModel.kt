@@ -27,8 +27,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.google.android.fhir.FhirEngine
-import com.google.android.fhir.logicalId
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.search.search
+import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.BufferedInputStream
@@ -48,6 +49,7 @@ import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.Binary
 import org.hl7.fhir.r4.model.Questionnaire
 import org.hl7.fhir.r4.model.Resource
+import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.StructureMap
 import org.smartregister.fhircore.engine.appointment.MissedFHIRAppointmentsWorker
 import org.smartregister.fhircore.engine.appointment.ProposedWelcomeServiceAppointmentsWorker
@@ -80,20 +82,24 @@ constructor(
 ) : ViewModel() {
 
   val resourceSaveState = MutableStateFlow<DataLoadState<Boolean>>(DataLoadState.Idle)
+  val cleanCorruptedState = MutableStateFlow<DataLoadState<Boolean>>(DataLoadState.Idle)
 
   suspend fun createResourceReport(context: Context) {
     viewModelScope.launch(Dispatchers.IO) {
       try {
         resourceSaveState.value = DataLoadState.Loading
+        val gson = Gson()
         val generalReport =
-          File(context.filesDir, "general.txt").also {
-            generateReport(it, generateGeneralResource())
+          File(context.filesDir, "general.json").also {
+            generateReport(it, generateGeneralResource(gson))
           }
         val resourceReport =
-          File(context.filesDir, "resource.txt").also { generateReport(it, getResourcesToReport()) }
+          File(context.filesDir, "resource.json").also {
+            generateReport(it, getResourcesToReport(gson))
+          }
         val localChanges =
-          File(context.filesDir, "changes.txt").also {
-            generateReport(it, getLocalResourcesReport())
+          File(context.filesDir, "changes.json").also {
+            generateReport(it, getLocalResourcesReport(gson))
           }
 
         val zipFile = File(context.filesDir, "report.zip")
@@ -144,58 +150,35 @@ constructor(
     }
   }
 
-  private suspend fun getResourcesToReport(): String {
+  private suspend fun getResourcesToReport(gson: Gson): String {
     val data = getResourcesToVersions()
-    var log = ""
-
-    data.entries.forEach { group ->
-      log =
-        "${log}Id,${group.key},Date" +
-          "\n" +
-          group.value.joinToString(separator = "\n") @ExcludeFromJacocoGeneratedReport {
-            "${it.id},${it.version},${it.date}"
-          } +
-          "" +
-          "\n-----------------------------------------------------\n"
-    }
-    return log
-  }
-
-  private suspend fun getLocalResourcesReport(): String {
-    val changes = fhirEngine.getUnsyncedLocalChanges()
-
-    val raw =
-      changes.joinToString {
-        """
-        |_______________________________
-        |resourceType: ${it.resourceType},
-        |resourceId: ${it.resourceId},
-        |versionId: ${it.versionId},
-        |timestamp: ${it.timestamp},
-        |type: ${it.resourceType},
-        |token: "${it.token.ids}",
-        |payload: "${it.payload}",
-        |_______________________________
-        |
-            """
-          .trimMargin()
+    val items =
+      data.entries.map { group ->
+        val map = mutableMapOf<String, String>()
+        group.value.forEach { map[it.id] = gson.toJson(it) }
+        GeneralReportItem(
+          group.key,
+          map,
+        )
       }
-
-    return "\nChanges: ${changes.size}\n$raw"
+    return gson.toJson(GeneralReport("Resources", items))
   }
 
-  private suspend fun generateGeneralResource(): String {
+  private suspend fun getLocalResourcesReport(gson: Gson): String {
+    val changes = fhirEngine.getUnsyncedLocalChanges()
+    return gson.toJson(
+      LocalChangesModel(
+        changes = changes,
+        size = changes.size,
+        type = "LocalChanges",
+      ),
+    )
+  }
+
+  private fun generateGeneralResource(gson: Gson): String {
     val all = sharedPreferencesHelper.prefs.all
 
-    val pref =
-      all.entries.joinToString {
-        """
-        ----------Prefs-------
-        ${it.key}: "${it.value}"
-        ----------------------
-            """
-          .trimIndent()
-      }
+    val pref = GeneralReportItem("Preferences", all.mapValues { e -> e.value.toString() })
 
     val workers =
       listOf(
@@ -210,32 +193,18 @@ constructor(
           SyncBroadcaster::class.java.name,
         )
         .mapNotNull { tag ->
-          WorkManager.getInstance(appContext)
-            .getWorkInfosByTag(tag)
-            .get()
-            ?.let { list ->
-              list.joinToString { info ->
-                """-----$tag-----
-              |Name: ${info.state.name}, 
-              |Data: {${info.outputData.keyValueMap.entries.joinToString { "${it.key}: ${it.value}" }}}
-              |Tag: ${info.tags}
-              |Attempts: ${info.runAttemptCount}
-              |
-                    """
-                  .trimMargin()
-              }
-            }
-            ?.ifBlank { null }
+          WorkManager.getInstance(appContext).getWorkInfosByTag(tag).get()?.let { list ->
+            val values = mutableMapOf<String, String>()
+            list.forEach { info -> values[info.id.toString()] = gson.toJson(info) }
+            GeneralReportItem("Worker-$tag", values)
+          }
         }
-
-    return """
-      |$pref
-      |-------- workers --------
-      |$workers
-      |-------------------------
-      |
-            """
-      .trimMargin()
+    val report =
+      GeneralReport(
+        "General",
+        listOf(pref) + workers,
+      )
+    return gson.toJson(report)
   }
 
   suspend fun getResourcesToVersions(): Map<String, List<ResourceField>> {
@@ -251,6 +220,25 @@ constructor(
       .search<T> {}
       .map { it.resource }
       .map { ResourceField(it.logicalId, it.meta.versionId, it.meta.lastUpdated.asDdMmmYyyy()) }
+  }
+
+  fun clearCorruptedEvents() {
+    viewModelScope.launch {
+      try {
+        cleanCorruptedState.value = DataLoadState.Loading
+        val auditEvents =
+          fhirEngine.getUnsyncedLocalChanges().filter {
+            it.resourceType == ResourceType.AuditEvent.name
+          }
+        for (event in auditEvents) {
+          fhirEngine.purge(ResourceType.AuditEvent, event.resourceId, true)
+        }
+        cleanCorruptedState.value = DataLoadState.Success(true)
+      } catch (e: Exception) {
+        Timber.e(e)
+        cleanCorruptedState.value = DataLoadState.Error(e)
+      }
+    }
   }
 
   fun missedTask(context: Context) {

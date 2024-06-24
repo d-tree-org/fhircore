@@ -45,7 +45,7 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.flow.StateFlow
 import org.smartregister.fhircore.engine.ui.components.EmptyState
 import org.smartregister.fhircore.engine.ui.components.ErrorMessage
-import org.smartregister.fhircore.quest.ui.patient.register.components.BoxedCircularProgressBar
+import org.smartregister.fhircore.quest.ui.components.BoxedCircularProgressBar
 import org.smartregister.fhircore.quest.util.GeneralListViewModel
 import timber.log.Timber
 
@@ -61,7 +61,7 @@ fun <T : Any> TracingDataScaffoldList(
       TopAppBar(
         title = { Text(title) },
         navigationIcon = {
-          IconButton(onClick = { navController.popBackStack() }) {
+          IconButton(onClick = { navController.navigateUp() }) {
             Icon(Icons.Filled.ArrowBack, null)
           }
         },

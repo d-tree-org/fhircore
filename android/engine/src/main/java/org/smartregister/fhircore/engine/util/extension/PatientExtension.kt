@@ -18,6 +18,7 @@ package org.smartregister.fhircore.engine.util.extension
 
 import android.content.Context
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Search
 import com.google.android.fhir.search.search
 import java.text.SimpleDateFormat
@@ -25,6 +26,7 @@ import java.util.Date
 import java.util.Locale
 import org.hl7.fhir.r4.model.Address
 import org.hl7.fhir.r4.model.CarePlan
+import org.hl7.fhir.r4.model.CodeType
 import org.hl7.fhir.r4.model.CodeableConcept
 import org.hl7.fhir.r4.model.Coding
 import org.hl7.fhir.r4.model.Condition
@@ -36,6 +38,7 @@ import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.codesystems.AdministrativeGender
 import org.smartregister.fhircore.engine.R
+import org.smartregister.fhircore.engine.data.domain.PhoneContact
 import org.smartregister.fhircore.engine.data.domain.PregnancyStatus
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.domain.model.HealthStatus
@@ -202,9 +205,18 @@ fun Patient.extractAddressText(): String {
   return with(addressFirstRep) { this.text ?: "" }
 }
 
-fun Patient.extractTelecom(): List<String> {
+fun Patient.extractTelecom(): List<PhoneContact> {
   if (!hasTelecom()) return emptyList()
-  return telecom.map { it.value }
+  return telecom.mapNotNull {
+    val raw = it.value.split("|")
+    if (raw.size > 1) {
+      PhoneContact(raw.getOrNull(1) ?: "", raw.getOrNull(2) ?: "")
+    } else if (raw.size == 1) {
+      PhoneContact(it.value, "Self")
+    } else {
+      null
+    }
+  }
 }
 
 fun Patient.extractGeneralPractitionerReference(): String {
@@ -272,23 +284,25 @@ fun List<Condition>.pregnancyCondition(): Condition {
 
 suspend fun DefaultRepository.getPregnancyStatus(patientId: String): PregnancyStatus {
   val conditions =
-    patientConditions(patientId) {
+    activePatientConditions(patientId) {
       filter(
         Condition.CODE,
-        {
-          value =
-            of(CodeableConcept().addCoding(Coding("http://snomed.info/sct", "77386006", null)))
-        },
-        {
-          value =
-            of(CodeableConcept().addCoding(Coding("http://snomed.info/sct", "413712001", null)))
-        },
+        { value = of(CodeType("77386006")) },
+        { value = of(CodeType("413712001")) },
+        operation = Operation.OR,
       )
     }
+
   if (conditions.isEmpty()) return PregnancyStatus.None
   val isPregnant = conditions.findLast { it.code.codingFirstRep.code == "77386006" } != null
   if (isPregnant) return PregnancyStatus.Pregnant
   return PregnancyStatus.BreastFeeding
+}
+
+fun List<Condition>.getPregnancyStatus(): PregnancyStatus {
+  if (isEmpty()) return PregnancyStatus.None
+  val isPregnant = findLast { it.code.codingFirstRep.code == "77386006" } != null
+  return if (isPregnant) PregnancyStatus.Pregnant else PregnancyStatus.BreastFeeding
 }
 
 fun Enumerations.AdministrativeGender.translateGender(context: Context) =
@@ -305,22 +319,38 @@ fun Patient.extractSecondaryIdentifier(): String? {
   return null
 }
 
+fun Patient.extractPatientTypeCoding(): Coding? {
+  val patientTypes =
+    this.meta.tag.filter {
+      it.system == SystemConstants.PATIENT_TYPE_FILTER_TAG_VIA_META_CODINGS_SYSTEM
+    }
+  val patientType: String? = SystemConstants.getCodeByPriority(patientTypes.map { it.code })
+  return patientTypes.firstOrNull { patientType == it.code }
+}
+
 fun Patient.extractOfficialIdentifier(): String? {
-  val patientType =
+  val patientTypes =
     this.meta.tag
-      .firstOrNull { it.system == SystemConstants.PATIENT_TYPE_FILTER_TAG_VIA_META_CODINGS_SYSTEM }
-      ?.code
+      .filter { it.system == SystemConstants.PATIENT_TYPE_FILTER_TAG_VIA_META_CODINGS_SYSTEM }
+      .map { it.code }
+  val patientType: String? = SystemConstants.getCodeByPriority(patientTypes)
   return if (this.hasIdentifier() && patientType != null) {
-    val actualId =
-      this.identifier.lastOrNull {
-        it.system == SystemConstants.getIdentifierSystemFromPatientType(patientType)
+    var actualId: Identifier? = null
+    var hasNewSystem = false
+    for (pId in this.identifier) {
+      if (pId.system?.contains("https://d-tree.org/fhir/patient-identifier") == true) {
+        hasNewSystem = true
       }
-    if (actualId != null) {
-      actualId.value
-    } else {
+      if (pId.system == SystemConstants.getIdentifierSystemFromPatientType(patientType)) {
+        actualId = pId
+      }
+    }
+    if (!hasNewSystem) {
       this.identifier
         .lastOrNull { it.use == Identifier.IdentifierUse.OFFICIAL && it.system != "WHO-HCID" }
         ?.value
+    } else {
+      actualId?.value
     }
   } else {
     null
@@ -345,10 +375,7 @@ fun Coding.toHealthStatus(): HealthStatus {
 }
 
 fun Patient.extractHealthStatusFromMeta(filterTag: String): HealthStatus {
-  val tagList =
-    this.meta.tag.filter { it.system.equals(filterTag, true) }.filterNot { it.code.isNullOrBlank() }
-  if (filterTag.isEmpty() || tagList.isEmpty()) return HealthStatus.DEFAULT
-  return tagList.map { it.toHealthStatus() }.minByOrNull { it.priority() }!!
+  return this.extractPatientTypeCoding()?.toHealthStatus() ?: HealthStatus.DEFAULT
 }
 
 suspend fun Patient.activeCarePlans(fhirEngine: FhirEngine): List<CarePlan> {
@@ -364,34 +391,46 @@ suspend fun Patient.activeCarePlans(fhirEngine: FhirEngine): List<CarePlan> {
     .toList()
 }
 
-suspend fun DefaultRepository.patientConditions(
+suspend fun DefaultRepository.activePatientConditions(
   patientId: String,
   filters: (Search.() -> Unit)? = null,
 ): List<Condition> {
-  fhirEngine.search<Condition> {
-    filter(Condition.SUBJECT, { value = "${ResourceType.Patient.name}/$patientId" })
-    filters?.invoke(this)
-    filter(
-      Condition.CLINICAL_STATUS,
-      {
-        value =
-          of(
-            CodeableConcept()
-              .addCoding(
-                Coding(
-                  "https://terminology.hl7.org/CodeSystem/condition-clinical",
-                  "confirmed",
-                  null,
+  return fhirEngine
+    .search<Condition> {
+      filter(Condition.SUBJECT, { value = "${ResourceType.Patient.name}/$patientId" })
+      filters?.invoke(this)
+      filter(
+        Condition.VERIFICATION_STATUS,
+        {
+          value =
+            of(
+              CodeableConcept()
+                .addCoding(
+                  Coding(
+                    "https://terminology.hl7.org/CodeSystem/condition-ver-status",
+                    "confirmed",
+                    null,
+                  ),
                 ),
-              ),
-          )
-      },
-    )
-  }
-  return searchResourceFor<Condition>(
-    subjectId = patientId,
-    subjectParam = Condition.SUBJECT,
-    subjectType = ResourceType.Patient,
-    filters = listOf(),
-  )
+            )
+        },
+      )
+      filter(
+        Condition.CLINICAL_STATUS,
+        {
+          value =
+            of(
+              CodeableConcept()
+                .addCoding(
+                  Coding(
+                    "https://terminology.hl7.org/CodeSystem/condition-clinical",
+                    "active",
+                    null,
+                  ),
+                ),
+            )
+        },
+      )
+    }
+    .map { it.resource }
 }

@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,12 +54,11 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
-import org.smartregister.fhircore.engine.ui.components.register.RegisterFooter
 import org.smartregister.fhircore.engine.ui.components.register.RegisterHeader
 import org.smartregister.fhircore.engine.ui.filter.FilterOption
 import org.smartregister.fhircore.engine.ui.theme.GreyTextColor
-import org.smartregister.fhircore.quest.R
-import org.smartregister.fhircore.quest.ui.patient.register.components.RegisterList
+import org.smartregister.fhircore.quest.ui.components.RegisterFooter
+import org.smartregister.fhircore.quest.ui.components.RegisterList
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 
 @Composable
@@ -76,8 +74,8 @@ fun PageRegisterScreen(
   val searchTextState = registerViewModel.searchText.collectAsState()
   val searchText by remember { searchTextState }
 
-  val pagingItems: LazyPagingItems<RegisterViewData> =
-    registerViewModel.paginatedRegisterData.collectAsState().value.collectAsLazyPagingItems()
+  val pagingItems: LazyPagingItems<RegisterViewData.ListItemView> =
+    registerViewModel.pageRegisterListItemData.collectAsState().value.collectAsLazyPagingItems()
 
   Scaffold(
     topBar = {
@@ -88,7 +86,7 @@ fun PageRegisterScreen(
         onSearchTextChanged = { searchText ->
           registerViewModel.onEvent(StandardRegisterEvent.SearchRegister(searchText = searchText))
         },
-        onNavIconClick = { navController.popBackStack() },
+        onNavIconClick = { navController.navigateUp() },
         onFilterIconClick = filterNavClickAction,
         activeFilters = activeFilters,
       )
@@ -96,18 +94,23 @@ fun PageRegisterScreen(
     bottomBar = {
       // Bottom section has a pagination footer and button with client registration action
       // Only show when filtering data is not active
+
       Column {
-        if (searchText.isEmpty()) {
+        if (searchText.isEmpty() && pagingItems.itemCount > 0) {
+          val pageNavigationItems =
+            registerViewModel.pageNavigationItemViewData
+              .collectAsState()
+              .value
+              .collectAsLazyPagingItems()
+
           RegisterFooter(
-            resultCount = pagingItems.itemCount,
-            currentPage = registerViewModel.currentPage.observeAsState(initial = 0).value.plus(1),
-            pagesCount = registerViewModel.countPages().observeAsState(initial = 1).value,
             previousButtonClickListener = {
               registerViewModel.onEvent(StandardRegisterEvent.MoveToPreviousPage)
             },
             nextButtonClickListener = {
               registerViewModel.onEvent(StandardRegisterEvent.MoveToNextPage)
             },
+            pageNavigationPagingItems = pageNavigationItems,
           )
         }
       }
