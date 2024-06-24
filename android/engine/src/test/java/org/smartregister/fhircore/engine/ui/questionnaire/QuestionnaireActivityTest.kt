@@ -32,8 +32,8 @@ import androidx.test.core.app.ApplicationProvider
 import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.context.FhirVersionEnum
 import com.google.android.fhir.datacapture.QuestionnaireFragment
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.datacapture.validation.QuestionnaireResponseValidator.checkQuestionnaireResponse
-import com.google.android.fhir.logicalId
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -452,6 +452,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
         any(),
         any(),
         any(),
+        intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
       )
     }
   }
@@ -477,6 +478,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
         any(),
         any(),
         any(),
+        intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
       )
     }
   }
@@ -511,6 +513,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
         any(),
         any(),
         any(),
+        intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
       )
     }
   }

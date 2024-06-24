@@ -150,11 +150,11 @@ class AppRegisterRepositoryTest : RobolectricTest() {
       mutableMapOf(healthModule to registerDao)
 
     every { registerDaoFactory.registerDaoMap } returns registerDaoMap
-    coEvery { registerDao.countRegisterData(appFeatureName) } returns count
+    coEvery { registerDao.countRegisterData() } returns count
 
-    val result = repository.countRegisterData(appFeatureName, healthModule)
+    val result = repository.countRegisterData(healthModule)
 
-    coVerify { registerDao.countRegisterData(appFeatureName) }
+    coVerify { registerDao.countRegisterData() }
     assertEquals(count, result)
   }
 
@@ -201,7 +201,7 @@ class AppRegisterRepositoryTest : RobolectricTest() {
     val healthModule = HealthModule.APPOINTMENT
     val appointmentRegisterDao =
       mockk<AppointmentRegisterDao>(relaxed = true) {
-        coEvery { loadRegisterFiltered(any(), any(), any(), any()) } returns
+        coEvery { loadRegisterFiltered(any(), any(), any()) } returns
           listOf(mockk<RegisterData.AppointmentRegisterData>())
       }
 
@@ -211,7 +211,6 @@ class AppRegisterRepositoryTest : RobolectricTest() {
     repository.loadRegisterFiltered(
       1,
       false,
-      null,
       healthModule,
       AppointmentRegisterFilter(today, true, null, null),
     )
@@ -219,7 +218,6 @@ class AppRegisterRepositoryTest : RobolectricTest() {
       appointmentRegisterDao.loadRegisterFiltered(
         1,
         false,
-        null,
         AppointmentRegisterFilter(today, true, null, null),
       )
     }
@@ -230,7 +228,7 @@ class AppRegisterRepositoryTest : RobolectricTest() {
     val healthModule = HealthModule.PHONE_TRACING
     val phoneTracingRegisterDao =
       mockk<PhoneTracingRegisterDao>(relaxed = true) {
-        coEvery { loadRegisterFiltered(any(), any(), any(), any()) } returns
+        coEvery { loadRegisterFiltered(any(), any(), any()) } returns
           listOf(mockk<RegisterData.TracingRegisterData>())
       }
 
@@ -239,7 +237,6 @@ class AppRegisterRepositoryTest : RobolectricTest() {
     repository.loadRegisterFiltered(
       1,
       false,
-      null,
       healthModule,
       TracingRegisterFilter(true, null, null, null),
     )
@@ -247,7 +244,6 @@ class AppRegisterRepositoryTest : RobolectricTest() {
       phoneTracingRegisterDao.loadRegisterFiltered(
         1,
         false,
-        null,
         TracingRegisterFilter(true, null, null, null),
       )
     }
@@ -258,7 +254,7 @@ class AppRegisterRepositoryTest : RobolectricTest() {
     val healthModule = HealthModule.APPOINTMENT
     val appointmentRegisterDao =
       mockk<AppointmentRegisterDao>(relaxed = true) {
-        coEvery { loadRegisterFiltered(any(), any(), any(), any()) } returns
+        coEvery { loadRegisterFiltered(any(), any(), any()) } returns
           listOf(mockk<RegisterData.AppointmentRegisterData>())
       }
 
@@ -275,7 +271,6 @@ class AppRegisterRepositoryTest : RobolectricTest() {
       appointmentRegisterDao.loadRegisterFiltered(
         1,
         false,
-        null,
         AppointmentRegisterFilter(today, true, null, null),
       )
     }
@@ -286,19 +281,17 @@ class AppRegisterRepositoryTest : RobolectricTest() {
     val healthModule = HealthModule.HOME_TRACING
     val homeTracingRegisterDao =
       mockk<HomeTracingRegisterDao>(relaxed = true) {
-        coEvery { countRegisterFiltered(any(), any()) } returns 0
+        coEvery { countRegisterFiltered(any()) } returns 0
       }
 
     every { registerDaoFactory.registerDaoMap } returns
       mapOf(healthModule to homeTracingRegisterDao)
     repository.countRegisterFiltered(
-      null,
       healthModule,
       TracingRegisterFilter(true, null, null, null),
     )
     coVerify {
       homeTracingRegisterDao.countRegisterFiltered(
-        null,
         TracingRegisterFilter(true, null, null, null),
       )
     }
@@ -309,20 +302,18 @@ class AppRegisterRepositoryTest : RobolectricTest() {
     val healthModule = HealthModule.APPOINTMENT
     val appointmentRegisterDao =
       mockk<AppointmentRegisterDao>(relaxed = true) {
-        coEvery { countRegisterFiltered(any(), any()) } returns 0
+        coEvery { countRegisterFiltered(any()) } returns 0
       }
 
     every { registerDaoFactory.registerDaoMap } returns
       mapOf(healthModule to appointmentRegisterDao)
     val today = Date()
     repository.countRegisterFiltered(
-      null,
       healthModule,
       AppointmentRegisterFilter(today, true, null, null),
     )
     coVerify {
       appointmentRegisterDao.countRegisterFiltered(
-        null,
         AppointmentRegisterFilter(today, true, null, null),
       )
     }

@@ -98,7 +98,7 @@ fun MeasureReportResultPage(
       TopAppBar(
         title = { Text(text = screenTitle, overflow = TextOverflow.Ellipsis, maxLines = 1) },
         navigationIcon = {
-          IconButton(onClick = { navController.popBackStack() }) {
+          IconButton(onClick = { navController.navigateUp() }) {
             Icon(Icons.Filled.ArrowBack, null)
           }
         },
@@ -109,14 +109,23 @@ fun MeasureReportResultPage(
   ) {
     Column(
       modifier =
-        modifier.background(color = colorResource(id = R.color.backgroundGray)).fillMaxSize(),
+        modifier
+          .background(
+            color = colorResource(id = org.smartregister.fhircore.engine.R.color.backgroundGray),
+          )
+          .fillMaxSize(),
     ) {
       Column(modifier = modifier.padding(16.dp)) {
         Box(
           modifier =
             modifier
               .clip(RoundedCornerShape(8.dp))
-              .background(color = colorResource(id = R.color.light_gray_background))
+              .background(
+                color =
+                  colorResource(
+                    id = org.smartregister.fhircore.engine.R.color.light_gray_background,
+                  ),
+              )
               .padding(12.dp)
               .wrapContentWidth(),
           contentAlignment = Alignment.Center,

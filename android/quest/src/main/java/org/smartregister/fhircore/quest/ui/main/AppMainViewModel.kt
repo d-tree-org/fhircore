@@ -38,11 +38,11 @@ import org.smartregister.fhircore.engine.appfeature.AppFeature
 import org.smartregister.fhircore.engine.appfeature.AppFeatureManager
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
-import org.smartregister.fhircore.engine.configuration.app.AppConfigClassification
 import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.engine.ui.login.LoginActivity
+import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.SecureSharedPreference
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
@@ -66,6 +66,7 @@ constructor(
   val sharedPreferencesHelper: SharedPreferencesHelper,
   val configurationRegistry: ConfigurationRegistry,
   val configService: ConfigService,
+  val dispatcherProvider: DispatcherProvider,
   val appFeatureManager: AppFeatureManager,
 ) : ViewModel() {
 
@@ -77,7 +78,7 @@ constructor(
   private val simpleDateFormat = SimpleDateFormat(SYNC_TIMESTAMP_OUTPUT_FORMAT, Locale.getDefault())
 
   private val applicationConfiguration: ApplicationConfiguration =
-    configurationRegistry.retrieveConfiguration(AppConfigClassification.APPLICATION)
+    configurationRegistry.getAppConfigs()
 
   fun retrieveAppMainUiState() {
     appMainUiState.value =
@@ -89,7 +90,9 @@ constructor(
         lastSyncTime = retrieveLastSyncTimestamp() ?: "",
         languages = configurationRegistry.fetchLanguages(),
         enableDeviceToDeviceSync = appFeatureManager.isFeatureActive(AppFeature.DeviceToDeviceSync),
-        enableReports = appFeatureManager.isFeatureActive(AppFeature.InAppReporting),
+        // Disable in-app reporting -- Measure reports not well supported
+        // enableReports = appFeatureManager.isFeatureActive(AppFeature.InAppReporting),
+        enableReports = false,
       )
   }
 
@@ -126,7 +129,7 @@ constructor(
               event.launchManualAuth(intent)
             }
           }
-        } catch (e: Exception) {}
+        } catch (_: Exception) {}
       }
       AppMainEvent.ResumeSync -> {
         run(resumeSync)
@@ -160,7 +163,9 @@ constructor(
   private val resumeSync = {
     syncBroadcaster.runSync()
     appMainUiState.value =
-      appMainUiState.value.copy(sideMenuOptions = sideMenuOptionFactory.retrieveSideMenuOptions())
+      appMainUiState.value.copy(
+        sideMenuOptions = sideMenuOptionFactory.retrieveSideMenuOptions(),
+      )
   }
 
   private fun loadCurrentLanguage() =

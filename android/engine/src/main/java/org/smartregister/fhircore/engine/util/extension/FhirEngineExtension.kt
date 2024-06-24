@@ -19,9 +19,14 @@ package org.smartregister.fhircore.engine.util.extension
 import android.database.SQLException
 import ca.uhn.fhir.util.UrlUtil
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.SearchResult
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.db.ResourceNotFoundException
 import com.google.android.fhir.get
+import com.google.android.fhir.search.Operation
+import com.google.android.fhir.search.Search
 import com.google.android.fhir.search.SearchQuery
+import com.google.android.fhir.search.filter.TokenParamFilterCriterion
 import com.google.android.fhir.search.search
 import com.google.android.fhir.workflow.FhirOperator
 import org.hl7.fhir.r4.model.Composition
@@ -32,6 +37,7 @@ import org.hl7.fhir.r4.model.Measure
 import org.hl7.fhir.r4.model.RelatedArtifact
 import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.Task
+import org.smartregister.fhircore.engine.domain.util.PaginationConstant
 import timber.log.Timber
 
 suspend inline fun <reified T : Resource> FhirEngine.loadResource(resourceId: String): T? {
@@ -101,4 +107,64 @@ suspend fun FhirEngine.addDateTimeIndex() {
   } catch (ex: SQLException) {
     Timber.e(ex)
   }
+}
+
+suspend inline fun <reified R : Resource> FhirEngine.getResourcesByIds(
+  list: List<String>,
+): List<R> {
+  if (list.isEmpty()) return listOf()
+  val paramQueries: List<(TokenParamFilterCriterion.() -> Unit)> =
+    list.map { id -> { value = of(id) } }
+  return this.search<R> {
+      filter(Resource.RES_ID, *paramQueries.toTypedArray(), operation = Operation.OR)
+    }
+    .map { it.resource }
+}
+
+suspend fun FhirEngine.forceTagsUpdate(source: Resource) {
+  try {
+    var resource = source
+    /** Increment [Resource.meta] versionId of [source]. */
+    resource.meta.versionId?.toInt()?.plus(1)?.let {
+      /** Assign [Resource.meta] versionId of [source]. */
+      resource = resource.copy().apply { meta.versionId = "$it" }
+      /** Delete a FHIR [source] in the local storage. */
+      this.purge(resource.resourceType, resource.logicalId, forcePurge = true)
+      /** Recreate a FHIR [source] in the local storage. */
+      this.create(resource)
+    }
+  } catch (e: Exception) {
+    Timber.e(e)
+  }
+}
+
+suspend inline fun <reified T : Resource> FhirEngine.fetch(
+  offset: Int = 0,
+  loadAll: Boolean = true,
+  block: Search.() -> Unit,
+): List<SearchResult<T>> {
+  if (!loadAll) {
+    return this.search<T> {
+      from = offset
+      count = PaginationConstant.DEFAULT_PAGE_SIZE + PaginationConstant.EXTRA_ITEM_COUNT
+      block()
+    }
+  }
+
+  val resourcesList = mutableListOf<SearchResult<T>>()
+  var currentOffset = offset
+  val pageCount = 100
+
+  do {
+    val resources =
+      this.search<T> {
+        from = currentOffset
+        count = pageCount
+        block()
+      }
+    currentOffset += resources.size
+    resourcesList.addAll(resources)
+  } while (resources.isNotEmpty())
+
+  return resourcesList
 }

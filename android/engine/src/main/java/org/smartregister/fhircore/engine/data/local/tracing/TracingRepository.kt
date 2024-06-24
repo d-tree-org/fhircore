@@ -17,12 +17,11 @@
 package org.smartregister.fhircore.engine.data.local.tracing
 
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.get
-import com.google.android.fhir.logicalId
 import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Order
 import com.google.android.fhir.search.search
-import com.google.android.fhir.testing.jsonParser
 import java.util.Date
 import javax.inject.Inject
 import org.hl7.fhir.r4.model.CodeableConcept
@@ -38,6 +37,9 @@ import org.smartregister.fhircore.engine.domain.model.TracingHistory
 import org.smartregister.fhircore.engine.domain.model.TracingOutcome
 import org.smartregister.fhircore.engine.domain.model.TracingOutcomeDetails
 import org.smartregister.fhircore.engine.domain.util.PaginationConstant
+import org.smartregister.fhircore.engine.util.ReasonConstants
+import org.smartregister.fhircore.engine.util.SystemConstants
+import org.smartregister.fhircore.engine.util.extension.encodeResourceToString
 import org.smartregister.fhircore.engine.util.extension.extractLogicalIdUuid
 import org.smartregister.fhircore.engine.util.extension.referenceValue
 import timber.log.Timber
@@ -153,11 +155,15 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
           Observation.CODE,
           {
             value =
-              of(CodeableConcept(Coding("https://d-tree.org", "tracing-outcome-conducted", "")))
-          },
-          {
-            value =
-              of(CodeableConcept(Coding("https://d-tree.org", "tracing-outcome-unconducted", "")))
+              of(
+                CodeableConcept(
+                  Coding(
+                    SystemConstants.OBSERVATION_CODE_SYSTEM,
+                    ReasonConstants.TRACING_OUTCOME_CODE,
+                    ReasonConstants.TRACING_OUTCOME_CODE,
+                  ),
+                ),
+              )
           },
           operation = Operation.OR,
         )
@@ -165,14 +171,15 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
     outcomeObs
       .map { it.resource }
       .firstOrNull {
-        it.code.coding.any { coding ->
-          coding.code in arrayOf("tracing-outcome-conducted", "tracing-outcome-unconducted")
-        }
+        it.code.coding.any { coding -> coding.code == ReasonConstants.TRACING_OUTCOME_CODE }
       }
-      ?.let {
-        conducted = it.code.codingFirstRep.code == "tracing-outcome-conducted"
-        if (it.hasValueCodeableConcept()) {
-          outcome = it.valueCodeableConcept.text
+      ?.let { obs ->
+        conducted =
+          obs.component.firstOrNull()?.let { comp ->
+            if (comp.hasValueBooleanType()) comp.valueBooleanType?.value else false
+          } ?: false
+        if (obs.hasValueCodeableConcept()) {
+          outcome = obs.valueCodeableConcept.text
         }
       }
 
@@ -186,34 +193,19 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
               of(
                 CodeableConcept(
                   Coding(
-                    "https://d-tree.org",
-                    "phone-tracing-outcome-date-of-agreed-appointment",
+                    SystemConstants.OBSERVATION_CODE_SYSTEM,
+                    ReasonConstants.DATE_OF_AGREED_APPOINTMENT,
                     "",
                   ),
                 ),
               )
           },
-          {
-            value =
-              of(
-                CodeableConcept(
-                  Coding(
-                    "https://d-tree.org",
-                    "home-tracing-outcome-date-of-agreed-appointment",
-                    "",
-                  ),
-                ),
-              )
-          },
-          operation = Operation.OR,
         )
       }
     dateObs
       .map { it.resource }
       .firstOrNull {
-        it.code.coding.any { coding ->
-          coding.code.endsWith("tracing-outcome-date-of-agreed-appointment")
-        }
+        it.code.coding.any { coding -> coding.code == ReasonConstants.DATE_OF_AGREED_APPOINTMENT }
       }
       ?.let {
         if (it.hasValueDateTimeType()) {
@@ -245,7 +237,7 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
 
   suspend fun getTracingAttempt(patient: Patient, tasks: List<Task>): TracingAttempt {
     val list = getPatientListResource(patient)
-    list?.let { Timber.e(jsonParser.encodeResourceToString(list)) }
+    list?.let { Timber.e(list.encodeResourceToString()) }
     return list?.let { toTracingAttempt(it) }
       ?: TracingAttempt(
         historyId = null,
@@ -280,7 +272,7 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
           .firstOrNull { entry ->
             entry.flag.codingFirstRep.display ==
               lastAttempt.item.reference.extractLogicalIdUuid() &&
-              entry.flag.codingFirstRep.code == "tracing-outcome"
+              entry.flag.codingFirstRep.code == ReasonConstants.TRACING_OUTCOME_CODE
           }
           ?.flag
           ?.text

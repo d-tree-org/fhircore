@@ -12,6 +12,7 @@ plugins {
   id("com.google.firebase.firebase-perf")
   id("com.google.gms.google-services")
   id("com.google.firebase.crashlytics")
+  id("com.google.firebase.appdistribution")
 }
 
 kotlin { jvmToolchain(17) }
@@ -34,6 +35,7 @@ android {
     buildConfigField("String", "FHIR_BASE_URL", """"${project.extra["FHIR_BASE_URL"]}"""")
     buildConfigField("String", "OAUTH_BASE_URL", """"${project.extra["OAUTH_BASE_URL"]}"""")
     buildConfigField("String", "OAUTH_CIENT_ID", """"${project.extra["OAUTH_CIENT_ID"]}"""")
+    buildConfigField("String", "APP_ID", """"${project.extra["APP_ID"]}"""")
     buildConfigField(
       "String",
       "OAUTH_CLIENT_SECRET",
@@ -66,6 +68,10 @@ android {
       //            firebaseCrashlytics {
       //                isNativeSymbolUploadEnabled = false
       //            }
+      firebaseAppDistribution {
+        artifactType = "APK"
+        releaseNotes = "Update"
+      }
     }
   }
   packaging {
@@ -109,7 +115,7 @@ android {
     buildConfig = true
   }
 
-  composeOptions { kotlinCompilerExtensionVersion = "1.5.9" }
+  composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 
   testOptions {
     execution = "ANDROIDX_TEST_ORCHESTRATOR"
@@ -124,51 +130,26 @@ android {
   flavorDimensions += "apps"
 
   productFlavors {
-    create("quest") {
-      dimension = "apps"
-      applicationIdSuffix = ".quest"
-      versionNameSuffix = "-quest"
-      isDefault = true
-    }
-    create("ecbis") {
-      dimension = "apps"
-      applicationIdSuffix = ".ecbis"
-      versionNameSuffix = "-ecbis"
-      versionCode = 3
-      versionName = "0.0.6"
-    }
-    create("g6pd") {
-      dimension = "apps"
-      applicationIdSuffix = ".g6pd"
-      versionNameSuffix = "-g6pd"
-    }
     create("mwcore") {
       dimension = "apps"
       applicationIdSuffix = ".mwcore"
       versionNameSuffix = "-mwcore"
-      versionCode = 36
-      versionName = "0.1.25"
+      versionCode = 4
+      versionName = "0.0.4"
     }
     create("mwcoreDev") {
       dimension = "apps"
       applicationIdSuffix = ".mwcoreDev"
       versionNameSuffix = "-mwcoreDev"
-      versionCode = 33
-      versionName = "0.1.22"
+      versionCode = 35
+      versionName = "0.1.26"
     }
-    create("mwcoreProd") {
+    create("mwcoreStaging") {
       dimension = "apps"
-      applicationIdSuffix = ".mwcoreProd"
-      versionNameSuffix = "-mwcoreProd"
-      versionCode = 14
-      versionName = "0.1.3"
-    }
-    create("afyayangu") {
-      dimension = "apps"
-      applicationIdSuffix = ".afyayangu"
-      versionNameSuffix = "-afyayangu"
-      versionCode = 1
-      versionName = "0.0.1"
+      applicationIdSuffix = ".mwcoreStaging"
+      versionNameSuffix = "-mwcoreStaging"
+      versionCode = 3
+      versionName = "0.0.3"
     }
   }
 

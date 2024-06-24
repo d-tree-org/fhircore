@@ -25,7 +25,9 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Scaffold
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -43,12 +45,14 @@ import org.smartregister.fhircore.quest.R
 import org.smartregister.fhircore.quest.navigation.MainNavigationScreen
 import org.smartregister.fhircore.quest.navigation.NavigationArg
 import org.smartregister.fhircore.quest.ui.appointment.register.AppointmentRegisterScreen
+import org.smartregister.fhircore.quest.ui.counters.CountersScreen
 import org.smartregister.fhircore.quest.ui.family.profile.FamilyProfileScreen
 import org.smartregister.fhircore.quest.ui.main.components.AppDrawer
 import org.smartregister.fhircore.quest.ui.patient.profile.PatientProfileScreen
 import org.smartregister.fhircore.quest.ui.patient.profile.childcontact.ChildContactsProfileScreen
 import org.smartregister.fhircore.quest.ui.patient.profile.guardians.GuardianRelatedPersonProfileScreen
 import org.smartregister.fhircore.quest.ui.patient.profile.guardians.GuardiansRoute
+import org.smartregister.fhircore.quest.ui.patient.profile.tranfer.TransferOutScreen
 import org.smartregister.fhircore.quest.ui.patient.register.PatientRegisterScreen
 import org.smartregister.fhircore.quest.ui.report.measure.MeasureReportViewModel
 import org.smartregister.fhircore.quest.ui.report.measure.measureReportNavigationGraph
@@ -176,6 +180,8 @@ private fun AppMainNavigationGraph(
               )
             }
           }
+        MainNavigationScreen.Counters ->
+          composable(route = it.route) { CountersScreen(navController = navController) }
         MainNavigationScreen.Tasks -> composable(MainNavigationScreen.Tasks.route) {}
         MainNavigationScreen.Reports ->
           measureReportNavigationGraph(navController, measureReportViewModel)
@@ -210,8 +216,20 @@ private fun AppMainNavigationGraph(
           ) {
             GuardiansRoute(
               navigateRoute = { route -> navController.navigate(route) },
-              onBackPress = { navController.popBackStack() },
+              onBackPress = { navController.navigateUp() },
             )
+          }
+        MainNavigationScreen.TransferOut ->
+          composable(
+            route = "${it.route}/{${NavigationArg.PATIENT_ID}}",
+            arguments =
+              commonNavArgs.plus(
+                listOf(
+                  navArgument(NavigationArg.PATIENT_ID) { type = NavType.StringType },
+                ),
+              ),
+          ) { _ ->
+            TransferOutScreen { navController.navigateUp() }
           }
         MainNavigationScreen.GuardianProfile ->
           composable(
@@ -236,7 +254,7 @@ private fun AppMainNavigationGraph(
                 appMainViewModel = appMainViewModel,
               )
             } else {
-              GuardianRelatedPersonProfileScreen(onBackPress = { navController.popBackStack() })
+              GuardianRelatedPersonProfileScreen(onBackPress = { navController.navigateUp() })
             }
           }
         MainNavigationScreen.FamilyProfile ->

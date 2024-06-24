@@ -6,7 +6,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 buildscript {
     dependencies {
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24")
         classpath(Deps.kotlin_coveralls_plugin)
         classpath("com.android.tools.build:gradle:8.2.2")
         classpath(Deps.dokka_plugin)
@@ -14,7 +14,7 @@ buildscript {
 }
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "1.9.22"
+    id("org.jetbrains.kotlin.jvm") version "1.9.24"
     id("com.github.kt3k.coveralls") version "2.12.2"
     id("org.jetbrains.kotlin.plugin.serialization") version "1.8.10"
     id("com.google.dagger.hilt.android") version Deps.versions.hiltVersion apply false
@@ -25,6 +25,7 @@ plugins {
     id("com.google.gms.google-services") version "4.3.14" apply false
     id("com.google.firebase.firebase-perf") version "1.4.2" apply false
     id("com.google.firebase.crashlytics") version "2.9.5"
+    id("com.google.firebase.appdistribution") version "5.0.0" apply false
 }
 
 allprojects {
@@ -35,6 +36,18 @@ allprojects {
         mavenCentral()
         maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
         maven(url = "https://jcenter.bintray.com/")
+        ProjectProperties.readProperties("local.properties")
+            .takeIf { it.getProperty("dtreeRepositoryUsername") != null && it.getProperty("dtreeRepositoryPassword") != null }
+            ?.let {
+                maven {
+                    url = uri("https://maven.pkg.github.com/d-tree-org/android-fhir")
+                    name = "dtreeRepository"
+                    credentials {
+                        username = it["dtreeRepositoryUsername"]?.toString()
+                        password = it["dtreeRepositoryPassword"]?.toString()
+                    }
+                }
+            }
         maven {
             name = "fhirsdk"
             url = uri("/Users/ndegwamartin/.m2.dev/fhirsdk")
@@ -45,7 +58,7 @@ allprojects {
 subprojects {
     apply {
         plugin("com.diffplug.spotless")
-        plugin(  "jacoco")
+        plugin("jacoco")
     }
 
     configure<SpotlessExtension> {

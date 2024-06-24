@@ -84,7 +84,7 @@ fun PatientScreen(
     topBar = {
       TopAppBar(
         navigationIcon = {
-          IconButton(onClick = { navController.popBackStack() }) {
+          IconButton(onClick = { navController.navigateUp() }) {
             Icon(Icons.Filled.ArrowBack, contentDescription = "")
           }
         },
@@ -121,7 +121,9 @@ fun PatientDetailsTab(
           is PatientDetailHeader -> PatientDetailsCardViewBinding(data)
           is PatientDetailProperty -> PatientListItemViewBinding(data)
           is PatientDetailOverview ->
-            PatientDetailsHeaderBinding(data) { patientViewModel.editPatient(context) }
+            PatientDetailsHeaderBinding(data) {
+              patientViewModel.editPatient(context, state.patientDetail)
+            }
           is PatientReferenceProperty ->
             list[data.patientProperty.value]?.let { PatientReferencePropertyBinding(data, it) }
         }

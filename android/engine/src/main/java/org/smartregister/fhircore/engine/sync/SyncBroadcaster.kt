@@ -18,13 +18,17 @@ package org.smartregister.fhircore.engine.sync
 
 import android.content.Context
 import androidx.lifecycle.asFlow
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.hasKeyWithValueOfType
+import androidx.work.workDataOf
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.sync.FhirSyncWorker
 import com.google.android.fhir.sync.ResourceSyncException
 import com.google.android.fhir.sync.Sync
 import com.google.android.fhir.sync.SyncJobStatus
+import com.google.firebase.crashlytics.ktx.crashlytics
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -116,10 +120,14 @@ constructor(
     when (syncJobStatus) {
       is SyncJobStatus.Failed,
       is SyncJobStatus.Succeeded, -> {
+        if (syncJobStatus is SyncJobStatus.Failed) {
+          syncJobStatus.exceptions?.forEachIndexed { _, resourceSyncException ->
+            Firebase.crashlytics.recordException(resourceSyncException.exception)
+          }
+        }
         tracer.putAttribute(SYNC_TRACE, SYNC_ATTR_RESULT, syncJobStatus::class.java.simpleName)
         tracer.stopTrace(SYNC_TRACE)
       }
-      is SyncJobStatus.InProgress -> {}
       is SyncJobStatus.Started -> {
         tracer.startTrace(SYNC_TRACE)
         tracer.putAttribute(
@@ -128,6 +136,7 @@ constructor(
           if (isInitialSync()) SYNC_ATTR_TYPE_INITIAL else SYNC_ATTR_TYPE_SUBSEQUENT,
         )
       }
+      else -> {}
     }
   }
 
@@ -144,7 +153,17 @@ constructor(
       .asFlow()
       .flatMapConcat { it.asFlow() }
       .flatMapConcat { workInfo ->
-        flowOf(workInfo.progress, workInfo.outputData)
+        val failedWorkData =
+          when {
+            workInfo.state.isFinished && workInfo.state != WorkInfo.State.SUCCEEDED ->
+              workDataOf(
+                "StateType" to SyncJobStatus.Failed::class.java.name,
+                "State" to Sync.gson.toJson(SyncJobStatus.Failed(emptyList())),
+              )
+            else -> workDataOf()
+          }
+
+        flowOf(workInfo.progress, workInfo.outputData, failedWorkData)
           .filter { it.keyValueMap.isNotEmpty() && it.hasKeyWithValueOfType<String>("StateType") }
           .mapNotNull {
             val state = it.getString("StateType")!!

@@ -20,22 +20,24 @@ import com.google.android.fhir.datacapture.QuestionnaireFragment
 import com.google.android.fhir.datacapture.QuestionnaireItemViewHolderFactoryMatchersProviderFactory
 import com.google.android.fhir.datacapture.contrib.views.barcode.BarCodeReaderViewHolderFactory
 import com.google.android.fhir.datacapture.extensions.asStringValue
+import org.smartregister.fhircore.engine.ui.questionnaire.items.CustomQuestItemDataProvider
+import org.smartregister.fhircore.engine.ui.questionnaire.items.LocationPickerViewHolderFactory
+import org.smartregister.fhircore.engine.ui.questionnaire.items.patient.PatientPickerViewHolderFactory
 
-object QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl :
-  QuestionnaireItemViewHolderFactoryMatchersProviderFactory {
+class QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl(
+  private val customQuestItemDataProvider: CustomQuestItemDataProvider,
+) : QuestionnaireItemViewHolderFactoryMatchersProviderFactory {
 
   override fun get(
     provider: String,
   ): QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatchersProvider {
     // Note: Returns irrespective of the 'provider' passed
-    return QuestionnaireItemViewHolderFactoryMatchersProviderImpl
+    return QuestionnaireItemViewHolderFactoryMatchersProviderImpl(customQuestItemDataProvider)
   }
 
-  object QuestionnaireItemViewHolderFactoryMatchersProviderImpl :
-    QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatchersProvider() {
-    private const val BARCODE_URL =
-      "https://fhir.labs.smartregister.org/barcode-type-widget-extension"
-    private const val BARCODE_NAME = "barcode"
+  class QuestionnaireItemViewHolderFactoryMatchersProviderImpl(
+    private val customQuestItemDataProvider: CustomQuestItemDataProvider,
+  ) : QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatchersProvider() {
 
     override fun get(): List<QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatcher> {
       return listOf(
@@ -46,9 +48,51 @@ object QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl :
             if (it == null) false else it.value.asStringValue() == BARCODE_NAME
           }
         },
+        QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatcher(
+          LocationPickerViewHolderFactory(
+            customQuestItemDataProvider = customQuestItemDataProvider,
+          ),
+        ) { questionnaireItem ->
+          questionnaireItem
+            .getExtensionByUrl(LocationPickerViewHolderFactory.WIDGET_EXTENSION)
+            .let {
+              if (it == null) {
+                false
+              } else
+                it.value.asStringValue() in
+                  listOf(
+                    LocationPickerViewHolderFactory.WIDGET_TYPE,
+                    LocationPickerViewHolderFactory.WIDGET_TYPE_ALL,
+                  )
+            }
+        },
+        QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatcher(
+          PatientPickerViewHolderFactory(
+            customQuestItemDataProvider = customQuestItemDataProvider,
+          ),
+        ) { questionnaireItem ->
+          questionnaireItem.getExtensionByUrl(PatientPickerViewHolderFactory.WIDGET_EXTENSION).let {
+            if (it == null) {
+              false
+            } else
+              it.value.asStringValue() in
+                listOf(
+                  PatientPickerViewHolderFactory.WIDGET_TYPE_GUARDIAN,
+                  PatientPickerViewHolderFactory.WIDGET_TYPE_ALL,
+                )
+          }
+        },
       )
+    }
+
+    companion object {
+      private const val BARCODE_URL =
+        "https://fhir.labs.smartregister.org/barcode-type-widget-extension"
+      private const val BARCODE_NAME = "barcode"
     }
   }
 
-  const val DEFAULT_PROVIDER = "default"
+  companion object {
+    const val DEFAULT_PROVIDER = "default"
+  }
 }

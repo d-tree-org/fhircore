@@ -18,7 +18,6 @@ package org.smartregister.fhircore.engine.task
 
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.get
-import com.google.android.fhir.search.search
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -36,6 +35,8 @@ import org.hl7.fhir.r4.utils.FHIRPathEngine
 import org.hl7.fhir.r4.utils.StructureMapUtilities
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.util.extension.encodeResourceToString
+import org.smartregister.fhircore.engine.util.extension.getCarePlanId
+import org.smartregister.fhircore.engine.util.extension.taskStatusToCarePlanActivityStatus
 import org.smartregister.fhircore.engine.util.helper.TransformSupportServices
 import timber.log.Timber
 
@@ -133,33 +134,31 @@ constructor(val fhirEngine: FhirEngine, val transformSupportServices: TransformS
   }
 
   suspend fun completeTask(id: String, encounterStatus: EncounterStatus?) {
-    fhirEngine.run {
-      val task =
-        get<Task>(id).apply {
-          this.status = encounterStatusToTaskStatus(encounterStatus)
-          this.lastModified = Date()
-        }
-      update(task)
-      if (task.status == Task.TaskStatus.COMPLETED) {
-        val carePlans =
-          search<CarePlan> { filter(CarePlan.SUBJECT, { value = task.`for`.reference }) }
-            .map { it.resource }
-        var carePlanToUpdate: CarePlan? = null
-        carePlans.forEach { carePlan ->
-          for ((index, value) in carePlan.activity.withIndex()) {
-            val outcome = value.outcomeReference.find { x -> x.reference.contains(id) }
-            if (outcome != null) {
-              carePlanToUpdate = carePlan.copy()
-              value.detail.status = CarePlan.CarePlanActivityStatus.COMPLETED
-              value.outcomeReference.first().reference = "Task/${task.id}"
-              carePlanToUpdate?.activity?.set(index, value)
-              break
-            }
+    val resourcesToUpdate = mutableListOf<Resource>()
+    val task =
+      fhirEngine.get<Task>(id).apply {
+        this.status = encounterStatusToTaskStatus(encounterStatus)
+        this.lastModified = Date()
+      }
+    resourcesToUpdate.add(task)
+    val carePlanId = task.getCarePlanId()
+
+    if (carePlanId != null) {
+      val carePlan = runCatching { fhirEngine.get<CarePlan>(carePlanId) }.getOrNull()
+      if (carePlan != null) {
+        for ((index, value) in carePlan.activity.withIndex()) {
+          val outcome = value.outcomeReference.find { x -> x.reference.contains(id) }
+          if (outcome != null) {
+            value.detail.status = task.taskStatusToCarePlanActivityStatus()
+            carePlan.activity?.set(index, value)
+            break
           }
         }
-        carePlanToUpdate?.let { update(it) }
+        resourcesToUpdate.add(carePlan)
       }
     }
+
+    fhirEngine.update(*resourcesToUpdate.toTypedArray())
   }
 
   private fun encounterStatusToTaskStatus(encounterStatus: EncounterStatus?): Task.TaskStatus {

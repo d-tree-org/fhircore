@@ -28,12 +28,11 @@ import com.google.android.fhir.sync.SyncJobStatus
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlin.math.max
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.hl7.fhir.r4.model.Encounter
 import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
+import org.smartregister.fhircore.engine.data.remote.shared.TokenAuthenticator
 import org.smartregister.fhircore.engine.sync.OnSyncListener
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.engine.task.FhirCarePlanGenerator
@@ -41,7 +40,6 @@ import org.smartregister.fhircore.engine.ui.base.AlertDialogue
 import org.smartregister.fhircore.engine.ui.base.BaseMultiLanguageActivity
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity.Companion.QUESTIONNAIRE_BACK_REFERENCE_KEY
-import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity.Companion.QUESTIONNAIRE_RES_ENCOUNTER
 import org.smartregister.fhircore.engine.ui.theme.AppTheme
 import org.smartregister.fhircore.engine.util.extension.asReference
 import org.smartregister.fhircore.engine.util.extension.extractId
@@ -61,9 +59,11 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
 
   @Inject lateinit var configService: ConfigService
 
+  @Inject lateinit var tokenAuthenticator: TokenAuthenticator
+
   val appMainViewModel by viewModels<AppMainViewModel>()
 
-  val authActivityLauncherForResult =
+  private val authActivityLauncherForResult =
     registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
       if (res.resultCode == Activity.RESULT_OK) {
         appMainViewModel.onEvent(AppMainEvent.ResumeSync)
@@ -75,6 +75,7 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
     setupTimeOutListener()
     setContent { AppTheme { MainScreen(appMainViewModel = appMainViewModel) } }
     syncBroadcaster.registerSyncListener(this, lifecycleScope)
+    scheduleAuthWorkers()
   }
 
   override fun onResume() {
@@ -113,8 +114,9 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
           state?.exceptions?.any {
             it.exception is HttpException && (it.exception as HttpException).code() == 401
           } ?: false
-        val message = if (hasAuthError) R.string.session_expired else R.string.sync_check_internet
-        showToast(getString(message))
+        if (hasAuthError) {
+          showToast(getString(R.string.session_expired))
+        }
         appMainViewModel.onEvent(
           AppMainEvent.UpdateSyncState(
             state,
@@ -157,7 +159,15 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
       schedulePlan(applicationContext)
       scheduleCheckForMissedAppointments(applicationContext)
       scheduleWelcomeServiceAppointments(applicationContext)
-      scheduleWelcomeServiceToCarePlanForMissedAppointments(applicationContext)
+      //      scheduleWelcomeServiceToCarePlanForMissedAppointments(applicationContext)
+      scheduleResourcePurger(applicationContext)
+    }
+  }
+
+  private fun scheduleAuthWorkers() {
+    val isAuthenticated = tokenAuthenticator.sessionActive()
+    if (isAuthenticated) {
+      with(configService) { scheduleAuditEvent(applicationContext) }
     }
   }
 
@@ -193,16 +203,6 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
             appMainViewModel.onTaskComplete(System.currentTimeMillis().toString())
           }
           it.startsWith(ResourceType.Task.name) -> {
-            lifecycleScope.launch(Dispatchers.IO) {
-              val encounterStatus =
-                data.getStringExtra(QUESTIONNAIRE_RES_ENCOUNTER)?.let { code ->
-                  Encounter.EncounterStatus.fromCode(code)
-                }
-              fhirCarePlanGenerator.completeTask(
-                it.asReference(ResourceType.Task).extractId(),
-                encounterStatus,
-              )
-            }
             appMainViewModel.onTaskComplete(
               data.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_ARG_FORM),
             )
