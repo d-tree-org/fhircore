@@ -19,8 +19,8 @@ package org.smartregister.fhircore.engine.data.local.register.dao
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.SearchResult
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.db.ResourceNotFoundException
-import com.google.android.fhir.logicalId
 import com.google.android.fhir.search.Search
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -144,7 +144,7 @@ class TracingRegisterDaoTest : RobolectricTest() {
           else -> emptyList()
         }
       }
-    Assert.assertEquals(1, tracingRegisterDao.countRegisterData(appFeatureName = null))
+    Assert.assertEquals(1, tracingRegisterDao.countRegisterData())
   }
 
   @Test
@@ -295,7 +295,6 @@ class TracingRegisterDaoTest : RobolectricTest() {
     Assert.assertEquals(
       1,
       tracingRegisterDao.countRegisterFiltered(
-        appFeatureName = null,
         filters =
           TracingRegisterFilter(
             isAssignedToMe = false,
@@ -308,7 +307,6 @@ class TracingRegisterDaoTest : RobolectricTest() {
     Assert.assertEquals(
       1,
       tracingRegisterDao.countRegisterFiltered(
-        appFeatureName = null,
         filters =
           TracingRegisterFilter(
             isAssignedToMe = false,
@@ -321,7 +319,6 @@ class TracingRegisterDaoTest : RobolectricTest() {
     Assert.assertEquals(
       1,
       tracingRegisterDao.countRegisterFiltered(
-        appFeatureName = null,
         filters =
           TracingRegisterFilter(
             isAssignedToMe = false,
@@ -497,7 +494,6 @@ class TracingRegisterDaoTest : RobolectricTest() {
       tracingRegisterDao.loadRegisterFiltered(
         0,
         loadAll = false,
-        appFeatureName = null,
         filters =
           TracingRegisterFilter(
             isAssignedToMe = false,

@@ -17,10 +17,9 @@
 package org.smartregister.fhircore.engine.data.local.register.dao
 
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.get
-import com.google.android.fhir.logicalId
 import com.google.android.fhir.search.Order
-import com.google.android.fhir.search.count
 import com.google.android.fhir.search.search
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,7 +29,6 @@ import org.hl7.fhir.r4.model.Encounter
 import org.hl7.fhir.r4.model.Flag
 import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.Task
-import org.smartregister.fhircore.engine.appfeature.model.HealthModule
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.domain.model.ProfileData
@@ -43,7 +41,6 @@ import org.smartregister.fhircore.engine.util.extension.extractAddress
 import org.smartregister.fhircore.engine.util.extension.extractId
 import org.smartregister.fhircore.engine.util.extension.extractName
 import org.smartregister.fhircore.engine.util.extension.extractOfficialIdentifier
-import org.smartregister.fhircore.engine.util.extension.filterBy
 import org.smartregister.fhircore.engine.util.extension.milestonesDue
 import org.smartregister.fhircore.engine.util.extension.milestonesOverdue
 import org.smartregister.fhircore.engine.util.extension.toAgeDisplay
@@ -66,12 +63,11 @@ constructor(
     val pregnancies =
       fhirEngine
         .search<Condition> {
-          getRegisterDataFilters().forEach { filterBy(it) }
+          //         [].forEach { filterBy(it) }
           sort(Patient.NAME, Order.ASCENDING)
-          count =
-            if (loadAll) {
-              countRegisterData(appFeatureName).toInt()
-            } else PaginationConstant.DEFAULT_PAGE_SIZE
+          if (!loadAll) {
+            count = PaginationConstant.DEFAULT_PAGE_SIZE + PaginationConstant.EXTRA_ITEM_COUNT
+          }
           from = currentPage * PaginationConstant.DEFAULT_PAGE_SIZE
         }
         .map { it.resource }
@@ -145,8 +141,7 @@ constructor(
     )
   }
 
-  override suspend fun countRegisterData(appFeatureName: String?) =
-    fhirEngine.count<Condition> { getRegisterDataFilters().forEach { filterBy(it) } }
+  //    fhirEngine.count<Condition> { getRegisterDataFilters().forEach { filterBy(it) } }
 
   private fun getVisitStatus(carePlans: List<CarePlan>): VisitStatus {
     var visitStatus = VisitStatus.PLANNED
@@ -156,7 +151,4 @@ constructor(
 
     return visitStatus
   }
-
-  private fun getRegisterDataFilters() =
-    configurationRegistry.retrieveDataFilterConfiguration(HealthModule.ANC.name)
 }

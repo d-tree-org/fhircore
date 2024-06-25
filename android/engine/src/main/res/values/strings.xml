@@ -8,7 +8,7 @@
     <string name="scan_bar_code">SCAN BARCODE</string>
     <string name="empty_client_list_message_title">No Results</string>
     <string name="empty_client_list_message_details">Sorry, we could not find client with given name or ID</string>
-    <string name="register_new_client">Register new client</string>
+    <string name="register_new_client">REGISTER NEW PERSON</string>
     <string name="default_app_title" translatable="false">Fhir App</string>
     <string name="app_logo">Application logo</string>
     <string name="powered_by">Powered By</string>
@@ -41,8 +41,9 @@
     <string name="login_error">Login error: %1$s</string>
     <string name="str_next">NEXT</string>
     <string name="str_previous">PREVIOUS</string>
-    <string name="str_page_info">Page %1$d of %2$d</string>
-    <string name="search_result">%1$d RESULT(S)</string>
+    <string name="str_page_info">Page %1$d of %2$s</string>
+    <string name="str_page">Page %1$d</string>
+    <string name="search_result">SHOWING: %1$d RESULT(S)</string>
     <string name="no_results">No results</string>
     <string name="no_results_message">Sorry we can\'t find person with the provided name or ID</string>
     <string name="male">Male</string>
@@ -57,6 +58,7 @@
     <string name="error_loading_config">Error loading configuration. Details: %1$s</string>
     <string name="error_loading_form">Error loading form</string>
     <string name="error_saving_form">Error encountered cannot save form</string>
+    <string name="error_occured">Error occured while fetching data</string>
     <string name="form_progress_message">Processing data. Please wait</string>
     <string name="questionnaire_alert_back_pressed_message">Are you sure you want to go back?</string>
     <string name="questionnaire_alert_back_pressed_title">Discard changes</string>
@@ -93,6 +95,7 @@
     <string name="tick">Tick</string>
     <string name="clients">Clients</string>
     <string name="logout">Log out</string>
+    <string name="last_purge" translatable="false">Last purged</string>
     <string name="application_id">Application ID</string>
     <string name="enter_app_id">Enter Application ID</string>
     <string name="app_id_sample" translatable="false">E.g. anc, covax, g6pd, jnj, quest</string>
@@ -156,4 +159,8 @@
     <string name="re_fetch_practitioner">Re-fetch Practitioner</string>
     <string name="dev_menu">Dev Menu</string>
     <string name="audit_event_system">http://dicom.nema.org/resources/ontology/DCM</string>
+    <string translatable="false" name="retry_extraction">Retry</string>
+    <string translatable="false" name="error_extraction">An error occurred while extracting and saving the Questionnaire</string>
+    <string name="select_locations_in">Select a location in %1$s</string>
+    <string name="no_patients_found">No patients found</string>
 </resources>

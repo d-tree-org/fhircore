@@ -5,9 +5,9 @@
 
 object Deps {
     object sdk_versions {
-        const val compile_sdk = 33
+        const val compile_sdk = 34
         const val min_sdk = 26
-        const val target_sdk = 33
+        const val target_sdk = 34
     }
 
     const val build_tool_version = "30.0.3"
@@ -23,7 +23,7 @@ object Deps {
         const val atsl_runner = "1.5.2"
         const val caffeine = "2.9.0"
         const val constraint_layout = "1.1.3"
-        const val coroutines = "1.7.3"
+        const val coroutines = "1.8.1"
         const val core = "1.7.0"
         const val cql_engine = "1.3.14-SNAPSHOT"
         const val desugar = "2.0.4"
@@ -32,7 +32,7 @@ object Deps {
         const val guava = "28.2-android"
         const val hapi_r4 = "5.3.0"
         const val junit5_api = "5.9.3"
-        const val kotlin = "1.8.22"
+        const val kotlin = "1.9.24"
         const val lifecycle = "2.2.0"
         const val material = "1.5.0"
         const val okhttp_logging_interceptor = "4.0.0"
@@ -42,7 +42,7 @@ object Deps {
         const val room = "2.4.2"
         const val spotless = "6.25.0"
         const val truth = "1.0.1"
-        const val work = "2.7.1"
+        const val work = "2.9.0"
         const val json_tools = "1.13"
         const val kotlin_coveralls = "2.12.2"
         const val jacoco_tool = "0.8.11"
@@ -50,12 +50,12 @@ object Deps {
         const val joda_time = "2.10.5"
         const val timber = "4.7.1"
         const val mockk = "1.13.5"
-        const val dokka = "1.5.0"
+        const val dokka = "1.8.20"
         const val androidx_test = "2.2.0"
         const val accompanist_swiperefresh = "0.26.4-beta"
         const val compose = "1.4.3"
-        const val hiltVersion = "2.45"
-        const val hiltWorkerVersion ="1.0.0"
+        const val hiltVersion = "2.51"
+        const val hiltWorkerVersion ="1.2.0"
     }
 
     const val activity = "androidx.activity:activity:${versions.activity}"

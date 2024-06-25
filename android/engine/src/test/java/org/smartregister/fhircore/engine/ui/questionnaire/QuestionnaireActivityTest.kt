@@ -32,8 +32,8 @@ import androidx.test.core.app.ApplicationProvider
 import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.context.FhirVersionEnum
 import com.google.android.fhir.datacapture.QuestionnaireFragment
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.datacapture.validation.QuestionnaireResponseValidator.checkQuestionnaireResponse
-import com.google.android.fhir.logicalId
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -69,7 +69,6 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowAlertDialog
 import org.robolectric.util.ReflectionHelpers
 import org.smartregister.fhircore.engine.R
-import org.smartregister.fhircore.engine.cql.LibraryEvaluator
 import org.smartregister.fhircore.engine.di.AnalyticsModule
 import org.smartregister.fhircore.engine.di.CoreModule
 import org.smartregister.fhircore.engine.robolectric.ActivityRobolectricTest
@@ -121,7 +120,6 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
         transformSupportServices = mockk(),
         dispatcherProvider = dispatcherProvider,
         sharedPreferencesHelper = mockk(),
-        libraryEvaluatorProvider = { mockk<LibraryEvaluator>() },
         tracer = FakePerformanceReporter(),
       ),
     )
@@ -134,13 +132,12 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
     intent =
       Intent().apply {
         putExtra(QuestionnaireActivity.QUESTIONNAIRE_TITLE_KEY, "Patient registration")
-        putStringArrayListExtra(QuestionnaireActivity.QUESTIONNAIRE_LAUNCH_CONTEXT, arrayListOf())
+        putExtra(QuestionnaireActivity.QUESTIONNAIRE_LAUNCH_CONTEXTS, bundleOf())
         putExtra(QuestionnaireActivity.QUESTIONNAIRE_ARG_FORM, "patient-registration")
         putExtra(QuestionnaireActivity.QUESTIONNAIRE_ARG_PATIENT_KEY, "1234")
       }
 
     every { syncBroadcaster.runSync(any()) } just runs
-    coEvery { questionnaireViewModel.libraryEvaluatorProvider.get().initialize() } just runs
 
     val questionnaireConfig = QuestionnaireConfig("form", "title", "form-id")
     coEvery { questionnaireViewModel.getQuestionnaireConfig(any(), any()) } returns
@@ -417,7 +414,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
 
   @Test
   fun testOnBackPressedShouldShowAlert() {
-    questionnaireActivity.onBackPressed()
+    questionnaireActivity.onBackPressedDispatcher.onBackPressed()
 
     val dialog = shadowOf(ShadowAlertDialog.getLatestDialog())
     val alertDialog = ReflectionHelpers.getField<AlertDialog>(dialog, "realDialog")
@@ -436,7 +433,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
   fun testOnBackPressedShouldCallFinishWhenInReadOnlyMode() {
     val qActivity = spyk(questionnaireActivity)
     ReflectionHelpers.setField(qActivity, "questionnaireType", QuestionnaireType.READ_ONLY)
-    qActivity.onBackPressed()
+    qActivity.onBackPressedDispatcher.onBackPressed()
 
     verify { qActivity.finish() }
   }
@@ -455,6 +452,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
         any(),
         any(),
         any(),
+        intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
       )
     }
   }
@@ -480,6 +478,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
         any(),
         any(),
         any(),
+        intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
       )
     }
   }
@@ -514,6 +513,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
         any(),
         any(),
         any(),
+        intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
       )
     }
   }
@@ -623,11 +623,11 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
     val spiedActivity = spyk(questionnaireActivity)
     val menuItem = mockk<MenuItem>()
     every { menuItem.itemId } returns android.R.id.home
-    every { spiedActivity.onBackPressed() } just runs
+    every { spiedActivity.onBackPressedDispatcher.onBackPressed() } just runs
 
     Assert.assertTrue(spiedActivity.onOptionsItemSelected(menuItem))
 
-    verify { spiedActivity.onBackPressed() }
+    verify { spiedActivity.onBackPressedDispatcher.onBackPressed() }
   }
 
   @Test
@@ -713,7 +713,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
     QuestionnaireActivity.launchQuestionnaireForResult(
       ctx,
       questionnaireId = "testQuestionnaire",
-      launchContexts = null,
+      launchContexts = emptyMap(),
       populationResources = arrayListOf(),
     )
     verify { ctx.startActivityForResult(any(), withArg { Assert.assertEquals(0, it) }) }
@@ -728,7 +728,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
     QuestionnaireActivity.launchQuestionnaire(
       ctx,
       questionnaireId = "testQuestionnaire",
-      launchContexts = null,
+      launchContexts = emptyMap(),
       populationResources = arrayListOf(),
     )
     verify { ctx.startActivity(any()) }
@@ -742,7 +742,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
     val groupIdentifier = "group_identifier"
     val intentBundle = Bundle.EMPTY
     val questionnaireType = QuestionnaireType.DEFAULT
-    val launchContexts = mockk<ArrayList<Resource>>(relaxed = true)
+    val launchContexts = mockk<Map<String, Resource>>(relaxed = true)
     val populationResources = mockk<ArrayList<Resource>>(relaxed = true)
 
     val ctx = spyk<Activity>()
@@ -814,7 +814,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
     val backReference = "back_reference"
     val intentBundle = Bundle.EMPTY
     val questionnaireType = QuestionnaireType.DEFAULT
-    val launchContexts = mockk<ArrayList<Resource>>(relaxed = true)
+    val launchContexts = mockk<Map<String, Resource>>(relaxed = true)
     val populationResources = mockk<ArrayList<Resource>>(relaxed = true)
 
     val ctx = spyk<Activity>()

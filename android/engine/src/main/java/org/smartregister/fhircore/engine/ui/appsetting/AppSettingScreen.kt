@@ -16,35 +16,22 @@
 
 package org.smartregister.fhircore.engine.ui.appsetting
 
-import android.content.Context
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -53,115 +40,81 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.smartregister.fhircore.engine.R
+import org.smartregister.fhircore.engine.domain.util.DataLoadState
 import org.smartregister.fhircore.engine.ui.login.LOGIN_ERROR_TEXT_TAG
-import org.smartregister.fhircore.engine.util.annotation.PreviewWithBackgroundExcludeGenerated
 import org.smartregister.fhircore.engine.util.extension.appVersion
 
-const val APP_ID_TEXT_INPUT_TAG = "appIdTextInputTag"
-
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppSettingScreen(
   modifier: Modifier = Modifier,
-  appId: String,
-  onAppIdChanged: (String) -> Unit,
-  fetchConfiguration: (Context) -> Unit,
-  showProgressBar: Boolean = false,
-  error: String,
   appVersionPair: Pair<Int, String>? = null,
+  goToHome: () -> Unit,
+  retry: () -> Unit,
+  state: DataLoadState<Boolean>,
 ) {
   val context = LocalContext.current
   val (versionCode, versionName) = remember { appVersionPair ?: context.appVersion() }
-  val coroutineScope = rememberCoroutineScope()
-  val bringIntoViewRequester = BringIntoViewRequester()
-  val focusRequester = remember { FocusRequester() }
 
-  LaunchedEffect(Unit) {
-    delay(300)
-    focusRequester.requestFocus()
+  LaunchedEffect(state) {
+    if (state is DataLoadState.Success) {
+      goToHome()
+    }
   }
 
-  Column(modifier = modifier.fillMaxSize()) {
+  Column(
+    modifier = modifier.fillMaxSize().padding(16.dp),
+  ) {
     Column(
       verticalArrangement = Arrangement.Center,
       modifier = modifier.weight(1f).padding(horizontal = 20.dp),
     ) {
       Text(
-        text = stringResource(R.string.fhir_core_app),
+        text = stringResource(com.google.android.fhir.R.string.app_name),
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
         fontSize = 32.sp,
         modifier = modifier.padding(vertical = 8.dp).align(Alignment.CenterHorizontally),
       )
-      Spacer(modifier = modifier.height(80.dp))
-      Text(
-        text = stringResource(R.string.application_id),
-        modifier = modifier.padding(vertical = 4.dp),
-      )
-      OutlinedTextField(
-        onValueChange = onAppIdChanged,
-        value = appId,
-        maxLines = 1,
-        singleLine = true,
-        placeholder = {
-          Text(
-            color = Color.LightGray,
-            text = stringResource(R.string.app_id_sample),
-          )
-        },
-        modifier =
-          modifier
-            .testTag(APP_ID_TEXT_INPUT_TAG)
-            .fillMaxWidth()
-            .padding(vertical = 2.dp)
-            .onFocusEvent { event ->
-              if (event.isFocused) coroutineScope.launch { bringIntoViewRequester.bringIntoView() }
+      Box(modifier = Modifier.fillMaxSize()) {
+        when (state) {
+          is DataLoadState.Error -> {
+            Column(
+              Modifier.fillMaxWidth().align(Alignment.Center),
+            ) {
+              Text(
+                fontSize = 14.sp,
+                color = MaterialTheme.colors.error,
+                text = stringResource(id = getMessageFromException(state.exception)),
+                modifier =
+                  modifier
+                    .wrapContentWidth()
+                    .padding(vertical = 10.dp)
+                    .align(Alignment.CenterHorizontally)
+                    .testTag(LOGIN_ERROR_TEXT_TAG),
+              )
+              Button(onClick = { retry() }) { Text(text = "Retry") }
             }
-            .focusRequester(focusRequester),
-      )
-      if (error.isNotEmpty()) {
-        Text(
-          fontSize = 14.sp,
-          color = MaterialTheme.colors.error,
-          text = error,
-          modifier =
-            modifier
-              .wrapContentWidth()
-              .padding(vertical = 10.dp)
-              .align(Alignment.Start)
-              .testTag(LOGIN_ERROR_TEXT_TAG),
-        )
-      }
-      Spacer(modifier = modifier.height(30.dp))
-      Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier.bringIntoViewRequester(bringIntoViewRequester).fillMaxWidth(),
-      ) {
-        Button(
-          onClick = { fetchConfiguration(context) },
-          enabled = !showProgressBar && appId.isNotEmpty(),
-          modifier = modifier.fillMaxWidth(),
-          colors =
-            ButtonDefaults.buttonColors(
-              disabledContentColor = Color.Gray,
-              contentColor = Color.White,
-            ),
-          elevation = null,
-        ) {
-          Text(
-            text = if (!showProgressBar) stringResource(id = R.string.load_configurations) else "",
-            modifier = modifier.padding(8.dp),
-          )
-        }
-        if (showProgressBar) {
-          CircularProgressIndicator(
-            modifier = modifier.align(Alignment.Center).size(18.dp),
-            strokeWidth = 1.6.dp,
-            color = Color.White,
-          )
+          }
+          is DataLoadState.Success -> {
+            Text(text = "Data loaded successfully")
+          }
+          else -> {
+            Column(
+              verticalArrangement = Arrangement.Center,
+              horizontalAlignment = Alignment.CenterHorizontally,
+              modifier = Modifier.align(Alignment.Center),
+            ) {
+              CircularProgressIndicator(
+                modifier = modifier.padding(bottom = 16.dp),
+                strokeWidth = 1.6.dp,
+              )
+              Text(
+                text = "Loading Configurations from server, this might take a while...",
+                textAlign = TextAlign.Center,
+              )
+            }
+          }
         }
       }
     }
@@ -174,26 +127,19 @@ fun AppSettingScreen(
   }
 }
 
-@Composable
-@PreviewWithBackgroundExcludeGenerated
-private fun AppSettingScreenWithErrorPreview() {
-  AppSettingScreen(
-    appId = "",
-    onAppIdChanged = {},
-    fetchConfiguration = {},
-    appVersionPair = Pair(1, "0.0.1"),
-    error = "Application not found",
-  )
-}
-
-@Composable
-@PreviewWithBackgroundExcludeGenerated
-private fun AppSettingScreenWithNoErrorPreview() {
-  AppSettingScreen(
-    appId = "",
-    onAppIdChanged = {},
-    fetchConfiguration = {},
-    appVersionPair = Pair(1, "0.0.1"),
-    error = "",
-  )
+fun getMessageFromException(ex: Exception): Int {
+  return when (ex) {
+    is InternetConnectionException -> {
+      R.string.error_loading_config_no_internet
+    }
+    is ServerException -> {
+      R.string.error_loading_config_general
+    }
+    is ConfigurationErrorException -> {
+      R.string.error_loading_config_http_error
+    }
+    else -> {
+      R.string.error_loading_config_http_error
+    }
+  }
 }

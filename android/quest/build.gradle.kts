@@ -4,14 +4,15 @@ plugins {
   id("com.android.application")
   id("kotlin-android")
   id("kotlin-kapt")
-  id("de.mannodermaus.android-junit5") version "1.9.3.0"
+  id("de.mannodermaus.android-junit5")
   id("org.jetbrains.dokka")
   id("org.jetbrains.kotlin.plugin.serialization")
-  id("dagger.hilt.android.plugin")
+  id("com.google.dagger.hilt.android")
   id("org.jetbrains.kotlin.android")
   id("com.google.firebase.firebase-perf")
   id("com.google.gms.google-services")
   id("com.google.firebase.crashlytics")
+  id("com.google.firebase.appdistribution")
 }
 
 kotlin { jvmToolchain(17) }
@@ -25,6 +26,7 @@ android {
   defaultConfig {
     applicationId = "org.smartregister.fhircore"
     minSdk = Deps.sdk_versions.min_sdk
+    targetSdk = Deps.sdk_versions.target_sdk
     versionCode = 4
     versionName = "0.0.4"
     multiDexEnabled = true
@@ -33,6 +35,7 @@ android {
     buildConfigField("String", "FHIR_BASE_URL", """"${project.extra["FHIR_BASE_URL"]}"""")
     buildConfigField("String", "OAUTH_BASE_URL", """"${project.extra["OAUTH_BASE_URL"]}"""")
     buildConfigField("String", "OAUTH_CIENT_ID", """"${project.extra["OAUTH_CIENT_ID"]}"""")
+    buildConfigField("String", "APP_ID", """"${project.extra["APP_ID"]}"""")
     buildConfigField(
       "String",
       "OAUTH_CLIENT_SECRET",
@@ -65,6 +68,10 @@ android {
       //            firebaseCrashlytics {
       //                isNativeSymbolUploadEnabled = false
       //            }
+      firebaseAppDistribution {
+        artifactType = "APK"
+        releaseNotes = "Update"
+      }
     }
   }
   packaging {
@@ -108,7 +115,7 @@ android {
     buildConfig = true
   }
 
-  composeOptions { kotlinCompilerExtensionVersion = "1.4.8" }
+  composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 
   testOptions {
     execution = "ANDROIDX_TEST_ORCHESTRATOR"
@@ -123,66 +130,40 @@ android {
   flavorDimensions += "apps"
 
   productFlavors {
-    create("quest") {
-      dimension = "apps"
-      applicationIdSuffix = ".quest"
-      versionNameSuffix = "-quest"
-      isDefault = true
-    }
-    create("ecbis") {
-      dimension = "apps"
-      applicationIdSuffix = ".ecbis"
-      versionNameSuffix = "-ecbis"
-      versionCode = 3
-      versionName = "0.0.6"
-    }
-    create("g6pd") {
-      dimension = "apps"
-      applicationIdSuffix = ".g6pd"
-      versionNameSuffix = "-g6pd"
-    }
     create("mwcore") {
       dimension = "apps"
       applicationIdSuffix = ".mwcore"
       versionNameSuffix = "-mwcore"
-      versionCode = 37
-      versionName = "0.1.26"
+      versionCode = 4
+      versionName = "0.0.4"
     }
     create("mwcoreDev") {
       dimension = "apps"
       applicationIdSuffix = ".mwcoreDev"
       versionNameSuffix = "-mwcoreDev"
-      versionCode = 33
-      versionName = "0.1.22"
+      versionCode = 35
+      versionName = "0.1.26"
     }
-    create("mwcoreProd") {
+    create("mwcoreStaging") {
       dimension = "apps"
-      applicationIdSuffix = ".mwcoreProd"
-      versionNameSuffix = "-mwcoreProd"
-      versionCode = 16
-      versionName = "0.1.5"
-    }
-    create("afyayangu") {
-      dimension = "apps"
-      applicationIdSuffix = ".afyayangu"
-      versionNameSuffix = "-afyayangu"
-      versionCode = 1
-      versionName = "0.0.1"
+      applicationIdSuffix = ".mwcoreStaging"
+      versionNameSuffix = "-mwcoreStaging"
+      versionCode = 3
+      versionName = "0.0.3"
     }
   }
 
   lint { abortOnError = false }
 
-  configurations.configureEach {
-    resolutionStrategy { force("ca.uhn.hapi.fhir:org.hl7.fhir.utilities:5.5.7") }
-  }
-
   testCoverage { jacocoVersion = Deps.versions.jacoco_tool }
 }
+
+configurations { all { exclude(group = "xpp3") } }
 
 dependencies {
   coreLibraryDesugaring(Deps.desugar)
   implementation(project(":engine"))
+
   implementation("androidx.ui:ui-foundation:0.1.0-dev14")
   implementation(Deps.accompanist.swiperefresh)
 
@@ -207,7 +188,7 @@ dependencies {
   testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
 
   // analytics
-  implementation(platform("com.google.firebase:firebase-bom:31.2.0"))
+  implementation(platform("com.google.firebase:firebase-bom:32.7.3"))
 
   implementation("com.google.firebase:firebase-perf-ktx")
   implementation("com.google.firebase:firebase-crashlytics-ktx")
@@ -219,13 +200,10 @@ dependencies {
 
   androidTestImplementation(Deps.atsl.ext_junit)
   androidTestImplementation(Deps.atsl.espresso)
-  val composeVersion = Deps.versions.compose
-  debugImplementation("androidx.compose.ui:ui-test-manifest:$composeVersion")
-  testImplementation("androidx.compose.ui:ui-test-junit4:$composeVersion")
+  debugImplementation("androidx.compose.ui:ui-test-manifest")
+  testImplementation("androidx.compose.ui:ui-test-junit4")
   //     debugImplementation because LeakCanary should only run in debug builds.
   //    debugImplementation "com.squareup.leakcanary:leakcanary-android:2.7"
-
-  testImplementation("info.cqframework:cql-to-elm:1.5.6")
 }
 
 kapt { correctErrorTypes = true }

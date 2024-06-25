@@ -30,6 +30,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration
 import com.github.anrwatchdog.ANRWatchDog
 import com.google.android.fhir.datacapture.DataCaptureConfig
+import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.perf.ktx.performance
@@ -41,6 +42,7 @@ import org.smartregister.fhircore.engine.data.remote.fhir.resource.ReferenceUrlR
 import org.smartregister.fhircore.engine.ui.appsetting.AppSettingActivity
 import org.smartregister.fhircore.engine.ui.login.LoginActivity
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl
+import org.smartregister.fhircore.engine.ui.questionnaire.items.CustomQuestItemDataProvider
 import org.smartregister.fhircore.engine.util.extension.getActivity
 import org.smartregister.fhircore.engine.util.extension.showToast
 import timber.log.Timber
@@ -56,6 +58,8 @@ class QuestApplication :
   @Inject lateinit var accountAuthenticator: AccountAuthenticator
 
   @Inject lateinit var xFhirQueryResolver: FhirXFhirQueryResolver
+
+  @Inject lateinit var customQuestItemDataProvider: CustomQuestItemDataProvider
 
   private val launcherActivityName: String? by lazy {
     val pm = packageManager
@@ -90,6 +94,7 @@ class QuestApplication :
     } else {
       Firebase.performance.isPerformanceCollectionEnabled = false
       Firebase.crashlytics.setCrashlyticsCollectionEnabled(false)
+      Firebase.analytics.setAnalyticsCollectionEnabled(false)
       Timber.plant(Timber.DebugTree())
     }
 
@@ -129,7 +134,9 @@ class QuestApplication :
           urlResolver = referenceUrlResolver,
           xFhirQueryResolver = xFhirQueryResolver,
           questionnaireItemViewHolderFactoryMatchersProviderFactory =
-            QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl,
+            QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl(
+              customQuestItemDataProvider,
+            ),
         )
     return configuration as DataCaptureConfig
   }
@@ -165,11 +172,12 @@ class QuestApplication :
     ANRWatchDog().setANRListener { Timber.e(it) }.start()
   }
 
-  override fun getWorkManagerConfiguration(): Configuration =
-    Configuration.Builder()
-      .setMinimumLoggingLevel(android.util.Log.INFO)
-      .setWorkerFactory(workerFactory)
-      .build()
+  override val workManagerConfiguration: Configuration
+    get() =
+      Configuration.Builder()
+        .setMinimumLoggingLevel(android.util.Log.INFO)
+        .setWorkerFactory(workerFactory)
+        .build()
 
   private val globalExceptionHandler =
     Thread.UncaughtExceptionHandler { _: Thread, e: Throwable -> handleUncaughtException(e) }

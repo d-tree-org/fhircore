@@ -16,6 +16,8 @@
 
 package org.smartregister.fhircore.engine.domain.repository
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import org.smartregister.fhircore.engine.data.local.RegisterFilter
 import org.smartregister.fhircore.engine.domain.model.ProfileData
 import org.smartregister.fhircore.engine.domain.model.RegisterData
@@ -39,17 +41,16 @@ interface RegisterDao {
   suspend fun loadRegisterFiltered(
     currentPage: Int,
     loadAll: Boolean = false,
-    appFeatureName: String? = null,
     filters: RegisterFilter,
   ): List<RegisterData> {
     TODO("default")
   }
 
-  suspend fun countRegisterFiltered(appFeatureName: String? = null, filters: RegisterFilter): Long {
+  suspend fun countRegisterFiltered(filters: RegisterFilter): Long {
     TODO("default")
   }
 
-  suspend fun countRegisterData(appFeatureName: String?): Long = 0
+  suspend fun countRegisterData(): Flow<Long> = emptyFlow()
 
   suspend fun loadProfileData(appFeatureName: String?, resourceId: String): ProfileData? = null
 }

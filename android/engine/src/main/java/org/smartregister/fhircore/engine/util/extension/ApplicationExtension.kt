@@ -17,7 +17,6 @@
 package org.smartregister.fhircore.engine.util.extension
 
 import android.content.Context
-import android.content.res.AssetManager
 import ca.uhn.fhir.context.FhirContext
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.db.ResourceNotFoundException
@@ -27,23 +26,15 @@ import com.google.android.fhir.search.StringFilterModifier
 import com.google.android.fhir.search.count
 import com.google.android.fhir.search.getQuery
 import com.google.android.fhir.search.search
-import com.google.android.fhir.workflow.FhirOperator
 import com.google.gson.Gson
 import java.util.Locale
-import org.hl7.fhir.r4.model.Bundle
 import org.hl7.fhir.r4.model.Immunization
-import org.hl7.fhir.r4.model.Library
 import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.RelatedPerson
 import org.hl7.fhir.r4.model.Resource
-import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
-import org.smartregister.fhircore.engine.configuration.app.AppConfigClassification
-import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.domain.model.Language
 import org.smartregister.fhircore.engine.domain.util.PaginationConstant
-import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
-import timber.log.Timber
 
 fun <T> Context.loadResourceTemplate(id: String, clazz: Class<T>, data: Map<String, String?>): T {
   var json = assets.open(id).bufferedReader().use { it.readText() }
@@ -105,38 +96,7 @@ suspend fun FhirEngine.loadPatientImmunizations(patientId: String): List<Immuniz
   }
 }
 
-suspend fun FhirEngine.loadCqlLibraryBundle(
-  context: Context,
-  sharedPreferencesHelper: SharedPreferencesHelper,
-  fhirOperator: FhirOperator,
-  resourcesBundlePath: String,
-) =
-  try {
-    val jsonParser = FhirContext.forR4().newJsonParser()
-    val savedResources =
-      sharedPreferencesHelper.read(SharedPreferencesHelper.MEASURE_RESOURCES_LOADED, "")
-
-    context.assets.open(resourcesBundlePath, AssetManager.ACCESS_RANDOM).bufferedReader().use {
-      val bundle = jsonParser.parseResource(it) as Bundle
-      bundle.entry.forEach { entry ->
-        if (entry.resource.resourceType == ResourceType.Library) {
-          fhirOperator.loadLib(entry.resource as Library)
-        } else {
-          if (!savedResources!!.contains(resourcesBundlePath)) {
-            create(entry.resource)
-            sharedPreferencesHelper.write(
-              SharedPreferencesHelper.MEASURE_RESOURCES_LOADED,
-              savedResources.plus(",").plus(resourcesBundlePath),
-            )
-          }
-        }
-      }
-    }
-  } catch (exception: Exception) {
-    Timber.e(exception)
-  }
-
 fun ConfigurationRegistry.fetchLanguages() =
-  this.retrieveConfiguration<ApplicationConfiguration>(AppConfigClassification.APPLICATION)
+  this.getAppConfigs()
     .run { this.languages }
     .map { Language(it, Locale.forLanguageTag(it).displayName) }

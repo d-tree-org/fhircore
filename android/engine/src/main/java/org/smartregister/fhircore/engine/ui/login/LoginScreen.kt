@@ -16,8 +16,6 @@
 
 package org.smartregister.fhircore.engine.ui.login
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -80,13 +78,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.smartregister.fhircore.engine.R
-import org.smartregister.fhircore.engine.configuration.view.LoginViewConfiguration
-import org.smartregister.fhircore.engine.configuration.view.loginViewConfigurationOf
 import org.smartregister.fhircore.engine.ui.components.CircularProgressBar
-import org.smartregister.fhircore.engine.ui.theme.LoginBackgroundColor
 import org.smartregister.fhircore.engine.ui.theme.LoginButtonColor
 import org.smartregister.fhircore.engine.ui.theme.LoginDarkColor
-import org.smartregister.fhircore.engine.ui.theme.LoginFieldBackgroundColor
 import org.smartregister.fhircore.engine.util.annotation.ExcludeFromJacocoGeneratedReport
 import org.smartregister.fhircore.engine.util.extension.appVersion
 
@@ -98,42 +92,28 @@ const val LOGIN_ERROR_TEXT_TAG = "loginErrorTextTag"
 const val LOGIN_FOOTER = "loginFooter"
 const val APP_LOGO_TAG = "appLogoTag"
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun LoginScreen(loginViewModel: LoginViewModel) {
-  val viewConfiguration by
-    loginViewModel.loginViewConfiguration.observeAsState(
-      loginViewConfigurationOf(),
-    )
-  val loadingConfig by loginViewModel.loadingConfig.observeAsState(true)
   val username by loginViewModel.username.observeAsState("")
   val password by loginViewModel.password.observeAsState("")
   val loginErrorState by loginViewModel.loginErrorState.observeAsState(null)
   val showProgressBar by loginViewModel.showProgressBar.observeAsState(false)
   val context = LocalContext.current
 
-  AnimatedContent(targetState = loadingConfig) {
-    if (!loadingConfig) {
-      LoginPage(
-        viewConfiguration = viewConfiguration,
-        username = username,
-        onUsernameChanged = { loginViewModel.onUsernameUpdated(it) },
-        password = password,
-        onPasswordChanged = { loginViewModel.onPasswordUpdated(it) },
-        forgotPassword = { loginViewModel.forgotPassword() },
-        onLoginButtonClicked = { loginViewModel.login(context = context) },
-        loginErrorState = loginErrorState,
-        showProgressBar = showProgressBar,
-      )
-    } else {
-      LoginScreenLoadingConfig()
-    }
-  }
+  LoginPage(
+    username = username,
+    onUsernameChanged = { loginViewModel.onUsernameUpdated(it) },
+    password = password,
+    onPasswordChanged = { loginViewModel.onPasswordUpdated(it) },
+    forgotPassword = { loginViewModel.forgotPassword() },
+    onLoginButtonClicked = { loginViewModel.login(context = context) },
+    loginErrorState = loginErrorState,
+    showProgressBar = showProgressBar,
+  )
 }
 
 @Composable
 fun LoginPage(
-  viewConfiguration: LoginViewConfiguration,
   username: String,
   onUsernameChanged: (String) -> Unit,
   password: String,
@@ -145,11 +125,10 @@ fun LoginPage(
   showProgressBar: Boolean = false,
 ) {
   var showPassword by remember { mutableStateOf(false) }
-  val backgroundColor = if (viewConfiguration.darkMode) LoginBackgroundColor else Color.White
-  val contentColor = if (viewConfiguration.darkMode) Color.White else LoginDarkColor
-  val textFieldBackgroundColor =
-    if (viewConfiguration.darkMode) LoginFieldBackgroundColor else Color.Unspecified
-  val forgotPasswordColor = if (viewConfiguration.darkMode) Color.White else LoginButtonColor
+  val backgroundColor = Color.White
+  val contentColor = LoginDarkColor
+  val textFieldBackgroundColor = Color.Unspecified
+  val forgotPasswordColor = LoginButtonColor
   var showForgotPasswordDialog by remember { mutableStateOf(false) }
   val focusManager = LocalFocusManager.current
   val context = LocalContext.current
@@ -176,22 +155,19 @@ fun LoginPage(
     ) {
       Spacer(modifier = modifier.height(20.dp))
       Column(modifier = modifier.padding(4.dp), verticalArrangement = Arrangement.Center) {
-        // TODO Add configurable logo. Images to be downloaded from server
-        if (viewConfiguration.showLogo) {
-          Image(
-            painter = painterResource(R.drawable.ic_app_logo),
-            contentDescription = stringResource(id = R.string.app_logo),
-            modifier =
-              modifier
-                .align(Alignment.CenterHorizontally)
-                .requiredHeight(120.dp)
-                .requiredWidth(140.dp)
-                .testTag(APP_LOGO_TAG),
-          )
-        }
+        Image(
+          painter = painterResource(R.drawable.ic_app_logo),
+          contentDescription = stringResource(id = R.string.app_logo),
+          modifier =
+            modifier
+              .align(Alignment.CenterHorizontally)
+              .requiredHeight(120.dp)
+              .requiredWidth(140.dp)
+              .testTag(APP_LOGO_TAG),
+        )
         Text(
-          color = if (viewConfiguration.darkMode) Color.White else LoginDarkColor,
-          text = viewConfiguration.applicationName,
+          color = LoginDarkColor,
+          text = stringResource(id = com.google.android.fhir.R.string.app_name),
           fontWeight = FontWeight.Bold,
           fontSize = 32.sp,
           textAlign = TextAlign.Center,
@@ -316,8 +292,7 @@ fun LoginPage(
             colors =
               ButtonDefaults.buttonColors(
                 backgroundColor = LoginButtonColor,
-                disabledBackgroundColor =
-                  if (viewConfiguration.darkMode) LoginFieldBackgroundColor else Color.LightGray,
+                disabledBackgroundColor = Color.LightGray,
               ),
             onClick = onLoginButtonClicked,
             modifier = modifier.fillMaxWidth().testTag(LOGIN_BUTTON_TAG),
@@ -329,7 +304,9 @@ fun LoginPage(
             )
           }
           if (showProgressBar) {
-            CircularProgressBar(modifier = modifier.matchParentSize().padding(4.dp))
+            CircularProgressBar(
+              modifier = modifier.matchParentSize().padding(4.dp),
+            )
           }
         }
       }
@@ -418,7 +395,6 @@ fun LoginScreenLoadingConfig() {
 @Composable
 fun LoginScreenPreview() {
   LoginPage(
-    viewConfiguration = loginViewConfigurationOf(),
     username = "",
     onUsernameChanged = {},
     password = "",
@@ -433,7 +409,6 @@ fun LoginScreenPreview() {
 @Composable
 fun LoginScreenPreviewDarkMode() {
   LoginPage(
-    viewConfiguration = loginViewConfigurationOf(darkMode = true, showLogo = true),
     username = "",
     onUsernameChanged = {},
     password = "",

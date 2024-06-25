@@ -29,6 +29,7 @@ import org.hl7.fhir.r4.model.Reference
 import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.Task
 import org.smartregister.fhircore.engine.data.domain.Guardian
+import org.smartregister.fhircore.engine.data.domain.PhoneContact
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireConfig
 import org.smartregister.fhircore.engine.util.extension.toAgeDisplay
 
@@ -89,12 +90,13 @@ sealed class ProfileData(open val logicalId: String, open val name: String) {
     val birthdate: Date?,
     val age: String = birthdate.toAgeDisplay(),
     val gender: Enumerations.AdministrativeGender,
+    val currentCarePlan: CarePlan?,
+    val isClientVisit: Boolean = true,
     val address: String,
     val addressDistrict: String = "",
     val addressTracingCatchment: String = "",
     val addressPhysicalLocator: String = "",
-    val services: List<CarePlan> = listOf(),
-    val tasks: List<Task> = listOf(),
+    val tasks: List<CarePlan.CarePlanActivityComponent> = listOf(),
     val chwAssigned: Reference,
     val healthStatus: HealthStatus,
     val phoneContacts: List<String> = listOf(),
@@ -123,7 +125,7 @@ sealed class ProfileData(open val logicalId: String, open val name: String) {
     val addressPhysicalLocator: String = "",
     val services: List<CarePlan> = listOf(),
     val tasks: List<Task> = listOf(),
-    val phoneContacts: List<String> = listOf(),
+    val phoneContacts: List<PhoneContact> = listOf(),
     val showIdentifierInProfile: Boolean = false,
     val conditions: List<Condition> = emptyList(),
     val guardians: List<Guardian> = emptyList(),

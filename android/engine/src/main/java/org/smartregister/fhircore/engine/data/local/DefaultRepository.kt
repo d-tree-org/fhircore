@@ -19,11 +19,11 @@ package org.smartregister.fhircore.engine.data.local
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam
 import ca.uhn.fhir.rest.gclient.TokenClientParam
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.db.ResourceNotFoundException
 import com.google.android.fhir.delete
 import com.google.android.fhir.get
 import com.google.android.fhir.getLocalizedText
-import com.google.android.fhir.logicalId
 import com.google.android.fhir.search.search
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -51,6 +51,7 @@ import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.extension.addTags
 import org.smartregister.fhircore.engine.util.extension.filterBy
 import org.smartregister.fhircore.engine.util.extension.filterByResourceTypeId
+import org.smartregister.fhircore.engine.util.extension.generateCreatedOn
 import org.smartregister.fhircore.engine.util.extension.generateMissingId
 import org.smartregister.fhircore.engine.util.extension.generateMissingVersionId
 import org.smartregister.fhircore.engine.util.extension.loadPatientImmunizations
@@ -179,10 +180,10 @@ constructor(
     }
   }
 
-  suspend fun saveRemote(vararg resource: Resource) {
+  suspend fun saveLocalOnly(vararg resource: Resource) {
     return withContext(dispatcherProvider.io()) {
       resource.forEach { it.generateMissingId() }
-      fhirEngine.createRemote(*resource)
+      fhirEngine.create(*resource, isLocalOnly = true)
     }
   }
 
@@ -191,6 +192,7 @@ constructor(
       resource.onEach {
         it.generateMissingId()
         it.generateMissingVersionId()
+        it.generateCreatedOn()
         if (addResourceTags) {
           it.addTags(configService.provideResourceTags(sharedPreferencesHelper))
         }

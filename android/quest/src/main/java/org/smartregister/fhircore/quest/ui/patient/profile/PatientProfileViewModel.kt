@@ -17,6 +17,8 @@
 package org.smartregister.fhircore.quest.ui.patient.profile
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.os.bundleOf
@@ -37,16 +39,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import org.hl7.fhir.r4.model.ResourceType
-import org.hl7.fhir.r4.model.Task
 import org.smartregister.fhircore.engine.appfeature.AppFeature
 import org.smartregister.fhircore.engine.appfeature.model.HealthModule
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
-import org.smartregister.fhircore.engine.configuration.app.AppConfigClassification
 import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.data.local.register.AppRegisterRepository
 import org.smartregister.fhircore.engine.domain.model.HealthStatus
 import org.smartregister.fhircore.engine.domain.model.ProfileData
-import org.smartregister.fhircore.engine.sync.OnSyncListener
+import org.smartregister.fhircore.engine.domain.util.DataLoadState
+import org.smartregister.fhircore.engine.domain.util.PaginationConstant
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireType
@@ -54,7 +55,6 @@ import org.smartregister.fhircore.engine.util.extension.asReference
 import org.smartregister.fhircore.engine.util.extension.isGuardianVisit
 import org.smartregister.fhircore.quest.R
 import org.smartregister.fhircore.quest.data.patient.model.PatientPagingSourceState
-import org.smartregister.fhircore.quest.data.register.RegisterPagingSource
 import org.smartregister.fhircore.quest.navigation.MainNavigationScreen
 import org.smartregister.fhircore.quest.navigation.NavigationArg
 import org.smartregister.fhircore.quest.navigation.OverflowMenuFactory
@@ -72,10 +72,10 @@ class PatientProfileViewModel
 constructor(
   savedStateHandle: SavedStateHandle,
   val syncBroadcaster: SyncBroadcaster,
-  val overflowMenuFactory: OverflowMenuFactory,
+  private val overflowMenuFactory: OverflowMenuFactory,
   val registerRepository: AppRegisterRepository,
   val configurationRegistry: ConfigurationRegistry,
-  val profileViewDataMapper: ProfileViewDataMapper,
+  private val profileViewDataMapper: ProfileViewDataMapper,
   val registerViewDataMapper: RegisterViewDataMapper,
 ) : ViewModel() {
 
@@ -100,30 +100,29 @@ constructor(
   val patientProfileViewData: StateFlow<ProfileViewData.PatientProfileViewData>
     get() = _patientProfileViewDataFlow.asStateFlow()
 
-  var patientProfileData: ProfileData? = null
+  private var patientProfileData: ProfileData? = null
 
-  val applicationConfiguration: ApplicationConfiguration
-    get() = configurationRegistry.retrieveConfiguration(AppConfigClassification.APPLICATION)
+  private val applicationConfiguration: ApplicationConfiguration
+    get() = configurationRegistry.getAppConfigs()
 
   private val isClientVisit: MutableState<Boolean> = mutableStateOf(true)
 
+  val loadingState = MutableStateFlow<DataLoadState<Boolean>>(DataLoadState.Idle)
+
   init {
     syncBroadcaster.registerSyncListener(
-      object : OnSyncListener {
-        override fun onSync(state: SyncJobStatus) {
-          when (state) {
-            is SyncJobStatus.Finished,
-            is SyncJobStatus.Failed,
-            is SyncJobStatus.Glitch, -> {
-              isSyncing.value = false
-              fetchPatientProfileDataWithChildren()
-            }
-            is SyncJobStatus.Started -> {
-              isSyncing.value = true
-            }
-            else -> {
-              isSyncing.value = false
-            }
+      { state ->
+        when (state) {
+          is SyncJobStatus.Succeeded,
+          is SyncJobStatus.Failed, -> {
+            isSyncing.value = false
+            fetchPatientProfileDataWithChildren()
+          }
+          is SyncJobStatus.Started -> {
+            isSyncing.value = true
+          }
+          else -> {
+            isSyncing.value = false
           }
         }
       },
@@ -161,11 +160,11 @@ constructor(
     }
   }
 
-  fun reSync() {
-    syncBroadcaster.runSync()
+  fun reFetch() {
+    fetchPatientProfileDataWithChildren()
   }
 
-  fun filterGuardianVisitTasks() {
+  private fun filterGuardianVisitTasks() {
     if (patientProfileData != null) {
       val hivPatientProfileData = patientProfileData as ProfileData.HivProfileData
       val newProfileData =
@@ -305,14 +304,26 @@ constructor(
               questionnaireType = QuestionnaireType.DEFAULT,
               populationResources = profile.populationResources,
             )
-          R.id.patient_transfer_out ->
-            QuestionnaireActivity.launchQuestionnaire(
-              event.context,
-              questionnaireId = PATIENT_TRANSFER_OUT,
-              clientIdentifier = patientId,
-              questionnaireType = QuestionnaireType.DEFAULT,
-              populationResources = profile.populationResources,
-            )
+          R.id.patient_transfer_out -> {
+            //            QuestionnaireActivity.launchQuestionnaire(
+            //              event.context,
+            //              questionnaireId = PATIENT_TRANSFER_OUT,
+            //              clientIdentifier = patientId,
+            //              questionnaireType = QuestionnaireType.DEFAULT,
+            //              populationResources = profile.populationResources,
+            //            )
+            patientId.let {
+              val urlParams =
+                NavigationArg.bindArgumentsOf(
+                  Pair(NavigationArg.FEATURE, AppFeature.PatientManagement.name),
+                  Pair(NavigationArg.HEALTH_MODULE, HealthModule.HIV),
+                  Pair(NavigationArg.PATIENT_ID, it),
+                )
+              event.navController.navigate(
+                route = "${MainNavigationScreen.TransferOut.route}/$it$urlParams",
+              )
+            }
+          }
           R.id.patient_change_status ->
             QuestionnaireActivity.launchQuestionnaire(
               event.context,
@@ -332,6 +343,13 @@ constructor(
           backReference = event.taskId.asReference(ResourceType.Task).reference,
           populationResources = profile.populationResources,
         )
+      is PatientProfileEvent.FinishVisit ->
+        QuestionnaireActivity.launchQuestionnaireForResult(
+          event.context as Activity,
+          questionnaireId = event.formId,
+          clientIdentifier = patientId,
+          populationResources = profile.populationResources,
+        )
       is PatientProfileEvent.OpenChildProfile -> {
         val urlParams =
           NavigationArg.bindArgumentsOf(
@@ -349,7 +367,28 @@ constructor(
     }
   }
 
-  fun handleVisitType(isClientVisit: Boolean) {
+  fun createLaunchTaskIntent(context: Context, taskFormId: String, taskId: String? = null): Intent {
+    val profile = patientProfileViewData.value
+    return QuestionnaireActivity.createQuestionnaireResultIntent(
+      context as Activity,
+      questionnaireId = taskFormId,
+      clientIdentifier = patientId,
+      backReference = taskId?.asReference(ResourceType.Task)?.reference,
+      populationResources = profile.populationResources,
+    )
+  }
+
+  fun createLaunchQuestionnaireIntent(context: Context, questionnaireId: String): Intent {
+    val profile = patientProfileViewData.value
+    return QuestionnaireActivity.createQuestionnaireIntent(
+      context = context,
+      questionnaireId = questionnaireId,
+      clientIdentifier = patientId,
+      populationResources = profile.populationResources,
+    )
+  }
+
+  private fun handleVisitType(isClientVisit: Boolean) {
     if (isClientVisit) {
       val updatedMenuItems =
         patientProfileUiState.value.overflowMenuItems.map {
@@ -377,26 +416,33 @@ constructor(
     }
   }
 
-  fun fetchPatientProfileDataWithChildren() {
+  private fun fetchPatientProfileDataWithChildren() {
     if (patientId.isNotEmpty()) {
       viewModelScope.launch {
-        registerRepository.loadPatientProfileData(appFeatureName, healthModule, patientId)?.let {
-          patientProfileData = it
-          _patientProfileViewDataFlow.value =
-            profileViewDataMapper.transformInputToOutputModel(it)
-              as ProfileViewData.PatientProfileViewData
-          refreshOverFlowMenu(healthModule = healthModule, patientProfile = it)
-          paginateChildrenRegisterData(true)
-          handleVisitType(isClientVisit.value)
+        try {
+          loadingState.value = DataLoadState.Loading
+          registerRepository.loadPatientProfileData(appFeatureName, healthModule, patientId)?.let {
+            patientProfileData = it
+            _patientProfileViewDataFlow.value =
+              profileViewDataMapper.transformInputToOutputModel(it)
+                as ProfileViewData.PatientProfileViewData
+            refreshOverFlowMenu(healthModule = healthModule, patientProfile = it)
+            paginateChildrenRegisterData(true)
+            handleVisitType(isClientVisit.value)
+          }
+          loadingState.value = DataLoadState.Success(true)
+        } catch (e: Exception) {
+          loadingState.value = DataLoadState.Error(e)
         }
       }
     }
   }
 
-  val paginatedChildrenRegisterData: MutableStateFlow<Flow<PagingData<RegisterViewData>>> =
+  val paginatedChildrenRegisterData:
+    MutableStateFlow<Flow<PagingData<RegisterViewData.ListItemView>>> =
     MutableStateFlow(emptyFlow())
 
-  fun paginateChildrenRegisterData(loadAll: Boolean = true) {
+  private fun paginateChildrenRegisterData(loadAll: Boolean = true) {
     paginatedChildrenRegisterData.value =
       getPager(appFeatureName, healthModule, loadAll).flow.cachedIn(viewModelScope)
   }
@@ -405,12 +451,12 @@ constructor(
     appFeatureName: String?,
     healthModule: HealthModule,
     loadAll: Boolean = true,
-  ): Pager<Int, RegisterViewData> =
+  ): Pager<Int, RegisterViewData.ListItemView> =
     Pager(
       config =
         PagingConfig(
-          pageSize = RegisterPagingSource.DEFAULT_PAGE_SIZE,
-          initialLoadSize = RegisterPagingSource.DEFAULT_INITIAL_LOAD_SIZE,
+          pageSize = PaginationConstant.DEFAULT_PAGE_SIZE,
+          initialLoadSize = PaginationConstant.DEFAULT_INITIAL_LOAD_SIZE,
         ),
       pagingSourceFactory = {
         ChildContactPagingSource(

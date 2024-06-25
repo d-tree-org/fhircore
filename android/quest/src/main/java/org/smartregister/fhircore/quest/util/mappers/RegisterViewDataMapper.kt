@@ -18,7 +18,6 @@ package org.smartregister.fhircore.quest.util.mappers
 
 import android.content.Context
 import androidx.compose.ui.graphics.Color
-import androidx.ui.text.substring
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import org.hl7.fhir.r4.model.Enumerations
@@ -38,11 +37,13 @@ import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 import org.smartregister.fhircore.quest.ui.shared.models.ServiceMember
 
 class RegisterViewDataMapper @Inject constructor(@ApplicationContext val context: Context) :
-  DataMapper<RegisterData, RegisterViewData> {
-  override fun transformInputToOutputModel(inputModel: RegisterData): RegisterViewData {
+  DataMapper<RegisterData, RegisterViewData.ListItemView> {
+  override fun transformInputToOutputModel(
+    inputModel: RegisterData,
+  ): RegisterViewData.ListItemView {
     return when (inputModel) {
       is RegisterData.DefaultRegisterData ->
-        RegisterViewData(
+        RegisterViewData.ListItemView(
           logicalId = inputModel.logicalId,
           title = listOf(inputModel.name, inputModel.age).joinToString(", "),
           subtitle = inputModel.gender.translateGender(context).capitalizeFirstLetter(),
@@ -55,11 +56,15 @@ class RegisterViewDataMapper @Inject constructor(@ApplicationContext val context
             inputModel.servicesDue != 0 -> inputModel.servicesDue.toString()
             else -> null
           }
-        RegisterViewData(
+        RegisterViewData.ListItemView(
           logicalId = inputModel.logicalId,
           title = context.getString(R.string.family_suffix, inputModel.name),
           subtitle = inputModel.address,
-          status = context.getString(R.string.date_last_visited, inputModel.lastSeen),
+          status =
+            context.getString(
+              org.smartregister.fhircore.engine.R.string.date_last_visited,
+              inputModel.lastSeen,
+            ),
           serviceButtonActionable = false,
           serviceButtonBackgroundColor =
             if (inputModel.servicesOverdue != 0) OverdueDarkRedColor else Color.White,
@@ -70,7 +75,7 @@ class RegisterViewDataMapper @Inject constructor(@ApplicationContext val context
               ServiceMember(
                 icon =
                   when {
-                    it.pregnant -> R.drawable.ic_pregnant
+                    it.pregnant -> org.smartregister.fhircore.engine.R.drawable.ic_pregnant
                     it.age.toInt() <= 5 -> R.drawable.ic_kids
                     else -> R.drawable.ic_users
                   },
@@ -86,7 +91,7 @@ class RegisterViewDataMapper @Inject constructor(@ApplicationContext val context
         )
       }
       is RegisterData.AncRegisterData ->
-        RegisterViewData(
+        RegisterViewData.ListItemView(
           logicalId = inputModel.logicalId,
           title = listOf(inputModel.name, inputModel.age).joinToString(),
           status = inputModel.address,
@@ -100,7 +105,7 @@ class RegisterViewDataMapper @Inject constructor(@ApplicationContext val context
           registerType = RegisterData.AncRegisterData::class,
         )
       is RegisterData.HivRegisterData ->
-        RegisterViewData(
+        RegisterViewData.ListItemView(
           logicalId = inputModel.logicalId,
           title = inputModel.name,
           subtitle = "${inputModel.age}, ${inputModel.healthStatus.display}",
@@ -127,8 +132,9 @@ class RegisterViewDataMapper @Inject constructor(@ApplicationContext val context
             },
         )
       is RegisterData.AppointmentRegisterData ->
-        RegisterViewData(
+        RegisterViewData.ListItemView(
           logicalId = inputModel.logicalId,
+          customKey = inputModel.appointmentLogicalId,
           title = inputModel.name,
           subtitle = "${inputModel.reasons.joinToString()}, ${inputModel.age}",
           registerType = RegisterData.AppointmentRegisterData::class,
@@ -154,7 +160,7 @@ class RegisterViewDataMapper @Inject constructor(@ApplicationContext val context
             },
         )
       is RegisterData.TracingRegisterData ->
-        RegisterViewData(
+        RegisterViewData.ListItemView(
           logicalId = inputModel.logicalId,
           title = inputModel.name,
           subtitle =

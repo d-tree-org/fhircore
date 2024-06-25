@@ -25,9 +25,9 @@ import org.hl7.fhir.r4.model.RelatedPerson
 import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.Task
 import org.smartregister.fhircore.engine.data.domain.Guardian
+import org.smartregister.fhircore.engine.data.domain.PhoneContact
 import org.smartregister.fhircore.engine.domain.model.FormButtonData
 import org.smartregister.fhircore.engine.domain.model.TracingAttempt
-import org.smartregister.fhircore.engine.util.extension.extractedTracingCategoryIsPhone
 import org.smartregister.fhircore.quest.ui.family.profile.model.FamilyMemberViewState
 
 sealed class ProfileViewData(
@@ -54,7 +54,6 @@ sealed class ProfileViewData(
     val address: String = "",
     val identifierKey: String = "",
     val showIdentifierInProfile: Boolean = false,
-    val carePlans: List<CarePlan> = emptyList(),
     val conditions: List<Condition> = emptyList(),
     val otherPatients: List<Resource> = emptyList(),
     val viewChildText: String = "",
@@ -63,26 +62,27 @@ sealed class ProfileViewData(
     val addressDistrict: String = "",
     val addressTracingCatchment: String = "",
     val addressPhysicalLocator: String = "",
+    val currentCarePlan: CarePlan? = null,
     val phoneContacts: List<String> = emptyList(),
     val observations: List<Observation> = emptyList(),
     val practitioners: List<Practitioner> = emptyList(),
   ) : ProfileViewData(name = name, logicalId = logicalId, identifier = identifier) {
     val tasksCompleted =
-      carePlans.isNotEmpty() &&
+      currentCarePlan != null &&
         tasks.isNotEmpty() &&
-        tasks.all { it.subtitleStatus == Task.TaskStatus.COMPLETED.name }
+        tasks.all { it.subtitleStatus == CarePlan.CarePlanActivityStatus.COMPLETED.name }
 
-    val guardiansRelatedPersonResource = guardians.filterIsInstance<RelatedPerson>()
+    private val guardiansRelatedPersonResource = guardians.filterIsInstance<RelatedPerson>()
 
     val populationResources: ArrayList<Resource> by lazy {
       val resources = conditions + guardiansRelatedPersonResource + observations
       val resourcesAsBundle = Bundle().apply { resources.map { this.addEntry().resource = it } }
-      arrayListOf(*carePlans.toTypedArray(), *practitioners.toTypedArray(), resourcesAsBundle)
+      val list = arrayListOf(*practitioners.toTypedArray(), resourcesAsBundle)
+      if (currentCarePlan != null) {
+        list.add(currentCarePlan)
+      }
+      list
     }
-
-    // todo : apply filter on tracingTask->meta to check patient is valid for Home or Phone Tracing
-    val validForHomeTrace = false
-    val validForPhoneTracing = tracingTask.extractedTracingCategoryIsPhone("https://d-tree.org")
   }
 
   data class FamilyProfileViewData(
@@ -107,7 +107,7 @@ sealed class ProfileViewData(
     val addressDistrict: String = "",
     val addressTracingCatchment: String = "",
     val addressPhysicalLocator: String = "",
-    val phoneContacts: List<String> = emptyList(),
+    val phoneContacts: List<PhoneContact> = emptyList(),
     val tracingTasks: List<Task> = emptyList(),
     val carePlans: List<CarePlan> = emptyList(),
     val guardians: List<Guardian> = emptyList(),

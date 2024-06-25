@@ -36,16 +36,9 @@ constructor(
     SideMenuOption(
       appFeatureName = AppFeature.PatientManagement.name,
       healthModule = HealthModule.DEFAULT,
-      iconResource = R.drawable.ic_baby_mother,
+      iconResource = org.smartregister.fhircore.engine.R.drawable.ic_baby_mother,
       titleResource = R.string.all_clients,
-      showCount = true,
-      count =
-        suspend {
-          registerRepository.countRegisterData(
-            appFeatureName = AppFeature.PatientManagement.name,
-            healthModule = HealthModule.DEFAULT,
-          )
-        },
+      showCount = false,
     )
 
   fun retrieveSideMenuOptions(): List<SideMenuOption> {
@@ -56,12 +49,15 @@ constructor(
           healthModule = it.healthModule!!,
           iconResource =
             when (it.healthModule) {
-              HealthModule.FAMILY -> R.drawable.ic_households
-              HealthModule.ANC -> R.drawable.ic_baby_mother
-              HealthModule.HOME_TRACING -> R.drawable.ic_home_tracings
-              HealthModule.PHONE_TRACING -> R.drawable.ic_phone_tracings
-              HealthModule.APPOINTMENT -> R.drawable.ic_appointments
-              else -> R.drawable.ic_user
+              HealthModule.FAMILY -> org.smartregister.fhircore.engine.R.drawable.ic_households
+              HealthModule.ANC -> org.smartregister.fhircore.engine.R.drawable.ic_baby_mother
+              HealthModule.HOME_TRACING ->
+                org.smartregister.fhircore.engine.R.drawable.ic_home_tracings
+              HealthModule.PHONE_TRACING ->
+                org.smartregister.fhircore.engine.R.drawable.ic_phone_tracings
+              HealthModule.APPOINTMENT ->
+                org.smartregister.fhircore.engine.R.drawable.ic_appointments
+              else -> org.smartregister.fhircore.engine.R.drawable.ic_user
             },
           titleResource =
             when (it.healthModule) {
@@ -78,14 +74,7 @@ constructor(
               HealthModule.FAMILY_PLANNING -> R.string.family_planning_clients
               else -> 0
             },
-          showCount = true,
-          count =
-            suspend {
-              registerRepository.countRegisterData(
-                appFeatureName = it.feature,
-                healthModule = it.healthModule!!,
-              )
-            },
+          showCount = false,
         )
       }
     return sideMenuOptions.ifEmpty { listOf(defaultSideMenu) }

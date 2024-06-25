@@ -32,15 +32,16 @@ import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.ResourceType
 import org.jetbrains.annotations.TestOnly
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
-import org.smartregister.fhircore.engine.configuration.view.LoginViewConfiguration
-import org.smartregister.fhircore.engine.configuration.view.loginViewConfigurationOf
+import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
+import org.smartregister.fhircore.engine.configuration.app.AppConfigService
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
-import org.smartregister.fhircore.engine.data.remote.auth.KeycloakService
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceDataSource
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
 import org.smartregister.fhircore.engine.data.remote.model.response.OAuthResponse
-import org.smartregister.fhircore.engine.data.remote.model.response.UserInfo
+import org.smartregister.fhircore.engine.data.remote.model.response.UserClaimInfo
 import org.smartregister.fhircore.engine.data.remote.shared.TokenAuthenticator
+import org.smartregister.fhircore.engine.domain.model.LocationHierarchy
+import org.smartregister.fhircore.engine.ui.questionnaire.ContentCache
 import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.SecureSharedPreference
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
@@ -65,8 +66,9 @@ constructor(
   val fhirResourceDataSource: FhirResourceDataSource,
   val defaultRepository: DefaultRepository,
   val tokenAuthenticator: TokenAuthenticator,
-  val keycloakService: KeycloakService,
   val fhirResourceService: FhirResourceService,
+  val configurationRegistry: ConfigurationRegistry,
+  private val appConfigs: AppConfigService,
 ) : ViewModel() {
 
   private val _launchDialPad: MutableLiveData<String?> = MutableLiveData(null)
@@ -93,10 +95,6 @@ constructor(
   val showProgressBar
     get() = _showProgressBar
 
-  private val _loginViewConfiguration = MutableLiveData(loginViewConfigurationOf())
-  val loginViewConfiguration: LiveData<LoginViewConfiguration>
-    get() = _loginViewConfiguration
-
   private val _loadingConfig = MutableLiveData(true)
   val loadingConfig: LiveData<Boolean>
     get() = _loadingConfig
@@ -121,14 +119,6 @@ constructor(
       Timber.e(it)
     }
 
-  private suspend fun fetchUserInfo(): Result<UserInfo?> =
-    runCatching { keycloakService.fetchUserInfo().body() }
-      .onFailure {
-        Timber.e(it)
-        _showProgressBar.postValue(false)
-        _loginErrorState.postValue(LoginErrorState.ERROR_FETCHING_USER)
-      }
-
   private suspend fun fetchPractitioner(keycloakUuid: String?): Result<Bundle> {
     val endpointResult =
       keycloakUuid
@@ -143,11 +133,6 @@ constructor(
       _loginErrorState.postValue(LoginErrorState.ERROR_FETCHING_USER)
     }
     return endpointResult
-  }
-
-  fun updateViewConfigurations(registerViewConfiguration: LoginViewConfiguration) {
-    _loginViewConfiguration.value = registerViewConfiguration
-    _loadingConfig.value = false
   }
 
   fun onUsernameUpdated(username: String) {
@@ -167,51 +152,63 @@ constructor(
   }
 
   private suspend fun login(offline: Boolean) {
-    val usernameValue = _username.value
-    val passwordValue = _password.value
-    if (usernameValue.isNullOrBlank() || passwordValue.isNullOrBlank()) return
+    try {
+      val usernameValue = _username.value
+      val passwordValue = _password.value
+      if (usernameValue.isNullOrBlank() || passwordValue.isNullOrBlank()) return
 
-    _loginErrorState.postValue(null)
-    _showProgressBar.postValue(true)
+      _loginErrorState.postValue(null)
+      _showProgressBar.postValue(true)
 
-    val trimmedUsername = _username.value!!.trim()
-    val passwordAsCharArray = _password.value!!.toCharArray()
-    if (offline) {
-      verifyCredentials(trimmedUsername, passwordAsCharArray)
-      return
-    }
-
-    val practitionerID =
-      sharedPreferences.read(key = SharedPreferenceKey.PRACTITIONER_ID.name, defaultValue = null)
-    val sessionActiveExists = tokenAuthenticator.sessionActive() && practitionerID != null
-    val existingCredentials = secureSharedPreference.retrieveCredentials()
-    val multiUserLoginAttempted =
-      existingCredentials?.username?.equals(trimmedUsername, true) == false
-
-    when {
-      multiUserLoginAttempted -> {
-        _showProgressBar.postValue(false)
-        _loginErrorState.postValue(LoginErrorState.MULTI_USER_LOGIN_ATTEMPT)
+      val trimmedUsername = _username.value!!.trim()
+      val passwordAsCharArray = _password.value!!.toCharArray()
+      if (offline) {
+        verifyCredentials(trimmedUsername, passwordAsCharArray)
+        return
       }
-      sessionActiveExists -> verifyCredentials(trimmedUsername, passwordAsCharArray)
-      else -> {
-        val accessTokenResult = fetchAccessToken(trimmedUsername, passwordAsCharArray)
-        if (accessTokenResult.isFailure) return
 
-        if (accessTokenResult.getOrNull() == null) return
+      val practitionerID =
+        sharedPreferences.read(key = SharedPreferenceKey.PRACTITIONER_ID.name, defaultValue = null)
+      val sessionActiveExists = tokenAuthenticator.sessionActive() && practitionerID != null
+      val existingCredentials = secureSharedPreference.retrieveCredentials()
+      val multiUserLoginAttempted =
+        existingCredentials?.username?.equals(trimmedUsername, true) == false
 
-        val jwtParser = Jwts.parser()
-        val jwt = accessTokenResult.getOrNull()!!.accessToken!!.substringBeforeLast('.').plus(".")
-        val subClaim = jwtParser.parseClaimsJwt(jwt)
-        val keycloakUuid = subClaim.body["sub"].toString()
-        val practitionerDetailsResult = fetchPractitioner(keycloakUuid)
-        if (practitionerDetailsResult.isFailure) return
+      when {
+        multiUserLoginAttempted -> {
+          _showProgressBar.postValue(false)
+          _loginErrorState.postValue(LoginErrorState.MULTI_USER_LOGIN_ATTEMPT)
+        }
+        sessionActiveExists -> verifyCredentials(trimmedUsername, passwordAsCharArray)
+        else -> {
+          val accessTokenResult = fetchAccessToken(trimmedUsername, passwordAsCharArray)
+          if (accessTokenResult.isFailure) return
 
-        savePractitionerDetails(practitionerDetailsResult.getOrDefault(Bundle()))
+          if (accessTokenResult.getOrNull() == null) return
 
-        _showProgressBar.postValue(false)
-        updateNavigateHome(true)
+          val jwtParser = Jwts.parser()
+          val jwt = accessTokenResult.getOrNull()!!.accessToken!!.substringBeforeLast('.').plus(".")
+          val subClaim = jwtParser.parseClaimsJwt(jwt)
+          val userInfo = UserClaimInfo.parseFromClaims(subClaim.body)
+          val practitionerDetailsResult = fetchPractitioner(userInfo.keycloakUuid)
+          if (practitionerDetailsResult.isFailure) return
+
+          savePractitionerDetails(practitionerDetailsResult.getOrDefault(Bundle()), userInfo)
+
+          _showProgressBar.postValue(false)
+          updateNavigateHome(true)
+        }
       }
+    } catch (ex: Exception) {
+      Timber.e(ex)
+      if (ex is PractitionerNotFoundException) {
+        _loginErrorState.postValue(LoginErrorState.INVALID_CREDENTIALS)
+      } else {
+        _loginErrorState.postValue(LoginErrorState.ERROR_FETCHING_USER)
+      }
+      _showProgressBar.postValue(false)
+    } finally {
+      ContentCache.invalidate()
     }
   }
 
@@ -240,9 +237,16 @@ constructor(
     _navigateToHome.postValue(navigateHome)
   }
 
-  suspend fun savePractitionerDetails(bundle: Bundle) {
+  suspend fun savePractitionerDetails(bundle: Bundle, userClaimInfo: UserClaimInfo) {
     if (bundle.entry.isNullOrEmpty()) return
     val practitionerDetails = bundle.entry.first().resource as PractitionerDetails
+
+    if (
+      practitionerDetails.id ==
+        "${appConfigs.getBaseFhirUrl()}practitioner-details/Practitioner Not Found"
+    ) {
+      throw PractitionerNotFoundException()
+    }
 
     val careTeams = practitionerDetails.fhirPractitionerDetails?.careTeams ?: listOf()
     val organizations = practitionerDetails.fhirPractitionerDetails?.organizations ?: listOf()
@@ -261,32 +265,44 @@ constructor(
         groups.toTypedArray() +
         practitionerRoles.toTypedArray() +
         practitioners.toTypedArray()
-    defaultRepository.saveRemote(*remoteResources)
-    with(sharedPreferences) {
-      write(ResourceType.CareTeam.name, careTeams.map { it.id.extractLogicalIdUuid() })
-      write(ResourceType.Organization.name, organizations.map { it.id.extractLogicalIdUuid() })
-      write(ResourceType.Location.name, locations.map { it.id.extractLogicalIdUuid() })
-    }
+    defaultRepository.saveLocalOnly(*remoteResources)
 
-    sharedPreferences.write(
-      SharedPreferenceKey.PRACTITIONER_LOCATION_HIERARCHIES.name,
-      locationHierarchies,
-    )
-    sharedPreferences.write(
-      key = SharedPreferenceKey.PRACTITIONER_ID.name,
-      value =
+    with(sharedPreferences) {
+      val organisationIds = organizations.map { it.id.extractLogicalIdUuid() }
+      val practitionerId =
         practitionerDetails.fhirPractitionerDetails
           ?.practitioners
           ?.firstOrNull()
           ?.id
-          ?.extractLogicalIdUuid(),
-    )
-
-    sharedPreferences.write(SharedPreferenceKey.PRACTITIONER_DETAILS.name, practitionerDetails)
+          ?.extractLogicalIdUuid()
+      write(ResourceType.CareTeam.name, careTeams.map { it.id.extractLogicalIdUuid() })
+      write(ResourceType.Organization.name, organisationIds)
+      write(ResourceType.Location.name, locations.map { it.id.extractLogicalIdUuid() })
+      write(
+        key = SharedPreferenceKey.PRACTITIONER_ID.name,
+        value = practitionerId,
+      )
+      write(
+        key = SharedPreferenceKey.PRACTITIONER_LOCATION_HIERARCHIES.name,
+        value = locationHierarchies.map { LocationHierarchy.fromLocationHierarchy(it) },
+      )
+      write(SharedPreferenceKey.PRACTITIONER_DETAILS.name, practitionerDetails)
+      write(
+        SharedPreferenceKey.USER_CLAIM_INFO.name,
+        userClaimInfo.copy(
+          organization = organisationIds.firstOrNull() ?: userClaimInfo.organization,
+          practitionerId = practitionerId,
+        ),
+      )
+    }
   }
 
   fun loadLastLoggedInUsername() {
     _username.postValue(accountAuthenticator.retrieveLastLoggedInUsername() ?: "")
+  }
+
+  fun fetchLoginConfigs() {
+    _loadingConfig.value = false
   }
 
   companion object {
