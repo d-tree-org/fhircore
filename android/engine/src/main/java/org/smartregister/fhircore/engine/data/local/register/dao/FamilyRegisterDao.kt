@@ -17,12 +17,14 @@
 package org.smartregister.fhircore.engine.data.local.register.dao
 
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.get
-import com.google.android.fhir.logicalId
 import com.google.android.fhir.search.search
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import org.hl7.fhir.r4.model.CarePlan
 import org.hl7.fhir.r4.model.Condition
 import org.hl7.fhir.r4.model.Flag
@@ -34,6 +36,7 @@ import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.Task
 import org.smartregister.fhircore.engine.appfeature.model.HealthModule.FAMILY
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
+import org.smartregister.fhircore.engine.configuration.view.SearchFilter
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.domain.model.FamilyMemberProfileData
 import org.smartregister.fhircore.engine.domain.model.ProfileData
@@ -75,10 +78,9 @@ constructor(
     val families =
       fhirEngine.search<Group> {
         getRegisterDataFilters(FAMILY.name).forEach { filterBy(it) }
-        count =
-          if (loadAll) {
-            countRegisterData(appFeatureName).toInt()
-          } else PaginationConstant.DEFAULT_PAGE_SIZE
+        if (!loadAll) {
+          count = PaginationConstant.DEFAULT_PAGE_SIZE + PaginationConstant.EXTRA_ITEM_COUNT
+        }
         from = currentPage * PaginationConstant.DEFAULT_PAGE_SIZE
       }
 
@@ -139,14 +141,18 @@ constructor(
     )
   }
 
-  override suspend fun countRegisterData(appFeatureName: String?): Long {
+  override suspend fun countRegisterData(): Flow<Long> {
     // TODO fix this workaround for groups count
-    return fhirEngine
-      .search<Group> { getRegisterDataFilters(FAMILY.name).forEach { filterBy(it) } }
-      .map { it.resource }
-      .filter { it.active && !it.name.isNullOrEmpty() }
-      .size
-      .toLong()
+    return flow {
+      val count =
+        fhirEngine
+          .search<Group> { getRegisterDataFilters(FAMILY.name).forEach { filterBy(it) } }
+          .map { it.resource }
+          .filter { it.active && !it.name.isNullOrEmpty() }
+          .size
+          .toLong()
+      emit(count)
+    }
   }
 
   private suspend fun loadFamilyHead(family: Group) =
@@ -342,8 +348,7 @@ constructor(
       subjectType = ResourceType.Patient,
     )
 
-  private fun getRegisterDataFilters(id: String) =
-    configurationRegistry.retrieveDataFilterConfiguration(id)
+  private fun getRegisterDataFilters(id: String) = listOf<SearchFilter>()
 
   companion object {
     const val FAMILY_CARE_PLAN = "family_care_plan"

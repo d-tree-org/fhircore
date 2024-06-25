@@ -25,10 +25,10 @@ import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.parser.IParser
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.SearchResult
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.datacapture.mapping.ResourceMapper
 import com.google.android.fhir.db.ResourceNotFoundException
 import com.google.android.fhir.get
-import com.google.android.fhir.logicalId
 import com.google.android.fhir.search.Search
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -85,7 +85,6 @@ import org.robolectric.util.ReflectionHelpers
 import org.smartregister.fhircore.engine.app.fakes.Faker
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
-import org.smartregister.fhircore.engine.cql.LibraryEvaluator
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.data.remote.model.response.UserInfo
 import org.smartregister.fhircore.engine.robolectric.RobolectricTest
@@ -129,7 +128,6 @@ class QuestionnaireViewModelTest : RobolectricTest() {
 
   private lateinit var defaultRepo: DefaultRepository
 
-  private val libraryEvaluator: LibraryEvaluator = mockk()
   private val configurationRegistry = Faker.buildTestConfigurationRegistry()
   private lateinit var samplePatientRegisterQuestionnaire: Questionnaire
   private lateinit var questionnaireConfig: QuestionnaireConfig
@@ -182,7 +180,6 @@ class QuestionnaireViewModelTest : RobolectricTest() {
           transformSupportServices = mockk(),
           dispatcherProvider = defaultRepo.dispatcherProvider,
           sharedPreferencesHelper = sharedPreferencesHelper,
-          libraryEvaluatorProvider = { libraryEvaluator },
           tracer = FakePerformanceReporter(),
         ),
       )
@@ -468,6 +465,8 @@ class QuestionnaireViewModelTest : RobolectricTest() {
         resourceId = "12345",
         questionnaireResponse = questionnaireResponse,
         questionnaire = questionnaire,
+        backReference =
+          intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
       )
 
       coVerify { defaultRepo.addOrUpdate(resource = patient) }
@@ -504,6 +503,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
       resourceId = null,
       questionnaireResponse = questionnaireResponse,
       questionnaire = questionnaire,
+      backReference = intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
     )
 
     coVerify { defaultRepo.addOrUpdate(resource = any()) }
@@ -529,6 +529,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
       resourceId = "12345",
       questionnaireResponse = QuestionnaireResponse(),
       questionnaire = questionnaire,
+      backReference = intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
     )
 
     coVerify(timeout = 2000) {
@@ -568,6 +569,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
       questionnaireResponse = QuestionnaireResponse(),
       questionnaireType = QuestionnaireType.EDIT,
       questionnaire = questionnaire,
+      backReference = intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
     )
 
     coVerifyOrder {
@@ -804,6 +806,8 @@ class QuestionnaireViewModelTest : RobolectricTest() {
         resourceId = null,
         questionnaireResponse = questionnaireResponse,
         questionnaire = questionnaire,
+        backReference =
+          intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
       )
     }
 
@@ -894,6 +898,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
       questionnaireResponse = questionnaireResponse,
       questionnaireType = QuestionnaireType.EDIT,
       questionnaire = questionnaire,
+      backReference = intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
     )
 
     verify { questionnaireResponse.retainMetadata(oldQuestionnaireResponse) }
@@ -1040,6 +1045,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
       resourceId = "0993ldsfkaljlsnldm",
       questionnaireResponse = questionnaireResponse,
       questionnaire = questionnaire,
+      backReference = intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
     )
 
     coVerify(exactly = 1, timeout = 2000) { questionnaireViewModel.saveBundleResources(any()) }
@@ -1080,20 +1086,19 @@ class QuestionnaireViewModelTest : RobolectricTest() {
       Bundle().apply { addEntry().resource = samplePatient() }
 
     coEvery { questionnaireViewModel.saveQuestionnaireResponse(any(), any()) } just runs
-    coEvery { libraryEvaluator.runCqlLibrary(any(), any(), any(), any()) } returns listOf()
 
     questionnaireViewModel.extractAndSaveResources(
       context = context,
       resourceId = "0993ldsfkaljlsnldm",
       questionnaireResponse = questionnaireResponse,
       questionnaire = questionnaire,
+      backReference = intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_BACK_REFERENCE_KEY),
     )
 
     coVerify(exactly = 1, timeout = 2000) { questionnaireViewModel.saveBundleResources(any()) }
     coVerify(exactly = 1, timeout = 2000) {
       questionnaireViewModel.saveQuestionnaireResponse(questionnaire, questionnaireResponse)
     }
-    coVerify { libraryEvaluator.runCqlLibrary("123", any(), any(), any()) }
   }
 
   @Test

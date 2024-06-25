@@ -51,6 +51,7 @@ class AppSettingScreenKtTest : RobolectricTest() {
         onAppIdChanged = listenersSpy.onAppIdChanged,
         fetchConfiguration = listenersSpy.fetchConfiguration,
         error = "",
+        state = state,
       )
     }
 
@@ -67,6 +68,7 @@ class AppSettingScreenKtTest : RobolectricTest() {
         onAppIdChanged = listenersSpy.onAppIdChanged,
         fetchConfiguration = listenersSpy.fetchConfiguration,
         error = "",
+        state = state,
       )
     }
 
@@ -84,6 +86,7 @@ class AppSettingScreenKtTest : RobolectricTest() {
         onAppIdChanged = listenersSpy.onAppIdChanged,
         fetchConfiguration = listenersSpy.fetchConfiguration,
         error = error,
+        state = state,
       )
     }
 

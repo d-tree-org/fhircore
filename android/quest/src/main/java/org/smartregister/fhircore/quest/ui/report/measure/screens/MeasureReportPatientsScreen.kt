@@ -35,7 +35,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.items
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import kotlinx.coroutines.flow.emptyFlow
 import org.smartregister.fhircore.engine.ui.components.CircularProgressBar
 import org.smartregister.fhircore.engine.ui.components.ErrorMessage
@@ -64,7 +65,7 @@ fun MeasureReportPatientsScreen(
           onTextChanged = {
             measureReportViewModel.onEvent(MeasureReportEvent.OnSearchTextChanged(it))
           },
-          onBackPress = { navController.popBackStack() },
+          onBackPress = { navController.navigateUp() },
           searchTextState = measureReportViewModel.searchTextState,
         )
         Text(
@@ -79,12 +80,16 @@ fun MeasureReportPatientsScreen(
   ) { innerPadding ->
     Box(modifier = modifier.padding(innerPadding)) {
       LazyColumn {
-        items(pagingItems, key = { it.logicalId }) {
+        items(
+          pagingItems.itemCount,
+          key = pagingItems.itemKey { it.logicalId },
+          contentType = pagingItems.itemContentType(),
+        ) {
           MeasureReportPatientRow(
-            measureReportPatientViewData = it!!,
+            measureReportPatientViewData = pagingItems[it]!!,
             onRowClick = { patientViewData ->
               measureReportViewModel.onEvent(MeasureReportEvent.OnPatientSelected(patientViewData))
-              navController.popBackStack()
+              navController.navigateUp()
             },
           )
           Divider(color = DividerColor, thickness = 1.dp)

@@ -39,13 +39,13 @@ import androidx.navigation.NavHostController
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.items
+import androidx.paging.compose.itemContentType
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.flow.StateFlow
 import org.smartregister.fhircore.engine.ui.components.EmptyState
 import org.smartregister.fhircore.engine.ui.components.ErrorMessage
-import org.smartregister.fhircore.quest.ui.patient.register.components.BoxedCircularProgressBar
+import org.smartregister.fhircore.quest.ui.components.BoxedCircularProgressBar
 import org.smartregister.fhircore.quest.util.GeneralListViewModel
 import timber.log.Timber
 
@@ -61,7 +61,7 @@ fun <T : Any> TracingDataScaffoldList(
       TopAppBar(
         title = { Text(title) },
         navigationIcon = {
-          IconButton(onClick = { navController.popBackStack() }) {
+          IconButton(onClick = { navController.navigateUp() }) {
             Icon(Icons.Filled.ArrowBack, null)
           }
         },
@@ -101,7 +101,9 @@ fun <T : Any> TracingDataList(
         verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         item { Spacer(modifier = Modifier.height(8.dp)) }
-        items(pagingItems) { history -> if (history != null) content(history) }
+        items(pagingItems.itemCount, contentType = pagingItems.itemContentType()) { index ->
+          pagingItems[index]?.let { content(it) }
+        }
         pagingItems.apply {
           if (
             itemCount <= 0 &&

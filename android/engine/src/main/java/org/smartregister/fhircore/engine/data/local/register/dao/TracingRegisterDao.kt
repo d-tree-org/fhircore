@@ -21,7 +21,7 @@ import androidx.annotation.VisibleForTesting.Companion.PROTECTED
 import ca.uhn.fhir.rest.gclient.TokenClientParam
 import ca.uhn.fhir.rest.param.ParamPrefixEnum
 import com.google.android.fhir.FhirEngine
-import com.google.android.fhir.logicalId
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.search.BaseSearch
 import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Order
@@ -32,20 +32,23 @@ import com.google.android.fhir.search.search
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Date
+import kotlin.math.max
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import org.hl7.fhir.r4.model.Appointment
 import org.hl7.fhir.r4.model.CarePlan
+import org.hl7.fhir.r4.model.CodeType
 import org.hl7.fhir.r4.model.Coding
 import org.hl7.fhir.r4.model.DateTimeType
-import org.hl7.fhir.r4.model.Identifier
 import org.hl7.fhir.r4.model.ListResource
 import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.Practitioner
 import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.Task
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
-import org.smartregister.fhircore.engine.configuration.app.AppConfigClassification
 import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.data.domain.Guardian
+import org.smartregister.fhircore.engine.data.domain.PregnancyStatus
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.data.local.RegisterFilter
 import org.smartregister.fhircore.engine.data.local.TracingAgeFilterEnum
@@ -58,6 +61,7 @@ import org.smartregister.fhircore.engine.domain.util.PaginationConstant
 import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
+import org.smartregister.fhircore.engine.util.extension.activePatientConditions
 import org.smartregister.fhircore.engine.util.extension.asDdMmmYyyy
 import org.smartregister.fhircore.engine.util.extension.asReference
 import org.smartregister.fhircore.engine.util.extension.extractAddress
@@ -69,6 +73,8 @@ import org.smartregister.fhircore.engine.util.extension.extractHealthStatusFromM
 import org.smartregister.fhircore.engine.util.extension.extractName
 import org.smartregister.fhircore.engine.util.extension.extractOfficialIdentifier
 import org.smartregister.fhircore.engine.util.extension.extractTelecom
+import org.smartregister.fhircore.engine.util.extension.fetch
+import org.smartregister.fhircore.engine.util.extension.getPregnancyStatus
 import org.smartregister.fhircore.engine.util.extension.referenceValue
 import org.smartregister.fhircore.engine.util.extension.safeSubList
 import org.smartregister.fhircore.engine.util.extension.toAgeDisplay
@@ -85,11 +91,7 @@ abstract class TracingRegisterDao(
 
   @VisibleForTesting(otherwise = PROTECTED) abstract val tracingCoding: Coding
 
-  private val alternateTracingCoding = lazy {
-    tracingCoding.copy().apply { system = "http://snomed.info/sct" }
-  }
-
-  fun hivPatientIdentifier(patient: Patient): String =
+  private fun hivPatientIdentifier(patient: Patient): String =
     // would either be an ART or HCC number
     patient.extractOfficialIdentifier() ?: HivRegisterDao.ResourceValue.BLANK
 
@@ -103,9 +105,7 @@ abstract class TracingRegisterDao(
   private val filtersForValidTask: BaseSearch.() -> Unit = {
     filter(
       TokenClientParam("_tag"),
-      { value = of(tracingCoding) },
-      { value = of(alternateTracingCoding.value) },
-      operation = Operation.OR,
+      { value = of(CodeType(tracingCoding.code)) },
     )
     filter(
       Task.STATUS,
@@ -131,11 +131,10 @@ abstract class TracingRegisterDao(
     val filterFilter = applicationConfiguration().patientTypeFilterTagViaMetaCodingSystem
     val patients: List<Patient> =
       fhirEngine
-        .search<Patient> {
-          if (!loadAll) count = PaginationConstant.DEFAULT_PAGE_SIZE
-
-          if (page >= 0) from = page * PaginationConstant.DEFAULT_PAGE_SIZE
-
+        .fetch<Patient>(
+          offset = max(page, 0) * PaginationConstant.DEFAULT_PAGE_SIZE,
+          loadAll = loadAll,
+        ) {
           has<Task>(Task.SUBJECT) { filtersForValidTask() }
 
           filters.patientCategory?.let {
@@ -206,7 +205,7 @@ abstract class TracingRegisterDao(
     val tasks: List<Task> =
       if (patientRefs.isNotEmpty()) {
         fhirEngine
-          .search<Task> {
+          .fetch<Task> {
             filtersForValidTask()
             filter(Task.SUBJECT, *patientRefs, operation = Operation.OR)
           }
@@ -239,7 +238,6 @@ abstract class TracingRegisterDao(
   override suspend fun loadRegisterFiltered(
     currentPage: Int,
     loadAll: Boolean,
-    appFeatureName: String?,
     filters: RegisterFilter,
   ): List<RegisterData> {
     val patientTasksPairs = searchRegister(filters, loadAll = true)
@@ -253,7 +251,7 @@ abstract class TracingRegisterDao(
     val subjectListResourcesGroup: Map<String, ListResource> =
       if (patientSubjectRefFilterCriteria.isNotEmpty()) {
         fhirEngine
-          .search<ListResource> {
+          .fetch<ListResource> {
             filter(ListResource.SUBJECT, *patientSubjectRefFilterCriteria, operation = Operation.OR)
             filter(ListResource.STATUS, { value = of(ListResource.ListStatus.CURRENT.toCode()) })
             sort(ListResource.TITLE, Order.DESCENDING)
@@ -278,7 +276,7 @@ abstract class TracingRegisterDao(
 
     return if (!loadAll) {
       val from = currentPage * PaginationConstant.DEFAULT_PAGE_SIZE
-      val to = from + PaginationConstant.DEFAULT_PAGE_SIZE
+      val to = from + PaginationConstant.DEFAULT_PAGE_SIZE + PaginationConstant.EXTRA_ITEM_COUNT
       tracingData.safeSubList(from..to)
     } else {
       tracingData
@@ -291,7 +289,7 @@ abstract class TracingRegisterDao(
     appFeatureName: String?,
   ): List<RegisterData> {
     val tracingPatients =
-      fhirEngine.search<Patient> { has<Task>(Task.SUBJECT) { filtersForValidTask() } }
+      fhirEngine.fetch<Patient> { has<Task>(Task.SUBJECT) { filtersForValidTask() } }
 
     return tracingPatients
       .map { it.resource }
@@ -301,7 +299,7 @@ abstract class TracingRegisterDao(
       .let {
         if (!loadAll) {
           val from = currentPage * PaginationConstant.DEFAULT_PAGE_SIZE
-          val to = from + PaginationConstant.DEFAULT_PAGE_SIZE
+          val to = from + PaginationConstant.DEFAULT_PAGE_SIZE + PaginationConstant.EXTRA_ITEM_COUNT
           it.safeSubList(from..to)
         } else {
           it
@@ -313,11 +311,7 @@ abstract class TracingRegisterDao(
     val patient = defaultRepository.loadResource<Patient>(resourceId)
     return patient?.let {
       val metaCodingSystemTag =
-        configurationRegistry
-          .retrieveConfiguration<ApplicationConfiguration>(
-            AppConfigClassification.APPLICATION,
-          )
-          .patientTypeFilterTagViaMetaCodingSystem
+        configurationRegistry.getAppConfigs().patientTypeFilterTagViaMetaCodingSystem
       val tasks = validTasks(patient)
 
       val attempt = tracingRepository.getTracingAttempt(patient, tasks)
@@ -345,12 +339,13 @@ abstract class TracingRegisterDao(
         healthStatus = patient.extractHealthStatusFromMeta(metaCodingSystemTag),
         tasks = tasks,
         services = patient.activeCarePlans(),
-        conditions = patient.activeConditions(),
+        conditions = defaultRepository.activePatientConditions(patient.logicalId),
         guardians = patient.guardians(),
         practitioners = patient.practitioners(),
         currentAttempt =
           attempt.copy(
-            reasons = tasks.mapNotNull { task -> task.reasonCode?.codingFirstRep?.display },
+            reasons =
+              tasks.mapNotNull { task -> task.reasonCode?.codingFirstRep?.display }.distinct(),
           ),
       )
     }
@@ -359,7 +354,7 @@ abstract class TracingRegisterDao(
   private suspend fun getDueDate(patient: Patient): Date? {
     val appointments =
       fhirEngine
-        .search<Appointment> {
+        .fetch<Appointment> {
           filter(Appointment.STATUS, { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) })
           filter(Appointment.ACTOR, { value = patient.referenceValue() })
           sort(Appointment.DATE, Order.ASCENDING)
@@ -379,11 +374,6 @@ abstract class TracingRegisterDao(
         subjectParam = CarePlan.SUBJECT,
       )
       .filter { carePlan -> carePlan.status == CarePlan.CarePlanStatus.ACTIVE }
-
-  suspend fun Patient.activeConditions() =
-    defaultRepository.patientConditions(this.logicalId).filter { condition ->
-      condition.clinicalStatus.coding.any { it.code == "active" }
-    }
 
   suspend fun Patient.practitioners(): List<Practitioner> {
     return generalPractitioner.mapNotNull {
@@ -408,28 +398,39 @@ abstract class TracingRegisterDao(
       }
       .map { defaultRepository.loadResource(it.other) }
 
-  override suspend fun countRegisterFiltered(
-    appFeatureName: String?,
-    filters: RegisterFilter,
-  ): Long {
+  override suspend fun countRegisterFiltered(filters: RegisterFilter): Long {
     return searchRegister(filters, loadAll = true).count().toLong()
   }
 
-  override suspend fun countRegisterData(appFeatureName: String?): Long {
-    val patients =
-      fhirEngine
-        .search<Patient> { has<Task>(Task.SUBJECT) { filtersForValidTask() } }
-        .map { it.resource }
-    return patients.count { validTasks(it).any() }.toLong()
+  override suspend fun countRegisterData(): Flow<Long> {
+    var counter = 0L
+    var offset = 0
+    val pageCount = 100
+
+    return flow {
+      do {
+        val tracingPatients =
+          fhirEngine.search<Patient> {
+            has<Task>(Task.SUBJECT) { filtersForValidTask() }
+            from = offset
+            count = pageCount
+          }
+        offset += tracingPatients.size
+        val validTracingPatientsCount =
+          tracingPatients.map { it.resource }.count { validTasks(it).any() }.toLong()
+        counter += validTracingPatientsCount
+        emit(counter)
+      } while (tracingPatients.isNotEmpty())
+    }
   }
 
   private fun applicationConfiguration(): ApplicationConfiguration =
-    configurationRegistry.retrieveConfiguration(AppConfigClassification.APPLICATION)
+    configurationRegistry.getAppConfigs()
 
   private suspend fun validTasks(patient: Patient): List<Task> {
     val patientTasks =
       fhirEngine
-        .search<Task> {
+        .fetch<Task> {
           filtersForValidTask()
           filter(Task.SUBJECT, { value = patient.referenceValue() })
         }
@@ -452,24 +453,25 @@ abstract class TracingRegisterDao(
         .getTracingAttempt(list = listResource)
         .copy(reasons = tasks.mapNotNull { task -> task.reasonCode?.codingFirstRep?.code })
 
-    val oldestTaskDate = tasks.minOfOrNull { it.authoredOn }
+    val oldestTaskDate = tasks.minOfOrNull { it.authoredOn ?: Date() }
+    val pregnancyStatus = defaultRepository.getPregnancyStatus(this.logicalId)
+
     return RegisterData.TracingRegisterData(
       logicalId = this.logicalId,
       name = this.extractName(),
-      identifier =
-        this.identifier.firstOrNull { it.use == Identifier.IdentifierUse.OFFICIAL }?.value,
+      identifier = this.extractOfficialIdentifier(),
       gender = this.gender,
       familyName = this.extractFamilyName(),
       healthStatus =
         this.extractHealthStatusFromMeta(
           applicationConfiguration().patientTypeFilterTagViaMetaCodingSystem,
         ),
-      isPregnant = defaultRepository.isPatientPregnant(this),
-      isBreastfeeding = defaultRepository.isPatientBreastfeeding(this),
+      isPregnant = pregnancyStatus == PregnancyStatus.Pregnant,
+      isBreastfeeding = pregnancyStatus == PregnancyStatus.BreastFeeding,
       attempts = attempt.numberOfAttempts,
       lastAttemptDate = attempt.lastAttempt,
       firstAdded = oldestTaskDate,
-      reasons = attempt.reasons,
+      reasons = attempt.reasons.distinct(),
     )
   }
 

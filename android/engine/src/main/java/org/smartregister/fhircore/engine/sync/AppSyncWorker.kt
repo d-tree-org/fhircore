@@ -25,10 +25,13 @@ import com.google.android.fhir.sync.ConflictResolver
 import com.google.android.fhir.sync.DownloadWorkManager
 import com.google.android.fhir.sync.FhirSyncWorker
 import com.google.android.fhir.sync.download.ResourceParamsBasedDownloadWorkManager
+import com.google.android.fhir.sync.upload.UploadStrategy
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.util.AppDataStore
+import org.smartregister.fhircore.engine.util.DispatcherProvider
 
 @HiltWorker
 class AppSyncWorker
@@ -39,6 +42,7 @@ constructor(
   private val syncListenerManager: SyncListenerManager,
   val engine: FhirEngine,
   val dataStore: AppDataStore,
+  val dispatcherProvider: DispatcherProvider,
 ) : FhirSyncWorker(appContext, workerParams) {
   override fun getConflictResolver(): ConflictResolver = AcceptLocalConflictResolver
 
@@ -58,6 +62,12 @@ constructor(
           }
         },
     )
+
+  override suspend fun doWork(): Result {
+    return withContext(dispatcherProvider.singleThread()) { super.doWork() }
+  }
+
+  override fun getUploadStrategy(): UploadStrategy = UploadStrategy.AllChangesSquashedBundlePut
 
   override fun getFhirEngine(): FhirEngine = engine
 }

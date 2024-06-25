@@ -28,9 +28,7 @@ import com.google.android.fhir.sync.SyncJobStatus
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlin.math.max
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.hl7.fhir.r4.model.Encounter
 import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
@@ -42,7 +40,6 @@ import org.smartregister.fhircore.engine.ui.base.AlertDialogue
 import org.smartregister.fhircore.engine.ui.base.BaseMultiLanguageActivity
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity.Companion.QUESTIONNAIRE_BACK_REFERENCE_KEY
-import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity.Companion.QUESTIONNAIRE_RES_ENCOUNTER
 import org.smartregister.fhircore.engine.ui.theme.AppTheme
 import org.smartregister.fhircore.engine.util.extension.asReference
 import org.smartregister.fhircore.engine.util.extension.extractId
@@ -104,16 +101,6 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
           AppMainEvent.UpdateSyncState(state, getString(R.string.syncing_in_progress)),
         )
       }
-      is SyncJobStatus.Glitch -> {
-        appMainViewModel.onEvent(
-          AppMainEvent.UpdateSyncState(state, appMainViewModel.retrieveLastSyncTimestamp()),
-        )
-        Timber.w(
-          (if (state?.exceptions != null) state.exceptions else emptyList()).joinToString {
-            it.exception.message.toString()
-          },
-        )
-      }
       is SyncJobStatus.Failed -> {
         if (
           !state?.exceptions.isNullOrEmpty() &&
@@ -127,8 +114,9 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
           state?.exceptions?.any {
             it.exception is HttpException && (it.exception as HttpException).code() == 401
           } ?: false
-        val message = if (hasAuthError) R.string.session_expired else R.string.sync_check_internet
-        showToast(getString(message))
+        if (hasAuthError) {
+          showToast(getString(R.string.session_expired))
+        }
         appMainViewModel.onEvent(
           AppMainEvent.UpdateSyncState(
             state,
@@ -149,7 +137,7 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
         Timber.w(state?.exceptions?.joinToString { it.exception.message.toString() })
         scheduleFhirBackgroundWorkers()
       }
-      is SyncJobStatus.Finished -> {
+      is SyncJobStatus.Succeeded -> {
         showToast(getString(R.string.sync_completed))
         appMainViewModel.run {
           onEvent(
@@ -171,7 +159,8 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
       schedulePlan(applicationContext)
       scheduleCheckForMissedAppointments(applicationContext)
       scheduleWelcomeServiceAppointments(applicationContext)
-      scheduleWelcomeServiceToCarePlanForMissedAppointments(applicationContext)
+      //      scheduleWelcomeServiceToCarePlanForMissedAppointments(applicationContext)
+      scheduleResourcePurger(applicationContext)
     }
   }
 
@@ -214,16 +203,6 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
             appMainViewModel.onTaskComplete(System.currentTimeMillis().toString())
           }
           it.startsWith(ResourceType.Task.name) -> {
-            lifecycleScope.launch(Dispatchers.IO) {
-              val encounterStatus =
-                data.getStringExtra(QUESTIONNAIRE_RES_ENCOUNTER)?.let { code ->
-                  Encounter.EncounterStatus.fromCode(code)
-                }
-              fhirCarePlanGenerator.completeTask(
-                it.asReference(ResourceType.Task).extractId(),
-                encounterStatus,
-              )
-            }
             appMainViewModel.onTaskComplete(
               data.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_ARG_FORM),
             )

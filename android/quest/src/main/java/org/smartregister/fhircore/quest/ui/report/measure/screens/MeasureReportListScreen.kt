@@ -39,7 +39,8 @@ import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.items
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import kotlinx.coroutines.flow.Flow
 import org.smartregister.fhircore.engine.ui.components.LoadingIndicator
 import org.smartregister.fhircore.engine.ui.theme.DividerColor
@@ -59,9 +60,9 @@ fun MeasureReportListScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text(text = stringResource(R.string.reports)) },
+        title = { Text(text = stringResource(org.smartregister.fhircore.engine.R.string.reports)) },
         navigationIcon = {
-          IconButton(onClick = { navController.popBackStack() }) {
+          IconButton(onClick = { navController.navigateUp() }) {
             Icon(Icons.Filled.ArrowBack, null)
           }
         },
@@ -72,8 +73,15 @@ fun MeasureReportListScreen(
   ) { innerPadding ->
     Box(modifier = modifier.padding(innerPadding)) {
       LazyColumn(modifier = modifier.background(Color.White).fillMaxSize()) {
-        items(items = lazyReportItems, key = { it.id }) { item ->
-          MeasureReportRow(item!!, { onReportMeasureClicked(item) })
+        items(
+          count = lazyReportItems.itemCount,
+          key = lazyReportItems.itemKey { it.id },
+          contentType = lazyReportItems.itemContentType(),
+        ) { index ->
+          MeasureReportRow(
+            lazyReportItems[index]!!,
+            { onReportMeasureClicked(lazyReportItems[index]!!) },
+          )
           Divider(color = DividerColor, thickness = 1.dp)
         }
 
