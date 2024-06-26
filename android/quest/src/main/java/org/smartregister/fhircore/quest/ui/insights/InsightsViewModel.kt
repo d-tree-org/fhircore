@@ -23,6 +23,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlin.concurrent.fixedRateTimer
+import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,9 +33,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.smartregister.fhircore.engine.data.local.register.AppRegisterRepository
 import org.smartregister.fhircore.engine.util.DispatcherProvider
-import kotlin.concurrent.fixedRateTimer
-import kotlin.math.pow
-import kotlin.math.roundToInt
 
 @HiltViewModel
 class InsightsViewModel
@@ -40,13 +40,18 @@ class InsightsViewModel
 constructor(
   val dispatcherProvider: DispatcherProvider,
   val registerRepository: AppRegisterRepository,
-  application: Application
+  application: Application,
 ) : AndroidViewModel(application) {
 
   private val _isRefreshingRamAvailabilityStats = MutableStateFlow(false)
   val isRefreshingRamAvailabilityStatsStateFlow = _isRefreshingRamAvailabilityStats.asStateFlow()
 
-  val isRefreshing = _isRefreshingRamAvailabilityStats.stateIn(viewModelScope, SharingStarted.Lazily, initialValue = false)
+  val isRefreshing =
+    _isRefreshingRamAvailabilityStats.stateIn(
+      viewModelScope,
+      SharingStarted.Lazily,
+      initialValue = false,
+    )
 
   val ramAvailabilityStatsStateFlow = MutableStateFlow("")
 
@@ -54,27 +59,28 @@ constructor(
     getMemoryInfo()
   }
 
-  init{
-    fixedRateTimer("timer", false, 0L, 1000) {
-      refresh()
-    }
+  init {
+    fixedRateTimer("timer", false, 0L, 1000) { refresh() }
   }
 
   private fun getMemoryInfo() {
     viewModelScope.launch {
-
-      val actManager = getApplication<Application>().getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+      val actManager =
+        getApplication<Application>().getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
       val memInfo = ActivityManager.MemoryInfo()
       actManager.getMemoryInfo(memInfo)
 
       // Fetch the available and total memory in GB
-      val availMemory = memInfo.availMem.toDouble()/(1024*1024*1024)
-      val totalMemory= memInfo.totalMem.toDouble()/(1024*1024*1024)
+      val availMemory = memInfo.availMem.toDouble() / (1024 * 1024 * 1024)
+      val totalMemory = memInfo.totalMem.toDouble() / (1024 * 1024 * 1024)
 
       // Update the RAM Availability stateflow
-      ramAvailabilityStatsStateFlow.emit("${(totalMemory - availMemory).roundTo(3)}G/${totalMemory.roundTo(3)}G")
+      ramAvailabilityStatsStateFlow.emit(
+        "${(totalMemory - availMemory).roundTo(3)}G/${totalMemory.roundTo(3)}G",
+      )
     }
   }
+
   private fun Double.roundTo(numFractionDigits: Int): Double {
     val factor = 10.0.pow(numFractionDigits.toDouble())
     return (this * factor).roundToInt() / factor

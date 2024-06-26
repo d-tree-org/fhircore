@@ -26,6 +26,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.jsonwebtoken.Jwts
 import java.net.UnknownHostException
 import javax.inject.Inject
+import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.hl7.fhir.r4.model.Bundle
@@ -59,7 +60,6 @@ import org.smartregister.fhircore.engine.util.extension.valueToString
 import org.smartregister.model.practitioner.PractitionerDetails
 import retrofit2.HttpException
 import timber.log.Timber
-import kotlin.system.measureTimeMillis
 
 @HiltViewModel
 class LoginViewModel
@@ -170,8 +170,7 @@ constructor(
       val trimmedUsername = _username.value!!.trim()
       val passwordAsCharArray = _password.value!!.toCharArray()
       if (offline) {
-
-          warmCache()
+        warmCache()
 
         verifyCredentials(trimmedUsername, passwordAsCharArray)
         return
@@ -184,7 +183,7 @@ constructor(
       val multiUserLoginAttempted =
         existingCredentials?.username?.equals(trimmedUsername, true) == false
 
-        warmCache()
+      warmCache()
 
       when {
         multiUserLoginAttempted -> {
@@ -221,32 +220,31 @@ constructor(
       _showProgressBar.postValue(false)
     }
   }
-  private suspend fun warmCache() {
-      val timeInMillis = measureTimeMillis {
 
+  private suspend fun warmCache() {
+    val timeInMillis = measureTimeMillis {
       val registrationResourceId = "patient-demographic-registration"
 
-       val registrationQuestionnaire = fhirEngine.loadResource<Questionnaire>(registrationResourceId)?.
-        apply { this.url = this.url ?: this.referenceValue() }
-
-        val registrationQuestionnaireStructureMap = fhirEngine.loadResource<StructureMap>(registrationResourceId)?.
-        apply { this.url = this.url ?: this.referenceValue() }
-
-        registrationQuestionnaire?.let {
-          ContentCache.saveResource(it)
-
+      val registrationQuestionnaire =
+        fhirEngine.loadResource<Questionnaire>(registrationResourceId)?.apply {
+          this.url = this.url ?: this.referenceValue()
         }
 
-        registrationQuestionnaireStructureMap?.let {
-          ContentCache.saveResource(it)
-
+      val registrationQuestionnaireStructureMap =
+        fhirEngine.loadResource<StructureMap>(registrationResourceId)?.apply {
+          this.url = this.url ?: this.referenceValue()
         }
 
-        Timber.d("Cached Questionnaire ${registrationQuestionnaire?.idPart} and url ${registrationQuestionnaire?.url}")
-      }
+      registrationQuestionnaire?.let { ContentCache.saveResource(it) }
 
-      Timber.d("Cache reset in $timeInMillis ms")
+      registrationQuestionnaireStructureMap?.let { ContentCache.saveResource(it) }
 
+      Timber.d(
+        "Cached Questionnaire ${registrationQuestionnaire?.idPart} and url ${registrationQuestionnaire?.url}",
+      )
+    }
+
+    Timber.d("Cache reset in $timeInMillis ms")
   }
 
   private fun verifyCredentials(username: String, password: CharArray) {

@@ -82,9 +82,9 @@ fun InsightsScreen(
     },
   ) { innerPadding ->
     Box(modifier = modifier.padding(innerPadding)) {
-
       val isRefreshing by insightsViewModel.isRefreshing.collectAsState()
-      val isRefreshingRamAvailabilityStats by insightsViewModel.isRefreshingRamAvailabilityStatsStateFlow.collectAsState()
+      val isRefreshingRamAvailabilityStats by
+        insightsViewModel.isRefreshingRamAvailabilityStatsStateFlow.collectAsState()
       val ramAvailabilityStats by insightsViewModel.ramAvailabilityStatsStateFlow.collectAsState()
 
       SwipeRefresh(

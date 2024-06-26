@@ -27,7 +27,9 @@ object ContentCache {
   private val cache = LruCache<String, Resource>(cacheSize)
 
   suspend fun saveResource(resource: Resource) =
-    withContext(Dispatchers.IO) { cache.put("${resource.resourceType.name}/${resource.idPart}", resource.copy()) }
+    withContext(Dispatchers.IO) {
+      cache.put("${resource.resourceType.name}/${resource.idPart}", resource.copy())
+    }
 
   fun getResource(resourceId: String) = cache[resourceId]?.copy()
 
