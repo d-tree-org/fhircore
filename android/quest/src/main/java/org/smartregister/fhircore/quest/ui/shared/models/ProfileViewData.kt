@@ -25,6 +25,7 @@ import org.hl7.fhir.r4.model.RelatedPerson
 import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.Task
 import org.smartregister.fhircore.engine.data.domain.Guardian
+import org.smartregister.fhircore.engine.data.domain.PhoneContact
 import org.smartregister.fhircore.engine.domain.model.FormButtonData
 import org.smartregister.fhircore.engine.domain.model.TracingAttempt
 import org.smartregister.fhircore.quest.ui.family.profile.model.FamilyMemberViewState
@@ -106,7 +107,7 @@ sealed class ProfileViewData(
     val addressDistrict: String = "",
     val addressTracingCatchment: String = "",
     val addressPhysicalLocator: String = "",
-    val phoneContacts: List<String> = emptyList(),
+    val phoneContacts: List<PhoneContact> = emptyList(),
     val tracingTasks: List<Task> = emptyList(),
     val carePlans: List<CarePlan> = emptyList(),
     val guardians: List<Guardian> = emptyList(),

@@ -139,15 +139,15 @@ android {
       dimension = "apps"
       applicationIdSuffix = ".exposedInfant"
       versionNameSuffix = "-exposedInfant"
-      versionCode = 1
-      versionName = "0.0.1"
+      versionCode = 3
+      versionName = "0.0.3"
     }
     create("artClient") {
       dimension = "apps"
       applicationIdSuffix = ".artClient"
       versionNameSuffix = "-artClient"
-      versionCode = 1
-      versionName = "0.0.1"
+      versionCode = 3
+      versionName = "0.0.3"
     }
     create("exposedInfantDev") {
       dimension = "apps"

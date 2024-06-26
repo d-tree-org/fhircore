@@ -36,6 +36,7 @@ import org.hl7.fhir.r4.utils.StructureMapUtilities
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.util.extension.encodeResourceToString
 import org.smartregister.fhircore.engine.util.extension.getCarePlanId
+import org.smartregister.fhircore.engine.util.extension.taskStatusToCarePlanActivityStatus
 import org.smartregister.fhircore.engine.util.helper.TransformSupportServices
 import timber.log.Timber
 
@@ -148,7 +149,7 @@ constructor(val fhirEngine: FhirEngine, val transformSupportServices: TransformS
         for ((index, value) in carePlan.activity.withIndex()) {
           val outcome = value.outcomeReference.find { x -> x.reference.contains(id) }
           if (outcome != null) {
-            value.detail.status = taskStatusToCarePlanActivityStatus(task.status)
+            value.detail.status = task.taskStatusToCarePlanActivityStatus()
             carePlan.activity?.set(index, value)
             break
           }
@@ -174,20 +175,6 @@ constructor(val fhirEngine: FhirEngine, val transformSupportServices: TransformS
       EncounterStatus.ENTEREDINERROR,
       EncounterStatus.NULL, -> Task.TaskStatus.fromCode(encounterStatus.toCode())
       else -> Task.TaskStatus.COMPLETED
-    }
-  }
-
-  private fun taskStatusToCarePlanActivityStatus(
-    status: Task.TaskStatus,
-  ): CarePlan.CarePlanActivityStatus {
-    return when (status) {
-      Task.TaskStatus.FAILED,
-      Task.TaskStatus.CANCELLED, -> CarePlan.CarePlanActivityStatus.CANCELLED
-      Task.TaskStatus.COMPLETED,
-      Task.TaskStatus.ONHOLD,
-      Task.TaskStatus.INPROGRESS,
-      Task.TaskStatus.ENTEREDINERROR, -> CarePlan.CarePlanActivityStatus.fromCode(status.toCode())
-      else -> CarePlan.CarePlanActivityStatus.NULL
     }
   }
 }

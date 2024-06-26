@@ -54,7 +54,7 @@ class PatientItemMapper @Inject constructor(@ApplicationContext val context: Con
           text = inputModel.extractWithFhirPath("Patient.address.text"),
           fullAddress = inputModel.extractAddress(),
         ),
-      telecom = inputModel.extractTelecom(),
+      telecom = inputModel.extractTelecom().map { it.number },
       generalPractitionerReference = inputModel.extractGeneralPractitionerReference(),
       managingOrganizationReference = inputModel.extractManagingOrganizationReference(),
     )

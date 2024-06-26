@@ -29,6 +29,7 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 import retrofit2.http.QueryMap
 import retrofit2.http.Url
 
@@ -63,5 +64,11 @@ interface FhirResourceService {
   suspend fun searchResource(
     @Path("resourceType") resourceType: String,
     @QueryMap(encoded = false) searchParameters: Map<String, String>,
+  ): Bundle
+
+  @GET("{resourceType}")
+  suspend fun queryByResourceId(
+    @Path("resourceType") resourceType: String,
+    @Query("_id") resource: String,
   ): Bundle
 }

@@ -86,7 +86,7 @@ fun PageRegisterScreen(
         onSearchTextChanged = { searchText ->
           registerViewModel.onEvent(StandardRegisterEvent.SearchRegister(searchText = searchText))
         },
-        onNavIconClick = { navController.popBackStack() },
+        onNavIconClick = { navController.navigateUp() },
         onFilterIconClick = filterNavClickAction,
         activeFilters = activeFilters,
       )

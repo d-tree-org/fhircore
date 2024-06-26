@@ -44,10 +44,12 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
+import androidx.ui.res.stringResource
 import org.smartregister.fhircore.engine.domain.model.RegisterData
 import org.smartregister.fhircore.engine.ui.components.CircularProgressBar
 import org.smartregister.fhircore.engine.ui.components.ErrorMessage
 import org.smartregister.fhircore.engine.ui.theme.DividerColor
+import org.smartregister.fhircore.quest.R
 import org.smartregister.fhircore.quest.ui.patient.register.components.HivPatientRegisterListRow
 import org.smartregister.fhircore.quest.ui.patient.register.components.RegisterListRow
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
@@ -110,7 +112,11 @@ fun RegisterList(
           val loadStateError = pagingItems.loadState.refresh as LoadState.Error
           item {
             ErrorMessage(
-              message = loadStateError.error.also { Timber.e(it) }.localizedMessage!!,
+              message =
+                loadStateError.error.also { Timber.e(it) }.localizedMessage
+                  ?: stringResource(
+                    R.string.error_occurred,
+                  ),
               onClickRetry = { retry() },
             )
           }

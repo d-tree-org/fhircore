@@ -14,10 +14,22 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.util.extension
+package org.smartregister.fhircore.engine.ui.settings
 
-/**
- * Get the practitioner endpoint url and append the keycloak-uuid. The original String is assumed to
- * be a keycloak-uuid.
- */
-fun String.practitionerEndpointUrl(): String = "PractitionerDetail?keycloak-uuid=$this"
+import com.google.android.fhir.LocalChange
+
+data class LocalChangesModel(
+  val changes: List<LocalChange>,
+  val size: Int,
+  val type: String,
+)
+
+data class GeneralReportItem(
+  val key: String,
+  val values: Map<String, String>,
+)
+
+data class GeneralReport(
+  val type: String,
+  val items: List<GeneralReportItem>,
+)

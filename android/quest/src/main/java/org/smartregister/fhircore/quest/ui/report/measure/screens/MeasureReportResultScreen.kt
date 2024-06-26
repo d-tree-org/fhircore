@@ -98,7 +98,7 @@ fun MeasureReportResultPage(
       TopAppBar(
         title = { Text(text = screenTitle, overflow = TextOverflow.Ellipsis, maxLines = 1) },
         navigationIcon = {
-          IconButton(onClick = { navController.popBackStack() }) {
+          IconButton(onClick = { navController.navigateUp() }) {
             Icon(Icons.Filled.ArrowBack, null)
           }
         },

@@ -65,7 +65,7 @@ fun CountersScreen(
           verticalAlignment = Alignment.CenterVertically,
           modifier = modifier.padding(vertical = 8.dp),
         ) {
-          IconButton(onClick = { navController.popBackStack() }) {
+          IconButton(onClick = { navController.navigateUp() }) {
             Icon(
               Icons.AutoMirrored.Filled.ArrowBack,
               contentDescription = "Back",

@@ -40,6 +40,7 @@ import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
@@ -113,8 +114,8 @@ fun PatientProfileScreen(
         TopAppBar(
           title = { Text(stringResource(R.string.profile)) },
           navigationIcon = {
-            IconButton(onClick = { navController.popBackStack() }) {
-              Icon(Icons.Filled.ArrowBack, null)
+            IconButton(onClick = { navController.navigateUp() }) {
+              Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
             }
           },
           actions = {

@@ -38,6 +38,7 @@ import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.codesystems.AdministrativeGender
 import org.smartregister.fhircore.engine.R
+import org.smartregister.fhircore.engine.data.domain.PhoneContact
 import org.smartregister.fhircore.engine.data.domain.PregnancyStatus
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.domain.model.HealthStatus
@@ -204,9 +205,18 @@ fun Patient.extractAddressText(): String {
   return with(addressFirstRep) { this.text ?: "" }
 }
 
-fun Patient.extractTelecom(): List<String> {
+fun Patient.extractTelecom(): List<PhoneContact> {
   if (!hasTelecom()) return emptyList()
-  return telecom.map { it.value }
+  return telecom.mapNotNull {
+    val raw = it.value.split("|")
+    if (raw.size > 1) {
+      PhoneContact(raw.getOrNull(1) ?: "", raw.getOrNull(2) ?: "")
+    } else if (raw.size == 1) {
+      PhoneContact(it.value, "Self")
+    } else {
+      null
+    }
+  }
 }
 
 fun Patient.extractGeneralPractitionerReference(): String {
@@ -309,22 +319,38 @@ fun Patient.extractSecondaryIdentifier(): String? {
   return null
 }
 
+fun Patient.extractPatientTypeCoding(): Coding? {
+  val patientTypes =
+    this.meta.tag.filter {
+      it.system == SystemConstants.PATIENT_TYPE_FILTER_TAG_VIA_META_CODINGS_SYSTEM
+    }
+  val patientType: String? = SystemConstants.getCodeByPriority(patientTypes.map { it.code })
+  return patientTypes.firstOrNull { patientType == it.code }
+}
+
 fun Patient.extractOfficialIdentifier(): String? {
-  val patientType =
+  val patientTypes =
     this.meta.tag
-      .firstOrNull { it.system == SystemConstants.PATIENT_TYPE_FILTER_TAG_VIA_META_CODINGS_SYSTEM }
-      ?.code
+      .filter { it.system == SystemConstants.PATIENT_TYPE_FILTER_TAG_VIA_META_CODINGS_SYSTEM }
+      .map { it.code }
+  val patientType: String? = SystemConstants.getCodeByPriority(patientTypes)
   return if (this.hasIdentifier() && patientType != null) {
-    val actualId =
-      this.identifier.lastOrNull {
-        it.system == SystemConstants.getIdentifierSystemFromPatientType(patientType)
+    var actualId: Identifier? = null
+    var hasNewSystem = false
+    for (pId in this.identifier) {
+      if (pId.system?.contains("https://d-tree.org/fhir/patient-identifier") == true) {
+        hasNewSystem = true
       }
-    if (actualId != null) {
-      actualId.value
-    } else {
+      if (pId.system == SystemConstants.getIdentifierSystemFromPatientType(patientType)) {
+        actualId = pId
+      }
+    }
+    if (!hasNewSystem) {
       this.identifier
         .lastOrNull { it.use == Identifier.IdentifierUse.OFFICIAL && it.system != "WHO-HCID" }
         ?.value
+    } else {
+      actualId?.value
     }
   } else {
     null
@@ -349,10 +375,7 @@ fun Coding.toHealthStatus(): HealthStatus {
 }
 
 fun Patient.extractHealthStatusFromMeta(filterTag: String): HealthStatus {
-  val tagList =
-    this.meta.tag.filter { it.system.equals(filterTag, true) }.filterNot { it.code.isNullOrBlank() }
-  if (filterTag.isEmpty() || tagList.isEmpty()) return HealthStatus.DEFAULT
-  return tagList.map { it.toHealthStatus() }.minByOrNull { it.priority() }!!
+  return this.extractPatientTypeCoding()?.toHealthStatus() ?: HealthStatus.DEFAULT
 }
 
 suspend fun Patient.activeCarePlans(fhirEngine: FhirEngine): List<CarePlan> {

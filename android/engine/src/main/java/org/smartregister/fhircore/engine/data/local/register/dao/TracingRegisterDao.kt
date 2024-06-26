@@ -91,11 +91,7 @@ abstract class TracingRegisterDao(
 
   @VisibleForTesting(otherwise = PROTECTED) abstract val tracingCoding: Coding
 
-  private val alternateTracingCoding = lazy {
-    tracingCoding.copy().apply { system = "http://snomed.info/sct" }
-  }
-
-  fun hivPatientIdentifier(patient: Patient): String =
+  private fun hivPatientIdentifier(patient: Patient): String =
     // would either be an ART or HCC number
     patient.extractOfficialIdentifier() ?: HivRegisterDao.ResourceValue.BLANK
 

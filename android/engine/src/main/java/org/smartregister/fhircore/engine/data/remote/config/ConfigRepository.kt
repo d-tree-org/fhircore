@@ -32,11 +32,9 @@ constructor(
   suspend fun fetchConfigFromRemote() {
     val binaryResources =
       fhirResourceDataSource
-        .search(
+        .queryByResourceId(
           ResourceType.Binary.name,
-          mapOf(
-            Pair("_id", appConfigService.getAppId()),
-          ),
+          appConfigService.getAppId(),
         )
         .entry
         .map { it.resource }

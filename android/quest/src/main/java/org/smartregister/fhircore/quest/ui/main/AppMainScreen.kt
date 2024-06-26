@@ -219,7 +219,7 @@ private fun AppMainNavigationGraph(
           ) {
             GuardiansRoute(
               navigateRoute = { route -> navController.navigate(route) },
-              onBackPress = { navController.popBackStack() },
+              onBackPress = { navController.navigateUp() },
             )
           }
         MainNavigationScreen.TransferOut ->
@@ -232,7 +232,7 @@ private fun AppMainNavigationGraph(
                 ),
               ),
           ) { _ ->
-            TransferOutScreen { navController.popBackStack() }
+            TransferOutScreen { navController.navigateUp() }
           }
         MainNavigationScreen.GuardianProfile ->
           composable(
@@ -257,7 +257,7 @@ private fun AppMainNavigationGraph(
                 appMainViewModel = appMainViewModel,
               )
             } else {
-              GuardianRelatedPersonProfileScreen(onBackPress = { navController.popBackStack() })
+              GuardianRelatedPersonProfileScreen(onBackPress = { navController.navigateUp() })
             }
           }
         MainNavigationScreen.FamilyProfile ->

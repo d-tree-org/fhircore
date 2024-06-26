@@ -23,26 +23,28 @@ import javax.inject.Singleton
 import org.hl7.fhir.r4.model.AuditEvent
 import org.hl7.fhir.r4.model.Coding
 import org.hl7.fhir.r4.model.Practitioner
+import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.extension.asReference
+import org.smartregister.fhircore.engine.util.extension.extractLogicalIdUuid
 
 @Singleton
 class AuditEventRepository
 @Inject
 constructor(
   val defaultRepository: DefaultRepository,
-  val sharedPreferences: SharedPreferencesHelper,
+  private val sharedPreferences: SharedPreferencesHelper,
 ) : IAuditEventRepository {
   override suspend fun createAuditEvent() {
     // Get Practitioner Resource
     val practitionerID =
-      sharedPreferences.read(key = SharedPreferenceKey.PRACTITIONER_ID.name, defaultValue = null)
+      sharedPreferences.read(SharedPreferenceKey.PRACTITIONER_ID.name, null)?.extractLogicalIdUuid()
         ?: return
 
-    val practitioner = defaultRepository.loadResource<Practitioner>(practitionerID)
+    val practitioner = practitionerID.asReference(ResourceType.Practitioner)
 
     val context = sharedPreferences.context
 
@@ -70,12 +72,11 @@ constructor(
         agent =
           listOf(
             AuditEvent.AuditEventAgentComponent().apply {
-              who = practitioner?.asReference()
+              who = practitioner
               requestor = true
             },
           )
-        source =
-          AuditEvent.AuditEventSourceComponent().apply { observer = practitioner?.asReference() }
+        source = AuditEvent.AuditEventSourceComponent().apply { observer = practitioner }
       }
 
     // Save AuditEvent Resource

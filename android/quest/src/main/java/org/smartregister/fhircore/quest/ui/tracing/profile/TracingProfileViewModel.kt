@@ -16,7 +16,7 @@
 
 package org.smartregister.fhircore.quest.ui.tracing.profile
 
-import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.MutableState
@@ -31,14 +31,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.appfeature.model.HealthModule
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.data.local.register.AppRegisterRepository
+import org.smartregister.fhircore.engine.domain.util.DataLoadState
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireType
-import org.smartregister.fhircore.engine.util.extension.asReference
 import org.smartregister.fhircore.engine.util.extension.showToast
 import org.smartregister.fhircore.quest.R
 import org.smartregister.fhircore.quest.navigation.MainNavigationScreen
@@ -58,7 +57,7 @@ constructor(
   overflowMenuFactory: OverflowMenuFactory,
   val registerRepository: AppRegisterRepository,
   val configurationRegistry: ConfigurationRegistry,
-  val profileViewDataMapper: ProfileViewDataMapper,
+  private val profileViewDataMapper: ProfileViewDataMapper,
   val registerViewDataMapper: RegisterViewDataMapper,
 ) : ViewModel() {
 
@@ -78,52 +77,38 @@ constructor(
   val patientProfileViewData: StateFlow<ProfileViewData.TracingProfileData>
     get() = _patientProfileViewDataFlow.asStateFlow()
 
-  val isSyncing = mutableStateOf(false)
+  val loadingState = MutableStateFlow<DataLoadState<Boolean>>(DataLoadState.Idle)
 
   init {
     syncBroadcaster.registerSyncListener(
       { state ->
-        when (state) {
-          is SyncJobStatus.Succeeded,
-          is SyncJobStatus.Failed, -> {
-            isSyncing.value = false
-            //              fetchTracingData()
-          }
-          is SyncJobStatus.Started -> {
-            isSyncing.value = true
-          }
-          else -> {
-            isSyncing.value = false
-          }
+        if (state is SyncJobStatus.Succeeded || state is SyncJobStatus.Failed) {
+          fetchTracingData()
         }
       },
       viewModelScope,
     )
-
     fetchTracingData()
   }
 
-  fun fetchTracingData() {
+  private fun fetchTracingData() {
     viewModelScope.launch {
-      registerRepository.loadPatientProfileData(appFeatureName, healthModule, patientId)?.let {
-        _patientProfileViewDataFlow.value =
-          profileViewDataMapper.transformInputToOutputModel(it)
-            as ProfileViewData.TracingProfileData
+      try {
+        loadingState.value = DataLoadState.Loading
+        registerRepository.loadPatientProfileData(appFeatureName, healthModule, patientId)?.let {
+          _patientProfileViewDataFlow.value =
+            profileViewDataMapper.transformInputToOutputModel(it)
+              as ProfileViewData.TracingProfileData
+        }
+        loadingState.value = DataLoadState.Success(true)
+      } catch (e: Exception) {
+        loadingState.value = DataLoadState.Error(e)
       }
     }
   }
 
   fun onEvent(event: TracingProfileEvent) {
-    val profile = patientProfileViewData.value
-
     when (event) {
-      is TracingProfileEvent.LoadQuestionnaire ->
-        QuestionnaireActivity.launchQuestionnaire(
-          event.context,
-          event.questionnaireId,
-          clientIdentifier = patientId,
-          populationResources = profile.populationResources,
-        )
       is TracingProfileEvent.OverflowMenuClick -> {
         when (event.menuId) {
           R.id.edit_profile ->
@@ -142,26 +127,6 @@ constructor(
           else -> {
             event.context.showToast("//todo Tracing action here")
           }
-        }
-      }
-      is TracingProfileEvent.OpenTaskForm ->
-        QuestionnaireActivity.launchQuestionnaireForResult(
-          event.context as Activity,
-          questionnaireId = event.taskFormId,
-          clientIdentifier = patientId,
-          backReference = event.taskId.asReference(ResourceType.Task).reference,
-          populationResources = profile.populationResources,
-        )
-      is TracingProfileEvent.LoadOutComesForm -> {
-        profile.isHomeTracing?.let { isHomeTracing ->
-          QuestionnaireActivity.launchQuestionnaireForResult(
-            event.context as Activity,
-            if (isHomeTracing) "home-tracing-outcome" else "phone-tracing-outcome",
-            clientIdentifier = patientId,
-            questionnaireType = QuestionnaireType.EDIT,
-            populationResources = profile.populationResources,
-            backReference = "notify",
-          )
         }
       }
       is TracingProfileEvent.OpenTracingOutcomeScreen -> {
@@ -184,7 +149,18 @@ constructor(
 
   fun reSync() {
     fetchTracingData()
-    syncBroadcaster.runSync()
+  }
+
+  fun createOutcomesIntent(context: Context): Intent {
+    val profile = patientProfileViewData.value
+    return QuestionnaireActivity.createQuestionnaireResultIntent(
+      context,
+      if (profile.isHomeTracing == true) "home-tracing-outcome" else "phone-tracing-outcome",
+      clientIdentifier = patientId,
+      questionnaireType = QuestionnaireType.EDIT,
+      populationResources = profile.populationResources,
+      backReference = "notify",
+    )
   }
 
   companion object {

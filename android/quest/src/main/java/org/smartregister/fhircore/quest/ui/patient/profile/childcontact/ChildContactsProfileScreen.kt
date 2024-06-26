@@ -64,7 +64,7 @@ fun ChildContactsProfileScreen(
           Text(text = stringResource(R.string.patient_x_children, profileViewData.givenName))
         },
         navigationIcon = {
-          IconButton(onClick = { navController.popBackStack() }) {
+          IconButton(onClick = { navController.navigateUp() }) {
             Icon(Icons.Filled.ArrowBack, null)
           }
         },
