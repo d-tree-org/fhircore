@@ -36,7 +36,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.fhir.datacapture.views.MarginItemDecoration
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
 import org.smartregister.fhircore.engine.R
 
 data class SelectedOption<T>(
@@ -52,7 +51,8 @@ class SearchableSelectDialogFragment<T>(
 ) : DialogFragment() {
 
   private var selectedOption: SelectedOption<T>? = null
-private var adapter: ArrayAdapterRecyclerViewAdapter<T>? = null
+  private var adapter: ArrayAdapterRecyclerViewAdapter<T>? = null
+
   override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
     isCancelable = false
 
@@ -79,32 +79,33 @@ private var adapter: ArrayAdapterRecyclerViewAdapter<T>? = null
       MarginItemDecoration(
         marginVertical =
           resources.getDimensionPixelOffset(
-            com.google.android.fhir.datacapture.R.dimen.option_item_margin_vertical
+            com.google.android.fhir.datacapture.R.dimen.option_item_margin_vertical,
           ),
         marginHorizontal =
           resources.getDimensionPixelOffset(
-            com.google.android.fhir.datacapture.R.dimen.option_item_margin_horizontal
+            com.google.android.fhir.datacapture.R.dimen.option_item_margin_horizontal,
           ),
       ),
     )
 
-     adapter = ArrayAdapterRecyclerViewAdapter(selectedOptions) {
-      selectedOption = it
-    }
+    adapter = ArrayAdapterRecyclerViewAdapter(selectedOptions) { selectedOption = it }
 
     recyclerView.adapter = adapter
 
-    view.findViewById<TextInputEditText>(R.id.searchEditText).addTextChangedListener(object :
-      TextWatcher {
-      override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) { }
+    view
+      .findViewById<TextInputEditText>(R.id.searchEditText)
+      .addTextChangedListener(
+        object : TextWatcher {
+          override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
-      override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { }
+          override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
 
-      override fun afterTextChanged(s: Editable?) {
-        val filteredList = selectedOptions.filter { it.title.contains(s.toString(), true) }
-        adapter?.setItems(filteredList)
-      }
-    })
+          override fun afterTextChanged(s: Editable?) {
+            val filteredList = selectedOptions.filter { it.title.contains(s.toString(), true) }
+            adapter?.setItems(filteredList)
+          }
+        },
+      )
 
     val dialog =
       MaterialAlertDialogBuilder(requireContext())
@@ -139,13 +140,14 @@ private var adapter: ArrayAdapterRecyclerViewAdapter<T>? = null
 
 class ArrayAdapterRecyclerViewAdapter<T>(
   private var items: List<SelectedOption<T>>,
-  val onSelect: (SelectedOption<T>?) -> Unit
+  val onSelect: (SelectedOption<T>?) -> Unit,
 ) : RecyclerView.Adapter<ArrayAdapterRecyclerViewAdapter<T>.ViewHolder>() {
   var selectedOption: Int? = null
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
     val view =
-      LayoutInflater.from(parent.context).inflate(com.google.android.fhir.datacapture.R.layout.option_item_single, parent, false)
+      LayoutInflater.from(parent.context)
+        .inflate(com.google.android.fhir.datacapture.R.layout.option_item_single, parent, false)
     return ViewHolder(view)
   }
 
@@ -154,6 +156,7 @@ class ArrayAdapterRecyclerViewAdapter<T>(
   }
 
   override fun getItemCount() = items.size
+
   fun setItems(filteredList: List<SelectedOption<T>>) {
     val diffCallback = ItemDiffCallback(items, filteredList)
     val diffResult = DiffUtil.calculateDiff(diffCallback)
@@ -162,7 +165,8 @@ class ArrayAdapterRecyclerViewAdapter<T>(
   }
 
   inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-    private val radioButton: RadioButton = itemView.findViewById(com.google.android.fhir.datacapture.R.id.radio_button)
+    private val radioButton: RadioButton =
+      itemView.findViewById(com.google.android.fhir.datacapture.R.id.radio_button)
 
     fun bind(item: SelectedOption<T>, position: Int) {
       radioButton.text = item.title
@@ -180,10 +184,9 @@ class ArrayAdapterRecyclerViewAdapter<T>(
   }
 }
 
-
 class ItemDiffCallback<T>(
   private val oldList: List<SelectedOption<T>>,
-  private val newList: List<SelectedOption<T>>
+  private val newList: List<SelectedOption<T>>,
 ) : DiffUtil.Callback() {
 
   override fun getOldListSize(): Int {

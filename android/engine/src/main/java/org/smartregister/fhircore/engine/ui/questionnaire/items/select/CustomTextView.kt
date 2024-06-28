@@ -72,7 +72,7 @@ constructor(
   }
 
   private fun onSelected(item: T) {
-    textInputEditText.setText((transformItem?.invoke(item) ?: defaultItemTransform(item) ).title)
+    textInputEditText.setText((transformItem?.invoke(item) ?: defaultItemTransform(item)).title)
     onItemClickListener?.invoke(item)
   }
 
@@ -87,7 +87,9 @@ constructor(
   fun setTitle(name: String, selectedItem: T? = null) {
     titleTextView.text = name
     if (selectedItem != null) {
-      textInputEditText.setText((transformItem?.invoke(selectedItem) ?: defaultItemTransform(selectedItem) ).title)
+      textInputEditText.setText(
+        (transformItem?.invoke(selectedItem) ?: defaultItemTransform(selectedItem)).title,
+      )
     }
   }
 

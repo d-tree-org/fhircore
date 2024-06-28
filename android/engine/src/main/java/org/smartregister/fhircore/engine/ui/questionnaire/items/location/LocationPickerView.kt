@@ -162,7 +162,7 @@ class LocationPickerView(
       val mainLayout =
         CustomTextView<LocationHierarchy>(
           context = context,
-          transformItem = { SelectedOption(title = it.name, id = it.identifier, item = it) }
+          transformItem = { SelectedOption(title = it.name, id = it.identifier, item = it) },
         )
       mainLayout.id = View.generateViewId()
       val layoutParams =
