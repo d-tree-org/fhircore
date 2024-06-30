@@ -29,6 +29,7 @@ import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import org.dtree.fhircore.dataclerk.data.QuestXFhirQueryResolver
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.ReferenceUrlResolver
+import org.smartregister.fhircore.engine.trace.ReleaseTree
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl
 import org.smartregister.fhircore.engine.ui.questionnaire.items.CustomQuestItemDataProvider
 import timber.log.Timber
@@ -53,6 +54,8 @@ class DataClerkApplication : Application(), DataCaptureConfig.Provider, Configur
       Firebase.crashlytics.setCrashlyticsCollectionEnabled(false)
       Firebase.analytics.setAnalyticsCollectionEnabled(false)
       Timber.plant(Timber.DebugTree())
+    } else {
+      Timber.plant(ReleaseTree())
     }
   }
 

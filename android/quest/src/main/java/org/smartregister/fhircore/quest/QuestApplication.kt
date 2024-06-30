@@ -39,6 +39,7 @@ import javax.inject.Inject
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirXFhirQueryResolver
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.ReferenceUrlResolver
+import org.smartregister.fhircore.engine.trace.ReleaseTree
 import org.smartregister.fhircore.engine.ui.appsetting.AppSettingActivity
 import org.smartregister.fhircore.engine.ui.login.LoginActivity
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl
@@ -91,6 +92,7 @@ class QuestApplication :
 
     if (BuildConfig.DEBUG.not()) {
       Thread.setDefaultUncaughtExceptionHandler(globalExceptionHandler)
+      Timber.plant(ReleaseTree())
     } else {
       Firebase.performance.isPerformanceCollectionEnabled = false
       Firebase.crashlytics.setCrashlyticsCollectionEnabled(false)

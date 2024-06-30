@@ -18,6 +18,7 @@ package org.smartregister.fhircore.engine.data.domain.util
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
+import timber.log.Timber
 
 /**
  * Subclass of [PagingSource] that is used to paginate data on the register. Requires
@@ -64,8 +65,9 @@ class PaginatedDataSource<I : Any, O : Any>(
         }
 
       LoadResult.Page(data = data, prevKey = prevKey, nextKey = null)
-    } catch (exception: Exception) {
-      LoadResult.Error(exception)
+    } catch (e: Exception) {
+      Timber.e(e)
+      LoadResult.Error(e)
     }
   }
 

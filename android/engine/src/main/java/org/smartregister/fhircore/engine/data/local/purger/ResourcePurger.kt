@@ -70,7 +70,7 @@ class ResourcePurger(private val fhirEngine: FhirEngine) {
       fhirEngine.purge(this.resourceType, logicalId)
       Timber.tag("purge").d("Purged $resourceType with id: $logicalId")
     } catch (e: Exception) {
-      Timber.tag("purge:Exception").e(e.message!!)
+      Timber.tag("purge:Exception").e(e)
     }
 
   private suspend fun Iterable<Resource>.purge() = this.forEach { it.purge() }

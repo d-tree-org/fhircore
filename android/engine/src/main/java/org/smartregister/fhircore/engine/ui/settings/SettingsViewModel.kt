@@ -45,6 +45,7 @@ import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.annotation.ExcludeFromJacocoGeneratedReport
 import org.smartregister.fhircore.engine.util.extension.getActivity
 import org.smartregister.fhircore.engine.util.extension.launchActivityWithNoBackStackHistory
+import timber.log.Timber
 
 @HiltViewModel
 @ExcludeFromJacocoGeneratedReport
@@ -133,6 +134,7 @@ constructor(
         ),
       )
     } catch (e: Exception) {
+      Timber.e(e)
       profileData.postValue(DataLoadState.Error(e))
     }
   }
