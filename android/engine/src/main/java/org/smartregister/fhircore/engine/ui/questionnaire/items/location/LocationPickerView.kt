@@ -21,7 +21,7 @@ import android.text.Editable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AutoCompleteTextView
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
@@ -29,7 +29,6 @@ import androidx.cardview.widget.CardView
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.LifecycleCoroutineScope
 import com.google.android.fhir.datacapture.views.HeaderView
-import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
@@ -38,6 +37,8 @@ import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.domain.model.LocationHierarchy
 import org.smartregister.fhircore.engine.ui.questionnaire.items.CustomQuestItemDataProvider
 import org.smartregister.fhircore.engine.ui.questionnaire.items.LocationPickerViewHolderFactory
+import org.smartregister.fhircore.engine.ui.questionnaire.items.select.CustomTextView
+import org.smartregister.fhircore.engine.ui.questionnaire.items.select.SelectedOption
 import timber.log.Timber
 
 class LocationPickerView(
@@ -47,7 +48,7 @@ class LocationPickerView(
 ) {
   private var customQuestItemDataProvider: CustomQuestItemDataProvider? = null
   private var rootLayout: LinearLayout? = null
-  private val dropdownMap = mutableMapOf<String, Pair<Int, AutoCompleteTextView>>()
+  private val dropdownMap = mutableMapOf<String, Pair<Int, CustomTextView<LocationHierarchy>>>()
   private val dropDownLevel = mutableListOf<Int>()
 
   private var selectedHierarchy: LocationData? = null
@@ -159,17 +160,18 @@ class LocationPickerView(
   ) {
     rootLayout?.let { rootLayout ->
       val mainLayout =
-        LayoutInflater.from(context).inflate(R.layout.custom_material_spinner, rootLayout, false)
+        CustomTextView<LocationHierarchy>(
+          context = context,
+          transformItem = { SelectedOption(title = it.name, id = it.identifier, item = it) },
+        )
       mainLayout.id = View.generateViewId()
       val layoutParams =
-        LinearLayout.LayoutParams(
+        FrameLayout.LayoutParams(
           ViewGroup.LayoutParams.MATCH_PARENT,
           ViewGroup.LayoutParams.WRAP_CONTENT,
         )
       layoutParams.bottomMargin = 16
       mainLayout.layoutParams = layoutParams
-
-      val dropdown = mainLayout.findViewById<MaterialAutoCompleteTextView>(R.id.menu_auto_complete)
 
       if (parent != null) {
         val helperText = mainLayout.findViewById<TextView>(R.id.helper_text)
@@ -177,30 +179,28 @@ class LocationPickerView(
         helperText.text = context.getString(R.string.select_locations_in, parent.name)
       }
 
-      val adapter = LocationHierarchyAdapter(context, locations)
-      dropdown.setAdapter(adapter)
+      mainLayout.setItems(locations)
 
-      dropdown.setOnItemClickListener { _, _, position, _ ->
-        val selectedLocation = adapter.getItem(position)
-        onOptionSelected(selectedLocation, mainLayout.id, dropdown)
+      mainLayout.onItemClickListener = { selectedLocation ->
+        onOptionSelected(selectedLocation, mainLayout.id, mainLayout)
       }
 
       rootLayout.addView(mainLayout)
       dropDownLevel.add(mainLayout.id)
 
       if (parent != null) {
-        dropdownMap[parent.identifier] = Pair(mainLayout.id, dropdown)
+        dropdownMap[parent.identifier] = Pair(mainLayout.id, mainLayout)
       } else {
-        dropdownMap["-1"] = Pair(mainLayout.id, dropdown)
+        dropdownMap["-1"] = Pair(mainLayout.id, mainLayout)
       }
 
       if (locations.size == 1) {
         val selected = locations.first()
-        dropdown.setText(selected.name, false)
-        onOptionSelected(selected, mainLayout.id, dropdown)
-        dropdownMap[selected.identifier] = Pair(mainLayout.id, dropdown)
+        mainLayout.setTitle(selected.name, selected)
+        onOptionSelected(selected, mainLayout.id, mainLayout)
+        dropdownMap[selected.identifier] = Pair(mainLayout.id, mainLayout)
         if (isDefault) {
-          dropdown.isEnabled = false
+          mainLayout.toggleEnable(false)
         }
       }
     }
@@ -209,7 +209,7 @@ class LocationPickerView(
   private fun onOptionSelected(
     selectedLocation: LocationHierarchy?,
     layoutId: Int,
-    dropdown: AutoCompleteTextView,
+    dropdown: CustomTextView<LocationHierarchy>,
   ) {
     val dropIndex = dropDownLevel.indexOf(layoutId)
     if (dropIndex != -1 && dropIndex != dropDownLevel.size - 1) {
@@ -224,15 +224,8 @@ class LocationPickerView(
         }
       }
     }
-    val identifier = selectedLocation?.identifier
     if (selectedLocation != null && selectedLocation.children.isNotEmpty()) {
-      if (dropdownMap.containsKey(identifier)) {
-        (dropdownMap[identifier]?.second?.adapter as LocationHierarchyAdapter?)?.updateLocations(
-          selectedLocation.children,
-        )
-      } else {
-        updateLocationData(selectedLocation.children, parent = selectedLocation)
-      }
+      updateLocationData(selectedLocation.children, parent = selectedLocation)
     } else if (selectedLocation != null) {
       this.selectedHierarchy = LocationData.fromHierarchy(selectedLocation)
     }

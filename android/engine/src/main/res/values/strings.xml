@@ -163,4 +163,6 @@
     <string translatable="false" name="error_extraction">An error occurred while extracting and saving the Questionnaire</string>
     <string name="select_locations_in">Select a location in %1$s</string>
     <string name="no_patients_found">No patients found</string>
+    <string name="select">Select</string>
+    <string name="select_location">Select location</string>
 </resources>

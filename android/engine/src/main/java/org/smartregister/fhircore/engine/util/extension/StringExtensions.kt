@@ -20,4 +20,4 @@ package org.smartregister.fhircore.engine.util.extension
  * Get the practitioner endpoint url and append the keycloak-uuid. The original String is assumed to
  * be a keycloak-uuid.
  */
-fun String.practitionerEndpointUrl(): String = "PractitionerDetail?keycloak-uuid=$this"
+fun String.practitionerEndpointUrl(): String = "practitioner-details?keycloak-uuid=$this"
