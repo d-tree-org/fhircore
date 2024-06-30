@@ -35,7 +35,6 @@ import java.util.Date
 import kotlin.math.max
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import org.hl7.fhir.r4.model.Appointment
 import org.hl7.fhir.r4.model.CarePlan
 import org.hl7.fhir.r4.model.CodeType
 import org.hl7.fhir.r4.model.Coding
@@ -315,7 +314,9 @@ abstract class TracingRegisterDao(
       val tasks = validTasks(patient)
 
       val attempt = tracingRepository.getTracingAttempt(patient, tasks)
-      var dueData = getDueDate(it)
+      val carePlans = patient.activeCarePlans()
+
+      var dueData = carePlans.firstOrNull()?.period?.end
 
       if (dueData == null) {
         tasks.minOfOrNull { task -> task.authoredOn }?.let { date -> dueData = date }
@@ -338,7 +339,7 @@ abstract class TracingRegisterDao(
         showIdentifierInProfile = true,
         healthStatus = patient.extractHealthStatusFromMeta(metaCodingSystemTag),
         tasks = tasks,
-        services = patient.activeCarePlans(),
+        services = carePlans,
         conditions = defaultRepository.activePatientConditions(patient.logicalId),
         guardians = patient.guardians(),
         practitioners = patient.practitioners(),
@@ -349,21 +350,6 @@ abstract class TracingRegisterDao(
           ),
       )
     }
-  }
-
-  private suspend fun getDueDate(patient: Patient): Date? {
-    val appointments =
-      fhirEngine
-        .fetch<Appointment> {
-          filter(Appointment.STATUS, { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) })
-          filter(Appointment.ACTOR, { value = patient.referenceValue() })
-          sort(Appointment.DATE, Order.ASCENDING)
-          count = 1
-          from = 0
-        }
-        .map { it.resource }
-    val appointment = appointments.firstOrNull()
-    return appointment?.start
   }
 
   suspend fun Patient.activeCarePlans() =

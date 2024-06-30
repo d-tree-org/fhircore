@@ -29,9 +29,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
@@ -42,6 +44,7 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.LinearProgressIndicator
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
@@ -225,22 +228,45 @@ fun TracingProfilePage(
       }
     },
   ) { innerPadding ->
-    TracingProfilePageView(
-      innerPadding = innerPadding,
-      profileViewData = profileViewData,
-      onCall = {
-        tracingProfileViewModel.onEvent(
-          TracingProfileEvent.CallPhoneNumber(navController, context, it),
-        )
-      },
-    ) {
-      val historyId = it.historyId
-      if (historyId != null) {
-        tracingProfileViewModel.onEvent(
-          TracingProfileEvent.OpenTracingOutcomeScreen(navController, context, historyId),
-        )
-      } else {
-        Toast.makeText(context, "No Tracing outcomes recorded", Toast.LENGTH_SHORT).show()
+    Column(Modifier.fillMaxSize()) {
+      if (loadingState is DataLoadState.Error) {
+        Column(
+          Modifier.fillMaxWidth(),
+          verticalArrangement = Arrangement.Center,
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          Text(
+            fontSize = 14.sp,
+            color = MaterialTheme.colors.error,
+            text =
+              stringResource(
+                id = R.string.error_fetching_user_details,
+              ),
+            modifier =
+              Modifier.wrapContentWidth()
+                .padding(vertical = 10.dp)
+                .align(Alignment.CenterHorizontally),
+          )
+          Button(onClick = { tracingProfileViewModel.reSync() }) { Text(text = "Retry") }
+        }
+      }
+      TracingProfilePageView(
+        innerPadding = innerPadding,
+        profileViewData = profileViewData,
+        onCall = {
+          tracingProfileViewModel.onEvent(
+            TracingProfileEvent.CallPhoneNumber(navController, context, it),
+          )
+        },
+      ) {
+        val historyId = it.historyId
+        if (historyId != null) {
+          tracingProfileViewModel.onEvent(
+            TracingProfileEvent.OpenTracingOutcomeScreen(navController, context, historyId),
+          )
+        } else {
+          Toast.makeText(context, "No Tracing outcomes recorded", Toast.LENGTH_SHORT).show()
+        }
       }
     }
   }
