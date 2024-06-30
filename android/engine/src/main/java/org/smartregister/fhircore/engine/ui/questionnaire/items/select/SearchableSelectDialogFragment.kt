@@ -171,14 +171,10 @@ class ArrayAdapterRecyclerViewAdapter<T>(
     fun bind(item: SelectedOption<T>, position: Int) {
       radioButton.text = item.title
       radioButton.isChecked = selectedOption == position
-      radioButton.setOnCheckedChangeListener { _, checked ->
-        if (checked) {
-          val oldPosition = selectedOption
-          selectedOption = position
-          onSelect.invoke(item)
-          oldPosition?.let { notifyItemChanged(it) }
-          notifyItemChanged(position)
-        }
+      radioButton.setOnClickListener {
+        selectedOption = position
+        onSelect.invoke(item)
+        notifyDataSetChanged()
       }
     }
   }
