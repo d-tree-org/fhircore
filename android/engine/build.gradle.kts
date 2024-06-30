@@ -225,6 +225,7 @@ dependencies {
   implementation("com.google.firebase:firebase-analytics")
 
   implementation("androidx.core:core-splashscreen:1.0.1")
+  implementation("me.zhanghai.compose.preference:library:1.0.0")
 
   // Hilt test dependencies
   testImplementation("com.google.dagger:hilt-android-testing:${Deps.versions.hiltVersion}")
