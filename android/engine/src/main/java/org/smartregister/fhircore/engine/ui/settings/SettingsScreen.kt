@@ -32,7 +32,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CleaningServices
-import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.Report
 import androidx.compose.material.icons.rounded.Sync
@@ -52,7 +51,6 @@ import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.ui.settings.views.DevMenu
 import org.smartregister.fhircore.engine.ui.settings.views.ReportBottomSheet
 import org.smartregister.fhircore.engine.ui.settings.views.UserProfileRow
-import org.smartregister.fhircore.engine.ui.settings.views.ViewResourceReport
 import org.smartregister.fhircore.engine.ui.theme.DividerColor
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey.LAST_PURGE_KEY
 
@@ -69,94 +67,80 @@ fun SettingsScreen(
   val context = LocalContext.current
   val devMenuSheetState = rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
   val reportsSheetState = rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
-  val viewResSheetState = rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
   val scope = rememberCoroutineScope()
 
   ModalBottomSheetLayout(
-    sheetState = viewResSheetState,
-    sheetContent = { ViewResourceReport(devViewModel) },
+    sheetState = reportsSheetState,
+    sheetContent = { ReportBottomSheet(devViewModel) },
   ) {
     ModalBottomSheetLayout(
-      sheetState = reportsSheetState,
-      sheetContent = {
-        ReportBottomSheet(devViewModel) {
-          scope.launch {
-            devMenuSheetState.hide()
-            viewResSheetState.show()
-          }
-        }
-      },
+      sheetState = devMenuSheetState,
+      sheetContent = { DevMenu(viewModel = devViewModel) },
     ) {
-      ModalBottomSheetLayout(
-        sheetState = devMenuSheetState,
-        sheetContent = { DevMenu(viewModel = devViewModel) },
-      ) {
-        Scaffold(
-          topBar = {
-            TopAppBar(
-              title = {},
-              navigationIcon = {
-                IconButton(onClick = { navController?.popBackStack() }) {
-                  Icon(Icons.Default.ArrowBack, "")
-                }
-              },
-            )
-          },
-        ) { paddingValues ->
-          Column(
-            modifier =
-              modifier
-                .padding(paddingValues)
-                .padding(vertical = 20.dp)
-                .verticalScroll(rememberScrollState()),
-          ) {
-            InfoCard(profileData = settingsViewModel.profileData)
-            Divider(color = DividerColor)
-            UserProfileRow(
-              icon = Icons.Rounded.Download,
-              text = stringResource(R.string.re_fetch_practitioner),
-              clickListener = settingsViewModel::fetchPractitionerDetails,
-              modifier = modifier,
-            )
-            UserProfileRow(
-              icon = Icons.Rounded.Sync,
-              text = stringResource(id = R.string.sync),
-              clickListener = settingsViewModel::runSync,
-              modifier = modifier,
-            )
-            UserProfileRow(
-              icon = Icons.Rounded.Report,
-              text = stringResource(R.string.reports),
-              clickListener = { scope.launch { reportsSheetState.show() } },
-              modifier = modifier,
-            )
-            UserProfileRow(
-              icon = Icons.Rounded.BugReport,
-              text = stringResource(R.string.dev_menu),
-              clickListener = { scope.launch { devMenuSheetState.show() } },
-              modifier = modifier,
-            )
-            UserProfileRow(
-              icon = Icons.Rounded.Logout,
-              text = stringResource(id = R.string.logout),
-              clickListener = { settingsViewModel.logoutUser(context) },
-              modifier = modifier,
-            )
+      Scaffold(
+        topBar = {
+          TopAppBar(
+            title = {},
+            navigationIcon = {
+              IconButton(onClick = { navController?.popBackStack() }) {
+                Icon(Icons.Default.ArrowBack, "")
+              }
+            },
+          )
+        },
+      ) { paddingValues ->
+        Column(
+          modifier =
+            modifier
+              .padding(paddingValues)
+              .padding(vertical = 20.dp)
+              .verticalScroll(rememberScrollState()),
+        ) {
+          InfoCard(profileData = settingsViewModel.profileData)
+          Divider(color = DividerColor)
+          //          UserProfileRow(
+          //            icon = Icons.Rounded.Download,
+          //            text = stringResource(R.string.re_fetch_practitioner),
+          //            clickListener = settingsViewModel::fetchPractitionerDetails,
+          //            modifier = modifier,
+          //          )
+          UserProfileRow(
+            icon = Icons.Rounded.Sync,
+            text = stringResource(id = R.string.sync),
+            clickListener = settingsViewModel::runSync,
+            modifier = modifier,
+          )
+          UserProfileRow(
+            icon = Icons.Rounded.Report,
+            text = stringResource(R.string.reports),
+            clickListener = { scope.launch { reportsSheetState.show() } },
+            modifier = modifier,
+          )
+          UserProfileRow(
+            icon = Icons.Rounded.BugReport,
+            text = stringResource(R.string.dev_menu),
+            clickListener = { scope.launch { devMenuSheetState.show() } },
+            modifier = modifier,
+          )
+          UserProfileRow(
+            icon = Icons.Rounded.Logout,
+            text = stringResource(id = R.string.logout),
+            clickListener = { settingsViewModel.logoutUser(context) },
+            modifier = modifier,
+          )
 
-            val timestamp = settingsViewModel.sharedPreferences.read(LAST_PURGE_KEY.name, 0L)
-            val simpleDateFormat =
-              SimpleDateFormat(SYNC_TIMESTAMP_OUTPUT_FORMAT, Locale.getDefault())
-            val text = context.resources.getString(R.string.last_purge)
-            val dateFormat = simpleDateFormat.format(timestamp)
+          val timestamp = settingsViewModel.sharedPreferences.read(LAST_PURGE_KEY.name, 0L)
+          val simpleDateFormat = SimpleDateFormat(SYNC_TIMESTAMP_OUTPUT_FORMAT, Locale.getDefault())
+          val text = context.resources.getString(R.string.last_purge)
+          val dateFormat = simpleDateFormat.format(timestamp)
 
-            if (timestamp > 0L) {
-              UserProfileRow(
-                icon = Icons.Rounded.CleaningServices,
-                text = "$text: $dateFormat",
-                clickable = false,
-                modifier = modifier,
-              )
-            }
+          if (timestamp > 0L) {
+            UserProfileRow(
+              icon = Icons.Rounded.CleaningServices,
+              text = "$text: $dateFormat",
+              clickable = false,
+              modifier = modifier,
+            )
           }
         }
       }

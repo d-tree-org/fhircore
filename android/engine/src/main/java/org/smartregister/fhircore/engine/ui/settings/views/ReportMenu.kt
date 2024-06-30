@@ -40,7 +40,7 @@ import org.smartregister.fhircore.engine.ui.settings.DevViewModel
 import org.smartregister.fhircore.engine.util.annotation.ExcludeFromJacocoGeneratedReport
 
 @Composable
-fun ReportBottomSheet(viewModel: DevViewModel, viewReport: () -> Unit) {
+fun ReportBottomSheet(viewModel: DevViewModel) {
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
   val state by viewModel.resourceSaveState.collectAsState()
@@ -77,10 +77,6 @@ fun ReportBottomSheet(viewModel: DevViewModel, viewReport: () -> Unit) {
         @ExcludeFromJacocoGeneratedReport {
           scope.launch @ExcludeFromJacocoGeneratedReport { viewModel.createResourceReport(context) }
         },
-    )
-    UserProfileRow(
-      text = "View Resources Version Report",
-      clickListener = viewReport,
     )
   }
 }

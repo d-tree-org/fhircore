@@ -68,10 +68,12 @@ constructor(
   val profileData = MutableLiveData<DataLoadState<ProfileData>>()
 
   init {
-    viewModelScope.launch(Dispatchers.IO) @ExcludeFromJacocoGeneratedReport { fetchData() }
+    viewModelScope.launch(Dispatchers.IO) @ExcludeFromJacocoGeneratedReport {
+      fetchPractitionerDetailCard()
+    }
   }
 
-  private suspend fun fetchData() {
+  private suspend fun fetchPractitionerDetailCard() {
     try {
       profileData.postValue(DataLoadState.Loading)
 
