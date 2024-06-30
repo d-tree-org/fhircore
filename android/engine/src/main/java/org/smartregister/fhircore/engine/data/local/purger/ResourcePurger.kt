@@ -18,8 +18,8 @@ package org.smartregister.fhircore.engine.data.local.purger
 
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.datacapture.extensions.logicalId
+import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Search
-import com.google.android.fhir.search.filter.ReferenceParamFilterCriterion
 import com.google.android.fhir.search.search
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -30,7 +30,6 @@ import org.hl7.fhir.r4.model.AuditEvent
 import org.hl7.fhir.r4.model.CarePlan
 import org.hl7.fhir.r4.model.Encounter
 import org.hl7.fhir.r4.model.Observation
-import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.QuestionnaireResponse
 import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.ResourceType
@@ -50,13 +49,15 @@ class ResourcePurger(private val fhirEngine: FhirEngine) {
     onPurgeAppointment()
   }
 
-  private suspend fun <R : Resource> query(type: ResourceType): Flow<List<R>> = flow {
+  private suspend fun <R : Resource> query(
+    type: ResourceType,
+    query: (Search.() -> Unit)? = null,
+  ): Flow<List<R>> = flow {
     var start = 0
     do {
-      val resources =
-        fhirEngine.search<R>(Search(type, count = PAGE_COUNT, from = PAGE_COUNT * start++)).map {
-          it.resource
-        }
+      val search = Search(type, count = PAGE_COUNT, from = PAGE_COUNT * start++)
+      query?.let { search.it() }
+      val resources = fhirEngine.search<R>(search).map { it.resource }
       emit(resources)
     } while (resources.isNotEmpty())
   }
@@ -104,73 +105,40 @@ class ResourcePurger(private val fhirEngine: FhirEngine) {
         .purge()
     }
 
-  /** Purge Inactive [CarePlan] together with it's associated [Task] */
-  private suspend fun onPurgeInActiveCarePlanWithTasks(carePlans: List<CarePlan>) =
-    carePlans
-      .filter { it.status != CarePlan.CarePlanStatus.ACTIVE }
-      .also { onPurgeCarePlanWithAssociatedTask(it, false) }
-
-  /** Purge Multiple [CarePlan.CarePlanStatus.ACTIVE] together with it's associated [Task] */
-  private suspend fun onPurgeMultipleActiveCarePlanWithTasks(carePlans: List<CarePlan>) =
-    carePlans
-      .filter { it.status == CarePlan.CarePlanStatus.ACTIVE }
-      .sortedBy { it.meta.lastUpdated }
-      .also { if (it.size > 1) onPurgeCarePlanWithAssociatedTask(it.subList(1, it.size), true) }
-
   // TODO: Filter out the care_plans in the query before hand
   private suspend fun onPurgeCarePlans() {
-    query<Patient>(ResourceType.Patient)
-      .filter { it.isNotEmpty() }
-      .collect { patients ->
-        val patientIdsReferenceParamFilterCriteria =
-          patients.map(Patient::logicalId).chunked(50) {
-            it.map<String, ReferenceParamFilterCriterion.() -> Unit> {
-              return@map { value = "${ResourceType.Patient.name}/$it" }
-            }
-          }
-        val carePlans = mutableListOf<CarePlan>()
-        patientIdsReferenceParamFilterCriteria.forEach {
-          fhirEngine
-            .search<CarePlan> { filter(CarePlan.SUBJECT, *it.toTypedArray()) }
-            .map { it.resource }
-            .let { carePlans.addAll(it) }
-        }
-
-        carePlans
-          .groupBy { it.subject.reference }
-          .values
-          .filter { it.size > 1 }
-          .forEach {
-            onPurgeInActiveCarePlanWithTasks(it)
-            onPurgeMultipleActiveCarePlanWithTasks(it)
-          }
+    query<CarePlan>(ResourceType.CarePlan) {
+        filter(
+          CarePlan.STATUS,
+          { value = of(CarePlan.CarePlanStatus.REVOKED.toCode()) },
+          { value = of(CarePlan.CarePlanStatus.ENTEREDINERROR.toCode()) },
+          { value = of(CarePlan.CarePlanStatus.COMPLETED.toCode()) },
+          { value = of(CarePlan.CarePlanStatus.UNKNOWN.toCode()) },
+          operation = Operation.OR,
+        )
+      }
+      .collect { carePlans ->
+        onPurgeCarePlanWithAssociatedTask(
+          carePlans.filter {
+            it.status != CarePlan.CarePlanStatus.ACTIVE &&
+              it.status != CarePlan.CarePlanStatus.ONHOLD &&
+              it.status != CarePlan.CarePlanStatus.DRAFT
+          },
+        )
       }
   }
 
-  private suspend fun onPurgeCarePlanWithAssociatedTask(
-    carePlans: List<CarePlan>,
-    isError: Boolean = false,
-  ) {
-    if (isError) {
-      // TODO: Should we also update the task statuses?
-      carePlans.setStatusEnteredInError()
-    } else {
-      carePlans
-        .asSequence()
-        .flatMap { it.activity }
-        .mapNotNull { it.outcomeReference.firstOrNull() }
-        .map { it.reference.substringAfter("/") }
-        .toSet()
-        .map { Task().apply { id = it } }
-        .toList()
-        .purge()
-      carePlans.purge()
-    }
-  }
-
-  private suspend fun Iterable<CarePlan>.setStatusEnteredInError() {
-    val updateCarePlans = this.map { it.setStatus(CarePlan.CarePlanStatus.ENTEREDINERROR) }
-    fhirEngine.update(*updateCarePlans.toTypedArray())
+  private suspend fun onPurgeCarePlanWithAssociatedTask(carePlans: List<CarePlan>) {
+    carePlans
+      .asSequence()
+      .flatMap { it.activity }
+      .mapNotNull { it.outcomeReference.firstOrNull() }
+      .map { it.reference.substringAfter("/") }
+      .toSet()
+      .map { Task().apply { id = it } }
+      .toList()
+      .purge()
+    carePlans.purge()
   }
 
   companion object {

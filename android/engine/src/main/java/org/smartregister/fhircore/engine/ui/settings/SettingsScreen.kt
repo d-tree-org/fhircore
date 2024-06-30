@@ -103,7 +103,7 @@ fun SettingsScreen(
           flow =
             context
               .getSharedPreferences(SharedPreferencesHelper.PREFS_NAME, Context.MODE_PRIVATE)
-              .getPreferenceFlow()
+              .getPreferenceFlow(),
         ) {
           LazyColumn(
             modifier = modifier.padding(paddingValues).padding(vertical = 20.dp),
