@@ -134,7 +134,9 @@ constructor(
   init {
     viewModelScope.launch(dispatcherProvider.io()) {
       extractAndSaveRequestStateFlow.debounce(800.milliseconds).collect {
-        it.invoke() // invoke request
+        fhirEngine.withTransaction {
+          it.invoke() // invoke request
+        }
       }
     }
   }
