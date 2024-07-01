@@ -243,7 +243,7 @@ constructor(
 
     if (
       practitionerDetails.id ==
-        "${appConfigs.getBaseFhirUrl()}practitioner-details/Practitioner Not Found"
+        "${appConfigs.getBaseFhirUrl()}PractitionerDetail/Practitioner Not Found"
     ) {
       throw PractitionerNotFoundException()
     }
