@@ -478,6 +478,7 @@ constructor(
           ?.extractId() ?: return null
       return fhirEngine.get<Patient>(patientRef)
     } catch (e: Exception) {
+      Timber.e(e)
       return null
     }
   }

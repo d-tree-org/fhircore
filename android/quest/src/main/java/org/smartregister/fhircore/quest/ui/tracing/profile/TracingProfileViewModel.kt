@@ -47,6 +47,7 @@ import org.smartregister.fhircore.quest.navigation.OverflowMenuHost
 import org.smartregister.fhircore.quest.ui.shared.models.ProfileViewData
 import org.smartregister.fhircore.quest.util.mappers.ProfileViewDataMapper
 import org.smartregister.fhircore.quest.util.mappers.RegisterViewDataMapper
+import timber.log.Timber
 
 @HiltViewModel
 class TracingProfileViewModel
@@ -102,6 +103,7 @@ constructor(
         }
         loadingState.value = DataLoadState.Success(true)
       } catch (e: Exception) {
+        Timber.e(e)
         loadingState.value = DataLoadState.Error(e)
       }
     }

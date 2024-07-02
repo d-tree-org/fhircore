@@ -134,7 +134,9 @@ constructor(
   init {
     viewModelScope.launch(dispatcherProvider.io()) {
       extractAndSaveRequestStateFlow.debounce(800.milliseconds).collect {
-        it.invoke() // invoke request
+        fhirEngine.withTransaction {
+          it.invoke() // invoke request
+        }
       }
     }
   }
@@ -223,7 +225,7 @@ constructor(
       structureMap =
         structureMap
           ?: defaultRepository.loadResource<StructureMap>(this)?.also {
-            it.let { ContentCache.saveResource( it) }
+            it.let { ContentCache.saveResource(it) }
           }
     }
     return structureMap as? StructureMap

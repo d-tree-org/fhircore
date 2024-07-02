@@ -17,6 +17,7 @@
 package org.smartregister.fhircore.engine.util.extension
 
 import android.content.Context
+import androidx.core.text.isDigitsOnly
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Search
@@ -212,7 +213,11 @@ fun Patient.extractTelecom(): List<PhoneContact> {
     if (raw.size > 1) {
       PhoneContact(raw.getOrNull(1) ?: "", raw.getOrNull(2) ?: "")
     } else if (raw.size == 1) {
-      PhoneContact(it.value, "Self")
+      if (it.value.isDigitsOnly()) {
+        PhoneContact(it.value, "Self")
+      } else {
+        null
+      }
     } else {
       null
     }

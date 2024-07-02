@@ -16,7 +16,6 @@
 
 package org.smartregister.fhircore.quest.navigation
 
-import androidx.compose.material.icons.Icons
 import org.smartregister.fhircore.quest.R
 
 sealed class MainNavigationScreen(
@@ -55,6 +54,7 @@ sealed class MainNavigationScreen(
       "reportsRoute",
       true,
     )
+
   data object Insights :
     MainNavigationScreen(
       R.string.insights,

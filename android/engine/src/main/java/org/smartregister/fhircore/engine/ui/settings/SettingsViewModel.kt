@@ -45,6 +45,7 @@ import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.annotation.ExcludeFromJacocoGeneratedReport
 import org.smartregister.fhircore.engine.util.extension.getActivity
 import org.smartregister.fhircore.engine.util.extension.launchActivityWithNoBackStackHistory
+import timber.log.Timber
 
 @HiltViewModel
 @ExcludeFromJacocoGeneratedReport
@@ -68,10 +69,12 @@ constructor(
   val profileData = MutableLiveData<DataLoadState<ProfileData>>()
 
   init {
-    viewModelScope.launch(Dispatchers.IO) @ExcludeFromJacocoGeneratedReport { fetchData() }
+    viewModelScope.launch(Dispatchers.IO) @ExcludeFromJacocoGeneratedReport {
+      fetchPractitionerDetailCard()
+    }
   }
 
-  private suspend fun fetchData() {
+  private suspend fun fetchPractitionerDetailCard() {
     try {
       profileData.postValue(DataLoadState.Loading)
 
@@ -131,6 +134,7 @@ constructor(
         ),
       )
     } catch (e: Exception) {
+      Timber.e(e)
       profileData.postValue(DataLoadState.Error(e))
     }
   }

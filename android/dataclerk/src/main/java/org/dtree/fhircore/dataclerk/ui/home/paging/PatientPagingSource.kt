@@ -41,6 +41,7 @@ class PatientPagingSource(private val dataStore: AppDataStore) : PagingSource<In
         nextKey = nextPage,
       )
     } catch (e: Exception) {
+      Timber.e(e)
       LoadResult.Error(e)
     }
   }

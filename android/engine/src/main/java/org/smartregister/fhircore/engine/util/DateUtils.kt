@@ -26,6 +26,7 @@ import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.format.DateTimeFormatter
 import org.smartregister.fhircore.engine.util.extension.asYyyyMmDd
+import timber.log.Timber
 
 object DateUtils {
   fun yesterday(): Date = DateTimeType.now().apply { add(Calendar.DATE, -1) }.value
@@ -64,7 +65,7 @@ object DateUtils {
       date = format.parse(this)
       println(date)
     } catch (e: ParseException) {
-      e.printStackTrace()
+      Timber.e(e)
     }
     return date
   }

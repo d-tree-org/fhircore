@@ -144,7 +144,7 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
           }
         }
       } catch (e: Exception) {
-        e.printStackTrace()
+        Timber.e(e)
       }
     }
 
@@ -318,7 +318,7 @@ class TracingRepository @Inject constructor(val fhirEngine: FhirEngine) {
           encounters.add(resource)
         }
       } catch (e: Exception) {
-        e.printStackTrace()
+        Timber.e(e)
       }
     }
 
