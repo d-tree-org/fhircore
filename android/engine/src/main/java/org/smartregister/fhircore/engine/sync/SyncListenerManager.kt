@@ -53,6 +53,9 @@ constructor(
 
   private val syncConfig by lazy { configurationRegistry.getSyncConfigs() }
 
+  private fun isInitialSync() =
+    sharedPreferencesHelper.read(SharedPreferenceKey.LAST_SYNC_TIMESTAMP.name, null).isNullOrBlank()
+
   private val _onSyncListeners = mutableListOf<WeakReference<OnSyncListener>>()
   val onSyncListeners: List<OnSyncListener>
     get() = _onSyncListeners.mapNotNull { it.get() }
@@ -132,11 +135,14 @@ constructor(
         }
       }
 
-    filterBasedOnPerResourceType().forEach { (type, filters) ->
-      resourceTypeParamsMap.merge(type, filters) { list1, list2 ->
-        return@merge list1.toMutableList().apply { addAll(list2) }
+    if (isInitialSync()) {
+      filterBasedOnPerResourceType().forEach { (type, filters) ->
+        resourceTypeParamsMap.merge(type, filters) { list1, list2 ->
+          return@merge list1.toMutableList().apply { addAll(list2) }
+        }
       }
     }
+
     val filterByLocationParams =
       sharedPreferencesHelper.filterByResourceLocation(resourceTypeParamsMap)
 
