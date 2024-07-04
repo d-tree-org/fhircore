@@ -57,7 +57,6 @@ constructor(
     sharedPreferencesHelper
       .read(SharedPreferenceKey.LAST_SYNC_TIMESTAMP.name, null)
       .isNullOrBlank()
-      .not()
 
   private val _onSyncListeners = mutableListOf<WeakReference<OnSyncListener>>()
   val onSyncListeners: List<OnSyncListener>
