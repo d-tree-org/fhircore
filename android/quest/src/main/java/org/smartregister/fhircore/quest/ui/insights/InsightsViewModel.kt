@@ -21,6 +21,8 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.sync.SyncJobStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.concurrent.fixedRateTimer
@@ -31,8 +33,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.smartregister.fhircore.engine.data.local.register.AppRegisterRepository
+import org.smartregister.fhircore.engine.domain.util.DataLoadState
+import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.engine.util.DispatcherProvider
+import org.smartregister.fhircore.engine.util.extension.spaceByUppercase
 
 @HiltViewModel
 class InsightsViewModel
@@ -40,11 +46,17 @@ class InsightsViewModel
 constructor(
   val dispatcherProvider: DispatcherProvider,
   val registerRepository: AppRegisterRepository,
+  val syncBroadcaster: SyncBroadcaster,
+  val fhirEngine: FhirEngine,
   application: Application,
 ) : AndroidViewModel(application) {
 
   private val _isRefreshingRamAvailabilityStats = MutableStateFlow(false)
   val isRefreshingRamAvailabilityStatsStateFlow = _isRefreshingRamAvailabilityStats.asStateFlow()
+  val syncStatus: MutableStateFlow<SyncJobStatus?> = MutableStateFlow(null)
+
+  val unsyncedResourcesChangesState =
+    MutableStateFlow<DataLoadState<List<Pair<String, Int>>>>(DataLoadState.Idle)
 
   val isRefreshing =
     _isRefreshingRamAvailabilityStats.stateIn(
@@ -57,6 +69,8 @@ constructor(
 
   fun refresh() {
     getMemoryInfo()
+    getSyncInformation()
+    fetchUnsyncedResources()
   }
 
   init {
@@ -78,6 +92,45 @@ constructor(
       ramAvailabilityStatsStateFlow.emit(
         "${(totalMemory - availMemory).roundTo(3)}G/${totalMemory.roundTo(3)}G",
       )
+    }
+  }
+
+  fun runSync() {
+    syncBroadcaster.runSync()
+  }
+
+  private fun getSyncInformation() {
+    syncBroadcaster.registerSyncListener(
+      { sync ->
+        viewModelScope.launch {
+          syncStatus.emit(sync)
+          if (sync is SyncJobStatus.Failed || sync is SyncJobStatus.Succeeded) {
+            fetchUnsyncedResources()
+          }
+        }
+      },
+      viewModelScope,
+    )
+  }
+
+  fun fetchUnsyncedResources() {
+    viewModelScope.launch {
+      withContext(dispatcherProvider.io()) {
+        try {
+          unsyncedResourcesChangesState.value = DataLoadState.Loading
+          val unsyncedResources =
+            fhirEngine
+              .getUnsyncedLocalChanges()
+              .distinctBy { it.resourceId }
+              .groupingBy { it.resourceType.spaceByUppercase() }
+              .eachCount()
+              .map { it.key to it.value }
+
+          unsyncedResourcesChangesState.value = DataLoadState.Success(unsyncedResources)
+        } catch (e: Exception) {
+          unsyncedResourcesChangesState.value = DataLoadState.Error(e)
+        }
+      }
     }
   }
 
