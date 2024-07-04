@@ -17,16 +17,13 @@
 package org.smartregister.fhircore.quest.ui.insights
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
@@ -48,6 +45,9 @@ import androidx.navigation.NavHostController
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import org.smartregister.fhircore.quest.R
+import org.smartregister.fhircore.quest.ui.insights.components.RamInformation
+import org.smartregister.fhircore.quest.ui.insights.components.SyncInformation
+import org.smartregister.fhircore.quest.ui.insights.components.UnsyncedResourcesInformation
 
 @Composable
 fun InsightsScreen(
@@ -83,40 +83,15 @@ fun InsightsScreen(
   ) { innerPadding ->
     Box(modifier = modifier.padding(innerPadding)) {
       val isRefreshing by insightsViewModel.isRefreshing.collectAsState()
-      val isRefreshingRamAvailabilityStats by
-        insightsViewModel.isRefreshingRamAvailabilityStatsStateFlow.collectAsState()
-      val ramAvailabilityStats by insightsViewModel.ramAvailabilityStatsStateFlow.collectAsState()
-
       SwipeRefresh(
         state = rememberSwipeRefreshState(isRefreshing),
         onRefresh = { insightsViewModel.refresh() },
         //        indicator = { _, _ -> }
       ) {
-        LazyColumn {
-          item {
-            Card(
-              modifier = Modifier.padding(8.dp).fillMaxWidth().height(IntrinsicSize.Min),
-            ) {
-              Box(
-                modifier = Modifier.padding(8.dp),
-              ) {
-                Column {
-                  Text(
-                    text = stringResource(R.string.ram_available),
-                    style = MaterialTheme.typography.h4.copy(color = Color.Gray),
-                  )
-                  Spacer(modifier = Modifier.height(8.dp))
-                  Text(
-                    text = "$ramAvailabilityStats",
-                    style =
-                      if (isRefreshingRamAvailabilityStats) {
-                        MaterialTheme.typography.h2.copy(color = Color.Gray.copy(alpha = 0.5F))
-                      } else MaterialTheme.typography.h2,
-                  )
-                }
-              }
-            }
-          }
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          item { RamInformation(insightsViewModel = insightsViewModel) }
+          item { SyncInformation(insightsViewModel = insightsViewModel) }
+          item { UnsyncedResourcesInformation(insightsViewModel = insightsViewModel) }
         }
       }
     }

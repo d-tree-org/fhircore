@@ -21,3 +21,6 @@ package org.smartregister.fhircore.engine.util.extension
  * be a keycloak-uuid.
  */
 fun String.practitionerEndpointUrl(): String = "PractitionerDetail?keycloak-uuid=$this"
+
+fun String.spaceByUppercase() =
+  this.split(Regex("(?=\\p{Upper})")).joinToString(separator = " ").trim()
