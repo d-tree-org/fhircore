@@ -54,9 +54,7 @@ constructor(
   private val syncConfig by lazy { configurationRegistry.getSyncConfigs() }
 
   private fun isInitialSync() =
-    sharedPreferencesHelper
-      .read(SharedPreferenceKey.LAST_SYNC_TIMESTAMP.name, null)
-      .isNullOrBlank()
+    sharedPreferencesHelper.read(SharedPreferenceKey.LAST_SYNC_TIMESTAMP.name, null).isNullOrBlank()
 
   private val _onSyncListeners = mutableListOf<WeakReference<OnSyncListener>>()
   val onSyncListeners: List<OnSyncListener>
