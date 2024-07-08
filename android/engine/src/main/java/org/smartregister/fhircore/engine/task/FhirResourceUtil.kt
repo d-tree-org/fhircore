@@ -145,10 +145,18 @@ constructor(
                   }
                 if (index != -1) {
                   val item = carePlan.activity?.get(index)
-                  item?.detail?.status = CarePlan.CarePlanActivityStatus.STOPPED
-                  carePlan.activity[index] = item
-                  Timber.d("Updating carePlan: ${carePlan.referenceValue()}")
-                  carePlans[carePlan.logicalId] = carePlan
+                  val currentStatus = item?.detail?.status
+                  if (
+                    currentStatus != CarePlan.CarePlanActivityStatus.COMPLETED &&
+                      currentStatus != CarePlan.CarePlanActivityStatus.CANCELLED &&
+                      currentStatus != CarePlan.CarePlanActivityStatus.ENTEREDINERROR &&
+                      currentStatus != CarePlan.CarePlanActivityStatus.ONHOLD
+                  ) {
+                    item?.detail?.status = CarePlan.CarePlanActivityStatus.STOPPED
+                    carePlan.activity[index] = item
+                    Timber.d("Updating carePlan: ${carePlan.referenceValue()}")
+                    carePlans[carePlan.logicalId] = carePlan
+                  }
                 }
               }
               .onFailure {
