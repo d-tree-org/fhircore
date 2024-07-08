@@ -165,4 +165,6 @@
     <string name="no_patients_found">No patients found</string>
     <string name="select">Select</string>
     <string name="select_location">Select location</string>
+    <string name="upload_strategy">Upload Strategy</string>
+    <string name="ok">Ok</string>
 </resources>

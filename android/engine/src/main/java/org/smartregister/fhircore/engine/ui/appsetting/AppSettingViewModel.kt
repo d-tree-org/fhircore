@@ -87,6 +87,7 @@ constructor(
           )
         }
       } catch (e: Exception) {
+        Timber.e(e)
         _loadState.postValue(DataLoadState.Error(ConfigurationErrorException(e.message)))
       }
     }

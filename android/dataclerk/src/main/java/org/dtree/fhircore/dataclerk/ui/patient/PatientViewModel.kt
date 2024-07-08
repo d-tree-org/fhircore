@@ -40,6 +40,7 @@ import org.dtree.fhircore.dataclerk.util.getFormattedAge
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireType
 import org.smartregister.fhircore.engine.util.extension.toHumanDisplay
+import timber.log.Timber
 
 @HiltViewModel
 class PatientViewModel
@@ -131,6 +132,7 @@ constructor(
         screenState.emit(PatientDetailScreenState.Success(patient, data))
         fetchResources(hashList)
       } catch (e: Exception) {
+        Timber.e(e)
         screenState.emit(PatientDetailScreenState.Error(e.message ?: "Error"))
       }
     }
@@ -153,6 +155,7 @@ constructor(
             this[resourceId] = MutableStateFlow(ResourcePropertyState.Success(resource))
           }
       } catch (e: Exception) {
+        Timber.e(e)
         resourceMapStatus.value =
           resourceMapStatus.value.toMutableMap().apply {
             this[resourceId] = MutableStateFlow(ResourcePropertyState.Error(e.message ?: "Error"))

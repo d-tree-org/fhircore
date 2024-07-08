@@ -43,6 +43,7 @@ import com.google.android.fhir.datacapture.validation.Invalid
 import com.google.android.fhir.datacapture.validation.QuestionnaireResponseValidator
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.Encounter
@@ -297,7 +298,8 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
         questionnaireConfig = resultPair.first
         questionnaire = resultPair.second
 
-        populateInitialValues(questionnaire)
+        val t = measureTimeMillis { populateInitialValues(questionnaire) }
+        Timber.d("populateInitialValues took $t ms : cachedxxx")
       }
       .onFailure {
         Timber.e(it)

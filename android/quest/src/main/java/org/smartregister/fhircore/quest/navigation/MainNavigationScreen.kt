@@ -55,6 +55,14 @@ sealed class MainNavigationScreen(
       true,
     )
 
+  data object Insights :
+    MainNavigationScreen(
+      R.string.insights,
+      org.smartregister.fhircore.engine.R.drawable.ic_insights,
+      "insightsRoute",
+      true,
+    )
+
   data object Settings :
     MainNavigationScreen(
       org.smartregister.fhircore.engine.R.string.settings,
@@ -109,6 +117,7 @@ sealed class MainNavigationScreen(
         TracingHistory,
         TracingOutcomes,
         TracingHistoryDetails,
+        Insights,
       )
   }
 }

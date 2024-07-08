@@ -14,13 +14,10 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.util.extension
+package org.smartregister.fhircore.engine.configuration.preferences
 
-/**
- * Get the practitioner endpoint url and append the keycloak-uuid. The original String is assumed to
- * be a keycloak-uuid.
- */
-fun String.practitionerEndpointUrl(): String = "PractitionerDetail?keycloak-uuid=$this"
-
-fun String.spaceByUppercase() =
-  this.split(Regex("(?=\\p{Upper})")).joinToString(separator = " ").trim()
+enum class SyncUploadStrategy {
+  Default,
+  Batch,
+  Single,
+}

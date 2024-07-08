@@ -134,13 +134,15 @@ constructor(
   init {
     viewModelScope.launch(dispatcherProvider.io()) {
       extractAndSaveRequestStateFlow.debounce(800.milliseconds).collect {
-        it.invoke() // invoke request
+        fhirEngine.withTransaction {
+          it.invoke() // invoke request
+        }
       }
     }
   }
 
   suspend fun loadQuestionnaire(id: String, type: QuestionnaireType): Questionnaire? {
-    var questionnaire = ContentCache.getResource(ResourceType.Questionnaire.name + "/" + id)?.copy()
+    var questionnaire = ContentCache.getResource(ResourceType.Questionnaire.name + "/" + id)
 
     if (questionnaire == null) {
       questionnaire =
@@ -159,8 +161,7 @@ constructor(
           }
           ?.also {
             ContentCache.saveResource(
-              id,
-              it.copy(),
+              it,
             )
           }
     }
@@ -224,7 +225,7 @@ constructor(
       structureMap =
         structureMap
           ?: defaultRepository.loadResource<StructureMap>(this)?.also {
-            it.let { ContentCache.saveResource(this, it) }
+            it.let { ContentCache.saveResource(it) }
           }
     }
     return structureMap as? StructureMap

@@ -30,4 +30,5 @@ enum class SharedPreferenceKey {
   LOGIN_PIN_KEY,
   LAST_PURGE_KEY,
   USER_CLAIM_INFO,
+  SYNC_UPLOAD_STRATEGY,
 }

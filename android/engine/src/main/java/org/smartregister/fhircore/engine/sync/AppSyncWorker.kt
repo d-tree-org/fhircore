@@ -30,8 +30,11 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.ResourceType
+import org.smartregister.fhircore.engine.configuration.preferences.SyncUploadStrategy
 import org.smartregister.fhircore.engine.util.AppDataStore
 import org.smartregister.fhircore.engine.util.DispatcherProvider
+import org.smartregister.fhircore.engine.util.SharedPreferenceKey
+import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 
 @HiltWorker
 class AppSyncWorker
@@ -42,6 +45,7 @@ constructor(
   private val syncListenerManager: SyncListenerManager,
   val engine: FhirEngine,
   val dataStore: AppDataStore,
+  val preference: SharedPreferencesHelper,
   val dispatcherProvider: DispatcherProvider,
 ) : FhirSyncWorker(appContext, workerParams) {
   override fun getConflictResolver(): ConflictResolver = AcceptLocalConflictResolver
@@ -67,7 +71,28 @@ constructor(
     return withContext(dispatcherProvider.singleThread()) { super.doWork() }
   }
 
-  override fun getUploadStrategy(): UploadStrategy = UploadStrategy.AllChangesSquashedBundlePut
+  override fun getUploadStrategy(): UploadStrategy {
+    val strategy =
+      SyncUploadStrategy.valueOf(
+        preference.read(
+          SharedPreferenceKey.SYNC_UPLOAD_STRATEGY.name,
+          SyncUploadStrategy.Default.name,
+        ) ?: SyncUploadStrategy.Default.name,
+      )
+    return when (strategy) {
+      SyncUploadStrategy.Default -> {
+        if (runAttemptCount % 2 == 0) {
+          UploadStrategy.AllChangesSquashedBundlePut
+        } else UploadStrategy.SingleResourcePut
+      }
+      SyncUploadStrategy.Single -> {
+        UploadStrategy.SingleResourcePut
+      }
+      else -> {
+        UploadStrategy.AllChangesSquashedBundlePut
+      }
+    }
+  }
 
   override fun getFhirEngine(): FhirEngine = engine
 }

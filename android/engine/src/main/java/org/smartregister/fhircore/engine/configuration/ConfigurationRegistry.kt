@@ -35,6 +35,7 @@ import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireConfig
 import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.extension.decodeJson
+import timber.log.Timber
 
 /**
  * A configuration store used to store all the application configurations. Application
@@ -63,6 +64,7 @@ constructor(
       applicationConfiguration.update { config }
       true
     } catch (ex: ResourceNotFoundException) {
+      Timber.e(ex)
       false
     }
   }
