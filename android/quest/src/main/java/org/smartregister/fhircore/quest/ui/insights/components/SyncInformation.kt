@@ -83,7 +83,7 @@ fun SyncInformation(insightsViewModel: InsightsViewModel) {
             }
             is SyncJobStatus.Failed -> {
               Text(text = "Sync failed at: ${(status as SyncJobStatus.Failed).timestamp}")
-              (status as SyncJobStatus.Failed).exceptions.forEach { exception ->
+              (status as SyncJobStatus.Failed).exceptions?.forEach { exception ->
                 Text(
                   text = "Error: ${exception.exception.message}",
                   color = MaterialTheme.colors.error,
