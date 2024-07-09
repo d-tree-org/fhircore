@@ -45,6 +45,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import androidx.ui.res.stringResource
+import java.util.UUID
 import org.smartregister.fhircore.engine.domain.model.RegisterData
 import org.smartregister.fhircore.engine.ui.components.CircularProgressBar
 import org.smartregister.fhircore.engine.ui.components.ErrorMessage
@@ -65,7 +66,7 @@ fun RegisterList(
   LazyColumn(modifier = modifier) {
     items(
       pagingItems.itemCount,
-      key = pagingItems.itemKey { it.customKey ?: it.logicalId },
+      key = pagingItems.itemKey { "${it.customKey ?: it.logicalId} - ${UUID.randomUUID()} " },
       contentType = pagingItems.itemContentType(),
     ) {
       RegisterRowItem(listItemViewData = pagingItems[it]!!, onRowClick = onRowClick)

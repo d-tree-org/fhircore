@@ -180,8 +180,23 @@ constructor(
     currentPage: Int,
     loadAll: Boolean,
     appFeatureName: String?,
+    patientSearchText: String?,
   ): List<RegisterData> {
     val patients = searchRegisterData {
+      if (!patientSearchText.isNullOrBlank()) {
+        if (patientSearchText.contains(Regex("[0-9]{2}"))) {
+          filter(Patient.IDENTIFIER, { value = of(patientSearchText) })
+        } else {
+          filter(
+            Patient.NAME,
+            {
+              modifier = StringFilterModifier.CONTAINS
+              value = patientSearchText
+            },
+          )
+        }
+      }
+
       if (!loadAll) {
         count = PaginationConstant.DEFAULT_PAGE_SIZE + PaginationConstant.EXTRA_ITEM_COUNT
       }

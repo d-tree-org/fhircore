@@ -28,6 +28,7 @@ import androidx.paging.map
 import com.google.android.fhir.sync.SyncJobStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
@@ -44,7 +45,6 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import org.smartregister.fhircore.engine.appfeature.AppFeature
 import org.smartregister.fhircore.engine.appfeature.AppFeatureManager
@@ -105,12 +105,47 @@ constructor(
   override val searchText: StateFlow<String>
     get() = _searchText.asStateFlow()
 
+  override val searchedText: StateFlow<String> =
+    searchText
+      .debounce {
+        when (it.length) {
+          0 -> 2.milliseconds // when search is cleared
+          1,
+          2, -> 1200.milliseconds
+          else -> 500.milliseconds
+        }
+      }
+      .stateIn(viewModelScope, SharingStarted.Lazily, searchText.value)
+
   private val _refreshCounter = MutableStateFlow(0)
   val refreshCounter: StateFlow<Int>
     get() = _refreshCounter.asStateFlow()
 
-  private val _paginatedRegisterData: MutableStateFlow<Flow<PagingData<RegisterViewData>>> =
-    MutableStateFlow(emptyFlow())
+  private val _filtersMutableStateFlow: MutableStateFlow<TracingRegisterFilterState> =
+    MutableStateFlow(TracingRegisterFilterState.default(healthModule))
+  val filtersStateFlow: StateFlow<TracingRegisterFilterState> =
+    _filtersMutableStateFlow.asStateFlow()
+
+  val registerFilterFlow =
+    filtersStateFlow.map(TracingRegisterFilterState::toTracingRegisterFilter).onEach { resetPage() }
+
+  private val _paginatedRegisterData =
+    combine(searchedText, _currentPage, registerFilterFlow, refreshCounter) { s, p, f, _ ->
+        Triple(s, p, f)
+      }
+      .mapLatest {
+        val pagingFlow =
+          if (it.first.isNotBlank()) {
+            filterRegisterDataFlow(
+              text = it.first,
+              filters = TracingRegisterFilterState.default(healthModule).toTracingRegisterFilter(),
+            )
+          } else {
+            paginateRegisterDataFlow(page = it.second, filters = it.third)
+          }
+
+        return@mapLatest pagingFlow.cachedIn(viewModelScope).also { _isRefreshing.emit(false) }
+      }
 
   override val pageRegisterListItemData:
     StateFlow<Flow<PagingData<RegisterViewData.ListItemView>>> =
@@ -144,51 +179,7 @@ constructor(
         initialValue = emptyFlow(),
       )
 
-  val paginatedRegisterDataForSearch: MutableStateFlow<Flow<PagingData<RegisterViewData>>> =
-    MutableStateFlow(emptyFlow())
-
-  private val _filtersMutableStateFlow: MutableStateFlow<TracingRegisterFilterState> =
-    MutableStateFlow(TracingRegisterFilterState.default(healthModule))
-  val filtersStateFlow: StateFlow<TracingRegisterFilterState> =
-    _filtersMutableStateFlow.asStateFlow()
-
   init {
-    val searchFlow = _searchText.debounce(500)
-    val registerFilterFlow =
-      _filtersMutableStateFlow
-        .map {
-          val categories = transformPatientCategoryToHealthStatus(it.patientCategory.selected)
-          val ageFilter = transformToTracingAgeFilterEnum(it)
-          val reasonCode = transformTracingUiReasonToCode(it.reason.selected)
-          TracingRegisterFilter(
-            patientCategory = categories,
-            isAssignedToMe = it.patientAssignment.selected.assignedToMe(),
-            age = ageFilter,
-            reasonCode = reasonCode,
-          )
-        }
-        .onEach { resetPage() }
-    viewModelScope.launch(dispatcherProvider.io()) {
-      combine(searchFlow, _currentPage, registerFilterFlow, refreshCounter) { s, p, f, _ ->
-          Triple(s, p, f)
-        }
-        .mapLatest {
-          val pagingFlow =
-            if (it.first.isNotBlank()) {
-              filterRegisterDataFlow(text = it.first)
-            } else {
-              paginateRegisterDataFlow(page = it.second, filters = it.third)
-            }
-
-          return@mapLatest pagingFlow.onEach { _isRefreshing.emit(false) }
-        }
-        .collect { value -> _paginatedRegisterData.emit(value.cachedIn(viewModelScope)) }
-    }
-
-    viewModelScope.launch(dispatcherProvider.io()) {
-      registerFilterFlow.collect { paginateRegisterDataForSearch(it) }
-    }
-
     val syncStateListener = OnSyncListener { state ->
       val isStateCompleted = state is SyncJobStatus.Failed || state is SyncJobStatus.Succeeded
       if (isStateCompleted) {
@@ -213,27 +204,23 @@ constructor(
   fun paginateRegisterDataFlow(filters: TracingRegisterFilter, page: Int) =
     getPager(appFeatureName, loadAll = false, page = page, registerFilters = filters).flow
 
-  fun filterRegisterDataFlow(text: String) =
-    paginatedRegisterDataForSearch.value.map { pagingData: PagingData<RegisterViewData> ->
-      pagingData
-        .filter { it is RegisterViewData.ListItemView }
-        .filter {
-          it as RegisterViewData.ListItemView
-          it.title.contains(text, ignoreCase = true) ||
-            it.identifier.contains(text, ignoreCase = true)
-        }
-    }
-
-  fun paginateRegisterDataForSearch(filters: TracingRegisterFilter) {
-    paginatedRegisterDataForSearch.value =
-      getPager(appFeatureName, true, registerFilters = filters).flow.cachedIn(viewModelScope)
-  }
+  fun filterRegisterDataFlow(text: String, filters: TracingRegisterFilter) =
+    getPager(
+        appFeatureName = appFeatureName,
+        loadAll = true,
+        searchFilter = text,
+        registerFilters = filters,
+        searchLoadRegister = true,
+      )
+      .flow
 
   private fun getPager(
     appFeatureName: String?,
     loadAll: Boolean = false,
     page: Int = 0,
     registerFilters: TracingRegisterFilter,
+    searchFilter: String? = null,
+    searchLoadRegister: Boolean = false,
   ): Pager<Int, RegisterViewData> =
     Pager(
       config =
@@ -251,6 +238,8 @@ constructor(
               loadAll = loadAll,
               currentPage = if (loadAll) 0 else page,
               filters = registerFilters,
+              searchFilter = searchFilter,
+              searchLoadRegister = searchLoadRegister,
             ),
           )
         }
@@ -335,6 +324,18 @@ data class TracingRegisterFilterState(
       activeFilters.add(age.selected)
     }
     return activeFilters
+  }
+
+  fun toTracingRegisterFilter(): TracingRegisterFilter {
+    val categories = transformPatientCategoryToHealthStatus(patientCategory.selected)
+    val ageFilter = transformToTracingAgeFilterEnum(this)
+    val reasonCode = transformTracingUiReasonToCode(reason.selected)
+    return TracingRegisterFilter(
+      patientCategory = categories,
+      isAssignedToMe = patientAssignment.selected.assignedToMe(),
+      age = ageFilter,
+      reasonCode = reasonCode,
+    )
   }
 
   companion object {

@@ -34,4 +34,5 @@ interface StandardRegisterViewModel {
   val pageNavigationItemViewData:
     StateFlow<Flow<PagingData<RegisterViewData.PageNavigationItemView>>>
   val searchText: StateFlow<String>
+  val searchedText: StateFlow<String>
 }

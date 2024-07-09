@@ -25,6 +25,7 @@ import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.search.BaseSearch
 import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Order
+import com.google.android.fhir.search.StringFilterModifier
 import com.google.android.fhir.search.filter.ReferenceParamFilterCriterion
 import com.google.android.fhir.search.filter.TokenParamFilterCriterion
 import com.google.android.fhir.search.has
@@ -125,6 +126,7 @@ abstract class TracingRegisterDao(
     filters: RegisterFilter,
     loadAll: Boolean,
     page: Int = -1,
+    patientSearchText: String? = null,
   ): List<Pair<Patient, Iterable<Task>>> {
     filters as TracingRegisterFilter
     val filterFilter = applicationConfiguration().patientTypeFilterTagViaMetaCodingSystem
@@ -135,6 +137,20 @@ abstract class TracingRegisterDao(
           loadAll = loadAll,
         ) {
           has<Task>(Task.SUBJECT) { filtersForValidTask() }
+
+          if (!patientSearchText.isNullOrBlank()) {
+            if (patientSearchText.contains(Regex("[0-9]{2}"))) {
+              filter(Patient.IDENTIFIER, { value = of(patientSearchText) })
+            } else {
+              filter(
+                Patient.NAME,
+                {
+                  modifier = StringFilterModifier.CONTAINS
+                  value = patientSearchText
+                },
+              )
+            }
+          }
 
           filters.patientCategory?.let {
             val paramQueries: List<(TokenParamFilterCriterion.() -> Unit)> =
@@ -238,8 +254,10 @@ abstract class TracingRegisterDao(
     currentPage: Int,
     loadAll: Boolean,
     filters: RegisterFilter,
+    patientSearchText: String?,
   ): List<RegisterData> {
-    val patientTasksPairs = searchRegister(filters, loadAll = true)
+    val patientTasksPairs =
+      searchRegister(filters, patientSearchText = patientSearchText, loadAll = true)
     val patientSubjectRefFilterCriteria =
       patientTasksPairs
         .map { it.first }
@@ -286,9 +304,26 @@ abstract class TracingRegisterDao(
     currentPage: Int,
     loadAll: Boolean,
     appFeatureName: String?,
+    patientSearchText: String?,
   ): List<RegisterData> {
     val tracingPatients =
-      fhirEngine.fetch<Patient> { has<Task>(Task.SUBJECT) { filtersForValidTask() } }
+      fhirEngine.fetch<Patient> {
+        has<Task>(Task.SUBJECT) { filtersForValidTask() }
+
+        if (!patientSearchText.isNullOrBlank()) {
+          if (patientSearchText.contains(Regex("[0-9]{2}"))) {
+            filter(Patient.IDENTIFIER, { value = of(patientSearchText) })
+          } else {
+            filter(
+              Patient.NAME,
+              {
+                modifier = StringFilterModifier.CONTAINS
+                value = patientSearchText
+              },
+            )
+          }
+        }
+      }
 
     return tracingPatients
       .map { it.resource }

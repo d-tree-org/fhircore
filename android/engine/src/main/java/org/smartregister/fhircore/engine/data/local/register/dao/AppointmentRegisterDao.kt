@@ -22,6 +22,8 @@ import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Order
 import com.google.android.fhir.search.Search
+import com.google.android.fhir.search.StringFilterModifier
+import com.google.android.fhir.search.has
 import com.google.android.fhir.search.search
 import java.util.Calendar
 import java.util.Date
@@ -131,6 +133,7 @@ constructor(
     filters: RegisterFilter,
     loadAll: Boolean,
     page: Int = -1,
+    searchText: String? = null,
   ): List<Appointment> {
     filters as AppointmentRegisterFilter
 
@@ -139,6 +142,22 @@ constructor(
         offset = max(page, 0) * PaginationConstant.DEFAULT_PAGE_SIZE,
         loadAll = loadAll,
       ) {
+        if (!searchText.isNullOrBlank()) {
+          has<Patient>(Appointment.ACTOR) {
+            if (searchText.contains(Regex("[0-9]{2}"))) {
+              filter(Patient.IDENTIFIER, { value = of(searchText) })
+            } else {
+              filter(
+                Patient.NAME,
+                {
+                  modifier = StringFilterModifier.CONTAINS
+                  value = searchText
+                },
+              )
+            }
+          }
+        }
+
         genericFilter(
           dateOfAppointment = filters.dateOfAppointment,
           reasonCode = filters.reasonCode,
@@ -280,8 +299,9 @@ constructor(
     currentPage: Int,
     loadAll: Boolean,
     filters: RegisterFilter,
+    patientSearchText: String?,
   ): List<RegisterData> =
-    searchAppointments(filters, loadAll = true)
+    searchAppointments(filters, searchText = patientSearchText, loadAll = true)
       .map { transformAppointment(it) }
       .sortedWith(
         nullsFirst(
@@ -305,11 +325,28 @@ constructor(
     currentPage: Int,
     loadAll: Boolean,
     appFeatureName: String?,
+    patientSearchText: String?,
   ): List<RegisterData> {
     val appointments =
       fhirEngine.fetch<Appointment> {
         filter(Appointment.STATUS, { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) })
         filter(Appointment.DATE, { value = of(DateTimeType.today()) })
+
+        if (!patientSearchText.isNullOrBlank()) {
+          has<Patient>(Appointment.ACTOR) {
+            if (patientSearchText.contains(Regex("[0-9]{2}"))) {
+              filter(Patient.IDENTIFIER, { value = of(patientSearchText) })
+            } else {
+              filter(
+                Patient.NAME,
+                {
+                  modifier = StringFilterModifier.CONTAINS
+                  value = patientSearchText
+                },
+              )
+            }
+          }
+        }
       }
     val keySet = mutableSetOf<String>()
     return appointments

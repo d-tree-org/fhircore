@@ -56,6 +56,25 @@ class RegisterPagingSource(
       val registerData =
         withContext(dispatcherProvider.io()) {
           when {
+            _patientPagingSourceState.searchFilter != null &&
+              _patientPagingSourceState.searchLoadRegister &&
+              _patientPagingSourceState.requiresFilter -> {
+              registerRepository.loadRegisterFiltered(
+                currentPage = currentPage,
+                healthModule = _patientPagingSourceState.healthModule,
+                filters = _patientPagingSourceState.filters!!,
+                patientSearchText = _patientPagingSourceState.searchFilter!!,
+              )
+            }
+            _patientPagingSourceState.searchFilter != null &&
+              _patientPagingSourceState.searchLoadRegister -> {
+              registerRepository.loadRegisterFiltered(
+                currentPage = currentPage,
+                healthModule = _patientPagingSourceState.healthModule,
+                filters = _patientPagingSourceState.filters!!,
+                patientSearchText = _patientPagingSourceState.searchFilter!!,
+              )
+            }
             _patientPagingSourceState.searchFilter != null -> {
               registerRepository.searchByName(
                 currentPage = currentPage,
@@ -74,9 +93,9 @@ class RegisterPagingSource(
             else -> {
               registerRepository.loadRegisterData(
                 currentPage = currentPage,
+                loadAll = _patientPagingSourceState.loadAll,
                 appFeatureName = _patientPagingSourceState.appFeatureName,
                 healthModule = _patientPagingSourceState.healthModule,
-                loadAll = _patientPagingSourceState.loadAll,
               )
             }
           }
