@@ -202,7 +202,7 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
         .setIsReadOnly(questionnaireType.isReadOnly())
     questionnaireResponse.let {
       it.distinctifyLinkId()
-      //        Timber.e(it.encodeResourceToString())
+      //              Timber.e(it.encodeResourceToString())
       questionnaireFragmentBuilder.setQuestionnaireResponse(it.encodeResourceToString())
     }
     intent.getBundleExtra(QUESTIONNAIRE_LAUNCH_CONTEXTS)?.let { launchContextBundle ->

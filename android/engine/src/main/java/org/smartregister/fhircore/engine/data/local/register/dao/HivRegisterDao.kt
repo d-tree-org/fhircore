@@ -225,34 +225,41 @@ constructor(
   }
 
   override suspend fun loadProfileData(appFeatureName: String?, resourceId: String): ProfileData {
-    val patient = defaultRepository.loadResource<Patient>(resourceId)!!
-    val carePlan = patient.activeCarePlans(fhirEngine).firstOrNull()
+    var profileData: ProfileData? = null
 
-    return ProfileData.HivProfileData(
-      logicalId = patient.logicalId,
-      birthdate = patient.birthDate,
-      name = patient.extractName(),
-      givenName = patient.extractGivenName(),
-      familyName = patient.extractFamilyName(),
-      identifier = hivPatientIdentifier(patient),
-      gender = patient.gender,
-      age = patient.birthDate.toAgeDisplay(),
-      address = patient.extractAddress(),
-      addressDistrict = patient.extractAddressDistrict(),
-      addressTracingCatchment = patient.extractAddressState(),
-      addressPhysicalLocator = patient.extractAddressText(),
-      phoneContacts = patient.extractTelecom().map { it.number },
-      chwAssigned = patient.generalPractitionerFirstRep,
-      showIdentifierInProfile = true,
-      currentCarePlan = carePlan,
-      healthStatus = patient.extractHealthStatusFromMeta(patientTypeMetaTagCodingSystem),
-      tasks = fetchCarePlanActivities(carePlan),
-      conditions = defaultRepository.activePatientConditions(patient.logicalId),
-      otherPatients = patient.otherChildren(),
-      guardians = patient.guardians(),
-      observations = patient.observations(),
-      practitioners = patient.practitioners(),
-    )
+    fhirEngine.withTransaction {
+      val patient = defaultRepository.loadResource<Patient>(resourceId)!!
+      val carePlan = patient.activeCarePlans(fhirEngine).firstOrNull()
+
+      profileData =
+        ProfileData.HivProfileData(
+          logicalId = patient.logicalId,
+          birthdate = patient.birthDate,
+          name = patient.extractName(),
+          givenName = patient.extractGivenName(),
+          familyName = patient.extractFamilyName(),
+          identifier = hivPatientIdentifier(patient),
+          gender = patient.gender,
+          age = patient.birthDate.toAgeDisplay(),
+          address = patient.extractAddress(),
+          addressDistrict = patient.extractAddressDistrict(),
+          addressTracingCatchment = patient.extractAddressState(),
+          addressPhysicalLocator = patient.extractAddressText(),
+          phoneContacts = patient.extractTelecom().map { it.number },
+          chwAssigned = patient.generalPractitionerFirstRep,
+          showIdentifierInProfile = true,
+          currentCarePlan = carePlan,
+          healthStatus = patient.extractHealthStatusFromMeta(patientTypeMetaTagCodingSystem),
+          tasks = fetchCarePlanActivities(carePlan),
+          conditions = defaultRepository.activePatientConditions(patient.logicalId),
+          otherPatients = patient.otherChildren(),
+          guardians = patient.guardians(),
+          observations = patient.observations(),
+          practitioners = patient.practitioners(),
+        )
+    }
+
+    return profileData!!
   }
 
   override suspend fun countRegisterData(): Flow<Long> {
