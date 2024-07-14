@@ -142,31 +142,31 @@ constructor(
   }
 
   suspend fun loadQuestionnaire(id: String, type: QuestionnaireType): Questionnaire? {
-    var questionnaire = ContentCache.getResource(ResourceType.Questionnaire.name + "/" + id)
+    var questionnaire: Questionnaire? =
+      ContentCache.getResource(ResourceType.Questionnaire.name + "/" + id) as? Questionnaire
 
     if (questionnaire == null) {
       questionnaire =
-        defaultRepository
-          .loadResource<Questionnaire>(id)
-          ?.apply {
-            if (type.isReadOnly() || type.isEditMode()) {
-              item.prepareQuestionsForReadingOrEditing(
-                QUESTIONNAIRE_RESPONSE_ITEM,
-                type.isReadOnly(),
-              )
-            }
-
-            // TODO https://github.com/opensrp/fhircore/issues/991#issuecomment-1027872061
-            this.url = this.url ?: this.referenceValue()
-          }
-          ?.also {
-            ContentCache.saveResource(
-              it,
-            )
-          }
+        defaultRepository.loadResource<Questionnaire>(id)?.also {
+          ContentCache.saveResource(
+            it,
+          )
+        }
     }
 
-    return questionnaire as? Questionnaire
+    questionnaire?.apply {
+      if (type.isReadOnly() || type.isEditMode()) {
+        item.prepareQuestionsForReadingOrEditing(
+          QUESTIONNAIRE_RESPONSE_ITEM,
+          type.isReadOnly(),
+        )
+      }
+
+      // TODO https://github.com/opensrp/fhircore/issues/991#issuecomment-1027872061
+      this.url = this.url ?: this.referenceValue()
+    }
+
+    return questionnaire
   }
 
   suspend fun getQuestionnaireConfig(form: String, context: Context): QuestionnaireConfig {
@@ -221,11 +221,12 @@ constructor(
   suspend fun fetchStructureMap(structureMapUrl: String?): StructureMap? {
     var structureMap: Resource? = null
     structureMapUrl?.substringAfterLast("/")?.run {
-      structureMap = ContentCache.getResource(ResourceType.StructureMap.name + "/" + this)
+      structureMap =
+        ContentCache.getResource(ResourceType.StructureMap.name + "/" + this) as? StructureMap
       structureMap =
         structureMap
           ?: defaultRepository.loadResource<StructureMap>(this)?.also {
-            it.let { ContentCache.saveResource(it) }
+            ContentCache.saveResource(it)
           }
     }
     return structureMap as? StructureMap
