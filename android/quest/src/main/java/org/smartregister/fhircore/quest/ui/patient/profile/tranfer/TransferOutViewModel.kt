@@ -114,7 +114,7 @@ constructor(
           mapOf(Pair("patient", patient.id), Pair("practitioner", currentPractitioner ?: "")),
         )
         val email = applicationConfiguration.supportEmail
-        val subject = "Request for Patient Transfer out for ${data.fullName}"
+        val subject = "Request for Patient Transfer out for ${data.patientId}"
         val body =
           """
           Where is the patient transferring to?
