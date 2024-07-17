@@ -23,12 +23,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.datacapture.mapping.ResourceMapper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.hl7.fhir.r4.model.Patient
+import org.hl7.fhir.r4.model.Questionnaire
+import org.hl7.fhir.r4.model.QuestionnaireResponse
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
@@ -139,6 +142,11 @@ constructor(
         updateState.value = DataLoadState.Error(e)
       }
     }
+  }
+
+  suspend fun generateResponse(questionnaire: Questionnaire): QuestionnaireResponse {
+    val questResponse = ResourceMapper.populate(questionnaire, mapOf())
+    return questResponse
   }
 }
 
