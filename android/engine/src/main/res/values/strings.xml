@@ -167,4 +167,5 @@
     <string name="select_location">Select location</string>
     <string name="upload_strategy">Upload Strategy</string>
     <string name="ok">Ok</string>
+    <string name="opening_form">Opening form...</string>
 </resources>

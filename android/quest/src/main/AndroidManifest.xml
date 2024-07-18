@@ -27,7 +27,10 @@
             android:exported="false" />
         <activity
             android:name=".ui.patient.profile.tranfer.TransferOutActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:launchMode="singleTop"/>
+
         <activity android:name=".ui.main.AppMainActivity" />
         <activity android:name=".ui.patient.remove.HivPatientQuestionnaireActivity"
             android:theme="@style/AppTheme"

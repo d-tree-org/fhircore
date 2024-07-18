@@ -16,27 +16,13 @@
 
 package org.smartregister.fhircore.quest.ui.patient.profile.tranfer
 
-import com.google.android.fhir.datacapture.extensions.logicalId
 import org.hl7.fhir.r4.model.Patient
-import org.smartregister.fhircore.engine.util.SystemConstants
-import org.smartregister.fhircore.engine.util.extension.extractGivenName
-import org.smartregister.fhircore.engine.util.extension.extractName
+import org.hl7.fhir.r4.model.Questionnaire
+import org.hl7.fhir.r4.model.QuestionnaireResponse
 
 data class TransferOutScreenState(
-  val patientId: String,
-  val facilityId: String,
-  val firstName: String,
-  val fullName: String,
-) {
-  companion object {
-    fun fromPatient(patient: Patient): TransferOutScreenState {
-      return TransferOutScreenState(
-        patientId = patient.logicalId,
-        facilityId =
-          patient.meta.tag.firstOrNull { it.system == SystemConstants.LOCATION_TAG }?.code ?: "NA",
-        firstName = patient.extractGivenName(),
-        fullName = patient.extractName(),
-      )
-    }
-  }
-}
+  val patient: Patient,
+  val questionnaire: Questionnaire,
+  val questionnaireString: String,
+  val questionnaireResponse: QuestionnaireResponse,
+)
