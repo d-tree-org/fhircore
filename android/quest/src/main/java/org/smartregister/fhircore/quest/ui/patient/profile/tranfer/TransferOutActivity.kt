@@ -100,7 +100,7 @@ class TransferOutActivity : BaseMultiLanguageActivity() {
           saveProcessingAlertDialog =
             AlertDialogue.showProgressAlert(
               this@TransferOutActivity,
-              R.string.form_progress_message
+              R.string.form_progress_message,
             )
         }
         is DataLoadState.Success -> {
