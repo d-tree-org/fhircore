@@ -27,6 +27,7 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
+import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -71,4 +72,6 @@ interface FhirResourceService {
     @Path("resourceType") resourceType: String,
     @Query("_id") resource: String,
   ): Bundle
+
+  @POST(".") suspend fun post(@Body body: RequestBody): ResponseBody
 }

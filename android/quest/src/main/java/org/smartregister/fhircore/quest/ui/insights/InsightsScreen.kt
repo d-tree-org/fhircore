@@ -48,12 +48,15 @@ import org.smartregister.fhircore.quest.R
 import org.smartregister.fhircore.quest.ui.insights.components.RamInformation
 import org.smartregister.fhircore.quest.ui.insights.components.SyncInformation
 import org.smartregister.fhircore.quest.ui.insights.components.UnsyncedResourcesInformation
+import org.smartregister.fhircore.quest.ui.localChange.LocalChangeScreen
+import org.smartregister.fhircore.quest.ui.localChange.LocalChangeViewModel
 
 @Composable
 fun InsightsScreen(
   navController: NavHostController,
   modifier: Modifier = Modifier,
   insightsViewModel: InsightsViewModel = hiltViewModel(),
+  localChangeViewModel: LocalChangeViewModel = hiltViewModel(),
 ) {
   Scaffold(
     topBar = {
@@ -83,6 +86,8 @@ fun InsightsScreen(
   ) { innerPadding ->
     Box(modifier = modifier.padding(innerPadding)) {
       val isRefreshing by insightsViewModel.isRefreshing.collectAsState()
+      val state = localChangeViewModel.state.collectAsState().value
+
       SwipeRefresh(
         state = rememberSwipeRefreshState(isRefreshing),
         onRefresh = { insightsViewModel.refresh() },
@@ -91,6 +96,7 @@ fun InsightsScreen(
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           item { RamInformation(insightsViewModel = insightsViewModel) }
           item { SyncInformation(insightsViewModel = insightsViewModel) }
+          item { LocalChangeScreen(state = state, localChangeViewModel::onEvent) }
           item { UnsyncedResourcesInformation(insightsViewModel = insightsViewModel) }
         }
       }
