@@ -156,7 +156,7 @@ constructor(
           },
         )
       }
-      sort(DateClientParam("_lastUpdated"), Order.DESCENDING)
+      sort(CarePlan.DATE, Order.DESCENDING)
 
       block.invoke(this)
     }
