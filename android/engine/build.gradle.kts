@@ -185,7 +185,7 @@ dependencies {
     exclude(group = "com.google.android.fhir", module = "common")
     exclude(group = "com.google.android.fhir", module = "engine")
   }
-  api("org.smartregister:data-capture:1.1.0-preview8.1-SNAPSHOT") {
+  api("org.smartregister:data-capture:1.1.0-preview11-SNAPSHOT") {
     isTransitive = true
     exclude(group = "ca.uhn.hapi.fhir")
     exclude(group = "com.google.android.fhir", module = "engine")
@@ -195,7 +195,7 @@ dependencies {
 
   api("org.smartregister:common:0.1.0-alpha05-preview3-SNAPSHOT") { isTransitive = true }
 
-  api("org.smartregister:engine:1.0.0-preview10-PERF-TEST-SNAPSHOT") {
+  api("org.smartregister:engine:1.0.0-preview11-MWCore-SNAPSHOT") {
     isTransitive = true
     exclude(group = "com.google.android.fhir", module = "common")
     exclude(group = "com.github.ben-manes.caffeine")
