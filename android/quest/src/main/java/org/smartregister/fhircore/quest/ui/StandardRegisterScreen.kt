@@ -74,6 +74,9 @@ fun PageRegisterScreen(
   val searchTextState = registerViewModel.searchText.collectAsState()
   val searchText by remember { searchTextState }
 
+  val searchedTextState = registerViewModel.searchedText.collectAsState()
+  val searchedText by remember { searchedTextState }
+
   val pagingItems: LazyPagingItems<RegisterViewData.ListItemView> =
     registerViewModel.pageRegisterListItemData.collectAsState().value.collectAsLazyPagingItems()
 
@@ -96,7 +99,7 @@ fun PageRegisterScreen(
       // Only show when filtering data is not active
 
       Column {
-        if (searchText.isEmpty() && pagingItems.itemCount > 0) {
+        if (searchedText.isEmpty() && pagingItems.itemCount > 0) {
           val pageNavigationItems =
             registerViewModel.pageNavigationItemViewData
               .collectAsState()
@@ -119,10 +122,10 @@ fun PageRegisterScreen(
     Box(modifier = modifier.padding(innerPadding)) {
       // Only show counter during search
       var iModifier = Modifier.padding(top = 0.dp)
-      if (searchText.isNotEmpty() || (showFilterValues && activeFilters.isNotEmpty())) {
+      if (searchedText.isNotEmpty() || (showFilterValues && activeFilters.isNotEmpty())) {
         iModifier = Modifier.padding(top = 32.dp)
         RegisterHeader(
-          resultCount = if (searchText.isEmpty()) -1 else pagingItems.itemCount,
+          resultCount = if (searchedText.isEmpty()) -1 else pagingItems.itemCount,
           activeFilters = activeFilters,
         )
       }

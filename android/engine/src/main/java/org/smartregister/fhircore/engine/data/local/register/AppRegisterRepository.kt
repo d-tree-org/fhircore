@@ -65,6 +65,7 @@ constructor(
     loadAll: Boolean,
     appFeatureName: String?,
     healthModule: HealthModule,
+    patientSearchText: String?,
   ): List<RegisterData> =
     withContext(dispatcherProvider.io()) {
       tracer.traceSuspend("${healthModule.name.camelCase()}.loadRegisterData") {
@@ -73,6 +74,8 @@ constructor(
         registerDaoFactory.registerDaoMap[healthModule]?.loadRegisterData(
           currentPage = currentPage,
           appFeatureName = appFeatureName,
+          loadAll = loadAll,
+          patientSearchText = patientSearchText,
         ) ?: emptyList()
       }
     }
@@ -100,6 +103,7 @@ constructor(
     loadAll: Boolean,
     healthModule: HealthModule,
     filters: RegisterFilter,
+    patientSearchText: String?,
   ): List<RegisterData> {
     return withContext(dispatcherProvider.io()) {
       tracer.traceSuspend("${healthModule.name.camelCase()}.loadRegisterFiltered") {
@@ -123,6 +127,7 @@ constructor(
           currentPage,
           loadAll,
           filters,
+          patientSearchText = patientSearchText,
         ) ?: emptyList()
       }
     }

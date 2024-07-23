@@ -59,6 +59,7 @@ constructor(
     currentPage: Int,
     loadAll: Boolean,
     appFeatureName: String?,
+    patientSearchText: String?,
   ): List<RegisterData> {
     val pregnancies =
       fhirEngine

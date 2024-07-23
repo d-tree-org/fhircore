@@ -28,6 +28,7 @@ interface RegisterDao {
     currentPage: Int,
     loadAll: Boolean = false,
     appFeatureName: String?,
+    patientSearchText: String? = null,
   ): List<RegisterData>
 
   suspend fun searchByName(
@@ -42,6 +43,7 @@ interface RegisterDao {
     currentPage: Int,
     loadAll: Boolean = false,
     filters: RegisterFilter,
+    patientSearchText: String? = null,
   ): List<RegisterData> {
     TODO("default")
   }

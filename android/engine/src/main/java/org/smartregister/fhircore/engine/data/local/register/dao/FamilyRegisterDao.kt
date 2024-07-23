@@ -74,6 +74,7 @@ constructor(
     currentPage: Int,
     loadAll: Boolean,
     appFeatureName: String?,
+    patientSearchText: String?,
   ): List<RegisterData> {
     val families =
       fhirEngine.search<Group> {
