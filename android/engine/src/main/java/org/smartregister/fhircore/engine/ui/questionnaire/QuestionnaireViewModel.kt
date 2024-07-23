@@ -142,31 +142,31 @@ constructor(
   }
 
   suspend fun loadQuestionnaire(id: String, type: QuestionnaireType): Questionnaire? {
-    var questionnaire = ContentCache.getResource(ResourceType.Questionnaire.name + "/" + id)
+    var questionnaire: Questionnaire? =
+      ContentCache.getResource(ResourceType.Questionnaire.name + "/" + id) as? Questionnaire
 
     if (questionnaire == null) {
       questionnaire =
-        defaultRepository
-          .loadResource<Questionnaire>(id)
-          ?.apply {
-            if (type.isReadOnly() || type.isEditMode()) {
-              item.prepareQuestionsForReadingOrEditing(
-                QUESTIONNAIRE_RESPONSE_ITEM,
-                type.isReadOnly(),
-              )
-            }
-
-            // TODO https://github.com/opensrp/fhircore/issues/991#issuecomment-1027872061
-            this.url = this.url ?: this.referenceValue()
-          }
-          ?.also {
-            ContentCache.saveResource(
-              it,
-            )
-          }
+        defaultRepository.loadResource<Questionnaire>(id)?.also {
+          ContentCache.saveResource(
+            it,
+          )
+        }
     }
 
-    return questionnaire as? Questionnaire
+    questionnaire?.apply {
+      if (type.isReadOnly() || type.isEditMode()) {
+        item.prepareQuestionsForReadingOrEditing(
+          QUESTIONNAIRE_RESPONSE_ITEM,
+          type.isReadOnly(),
+        )
+      }
+
+      // TODO https://github.com/opensrp/fhircore/issues/991#issuecomment-1027872061
+      this.url = this.url ?: this.referenceValue()
+    }
+
+    return questionnaire
   }
 
   suspend fun getQuestionnaireConfig(form: String, context: Context): QuestionnaireConfig {
@@ -221,11 +221,12 @@ constructor(
   suspend fun fetchStructureMap(structureMapUrl: String?): StructureMap? {
     var structureMap: Resource? = null
     structureMapUrl?.substringAfterLast("/")?.run {
-      structureMap = ContentCache.getResource(ResourceType.StructureMap.name + "/" + this)
+      structureMap =
+        ContentCache.getResource(ResourceType.StructureMap.name + "/" + this) as? StructureMap
       structureMap =
         structureMap
           ?: defaultRepository.loadResource<StructureMap>(this)?.also {
-            it.let { ContentCache.saveResource(it) }
+            ContentCache.saveResource(it)
           }
     }
     return structureMap as? StructureMap
@@ -681,51 +682,53 @@ constructor(
     val resourcesList = getPopulationResourcesFromIntent(intent).toMutableList()
 
     intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_ARG_PATIENT_KEY)?.let { patientId ->
-      loadPatient(patientId)?.apply { resourcesList.add(this) }
-        ?: defaultRepository.loadResource<Group>(patientId)?.apply { resourcesList.add(this) }
+      fhirEngine.withTransaction {
+        loadPatient(patientId)?.apply { resourcesList.add(this) }
+          ?: defaultRepository.loadResource<Group>(patientId)?.apply { resourcesList.add(this) }
 
-      val bundleIndex = resourcesList.indexOfFirst { x -> x is Bundle }
-      if (bundleIndex != -1) {
-        val currentBundle = resourcesList[bundleIndex] as Bundle
+        val bundleIndex = resourcesList.indexOfFirst { x -> x is Bundle }
+        if (bundleIndex != -1) {
+          val currentBundle = resourcesList[bundleIndex] as Bundle
 
-        if (TracingHelpers.requireTracingTasks(questionnaireConfig.identifier)) {
-          val bundle = Bundle()
-          bundle.id = TracingHelpers.tracingBundleId
-          val tasks = loadTracing(patientId)
-          tasks.forEach { bundle.addEntry(Bundle.BundleEntryComponent().setResource(it)) }
+          if (TracingHelpers.requireTracingTasks(questionnaireConfig.identifier)) {
+            val bundle = Bundle()
+            bundle.id = TracingHelpers.tracingBundleId
+            val tasks = loadTracing(patientId)
+            tasks.forEach { bundle.addEntry(Bundle.BundleEntryComponent().setResource(it)) }
 
-          val list = getActiveListResource(patientId)
-          if (list != null) {
-            bundle.addEntry(Bundle.BundleEntryComponent().setResource(list))
+            val list = getActiveListResource(patientId)
+            if (list != null) {
+              bundle.addEntry(Bundle.BundleEntryComponent().setResource(list))
+            }
+
+            currentBundle.addEntry(
+              Bundle.BundleEntryComponent().setResource(bundle).apply {
+                id = TracingHelpers.tracingBundleId
+              },
+            )
           }
 
-          currentBundle.addEntry(
-            Bundle.BundleEntryComponent().setResource(bundle).apply {
-              id = TracingHelpers.tracingBundleId
-            },
-          )
+          val appointmentToPopulate = loadLatestAppointmentWithNoStartDate(patientId)
+          if (appointmentToPopulate != null) {
+            currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(appointmentToPopulate))
+          }
+          // Add appointments that may need to be closed
+          loadScheduledAppointments(patientId).forEach {
+            currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(it))
+          }
+
+          val lastCarePlan = getLastActiveCarePlan(patientId)
+          if (lastCarePlan != null) {
+            currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(lastCarePlan))
+          }
+
+          resourcesList[bundleIndex] = currentBundle
         }
 
-        val appointmentToPopulate = loadLatestAppointmentWithNoStartDate(patientId)
-        if (appointmentToPopulate != null) {
-          currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(appointmentToPopulate))
+        // for situations where patient RelatedPersons not passed through intent extras
+        if (resourcesList.none { it.resourceType == ResourceType.RelatedPerson }) {
+          loadRelatedPerson(patientId)?.forEach { resourcesList.add(it) }
         }
-        // Add appointments that may need to be closed
-        loadScheduledAppointments(patientId).forEach {
-          currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(it))
-        }
-
-        val lastCarePlan = getLastActiveCarePlan(patientId)
-        if (lastCarePlan != null) {
-          currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(lastCarePlan))
-        }
-
-        resourcesList[bundleIndex] = currentBundle
-      }
-
-      // for situations where patient RelatedPersons not passed through intent extras
-      if (resourcesList.none { it.resourceType == ResourceType.RelatedPerson }) {
-        loadRelatedPerson(patientId)?.forEach { resourcesList.add(it) }
       }
     }
     return resourcesList.toTypedArray()

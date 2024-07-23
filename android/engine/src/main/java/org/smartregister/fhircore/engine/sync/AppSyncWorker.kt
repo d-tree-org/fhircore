@@ -31,6 +31,7 @@ import dagger.assisted.AssistedInject
 import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.configuration.preferences.SyncUploadStrategy
+import org.smartregister.fhircore.engine.ui.questionnaire.ContentCache
 import org.smartregister.fhircore.engine.util.AppDataStore
 import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
@@ -68,6 +69,9 @@ constructor(
     )
 
   override suspend fun doWork(): Result {
+    // Cache resources that might be needed urgent before sync
+    ContentCache.saveResources(engine)
+
     return withContext(dispatcherProvider.singleThread()) { super.doWork() }
   }
 

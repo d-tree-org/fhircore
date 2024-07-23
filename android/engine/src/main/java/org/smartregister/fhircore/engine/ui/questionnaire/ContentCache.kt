@@ -17,9 +17,13 @@
 package org.smartregister.fhircore.engine.ui.questionnaire
 
 import androidx.collection.LruCache
+import com.google.android.fhir.FhirEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.hl7.fhir.r4.model.Questionnaire
 import org.hl7.fhir.r4.model.Resource
+import org.hl7.fhir.r4.model.StructureMap
+import org.smartregister.fhircore.engine.util.extension.fetch
 
 object ContentCache {
   private val maxMemory: Int = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -34,4 +38,25 @@ object ContentCache {
   fun getResource(resourceId: String) = cache[resourceId]?.copy()
 
   suspend fun invalidate() = withContext(Dispatchers.IO) { cache.evictAll() }
+
+  suspend fun saveResources(fhirEngine: FhirEngine) {
+    withContext(Dispatchers.IO) {
+      saveQuestionnaires(fhirEngine)
+      saveStructureMaps(fhirEngine)
+    }
+  }
+
+  private suspend fun saveQuestionnaires(fhirEngine: FhirEngine) {
+    fhirEngine
+      .fetch<Questionnaire> {}
+      .map { it.resource }
+      .forEach { cache.put("${it.resourceType.name}/${it.idPart}", it) }
+  }
+
+  private suspend fun saveStructureMaps(fhirEngine: FhirEngine) {
+    fhirEngine
+      .fetch<StructureMap> {}
+      .map { it.resource }
+      .forEach { cache.put("${it.resourceType.name}/${it.idPart}", it) }
+  }
 }
