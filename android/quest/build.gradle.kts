@@ -134,8 +134,8 @@ android {
       dimension = "apps"
       applicationIdSuffix = ".mwcore"
       versionNameSuffix = "-mwcore"
-      versionCode = 7
-      versionName = "0.0.6.1"
+      versionCode = 9
+      versionName = "0.0.6.3"
     }
     create("mwcoreDev") {
       dimension = "apps"
@@ -197,6 +197,11 @@ dependencies {
   // Hilt test dependencies
   testImplementation("com.google.dagger:hilt-android-testing:${Deps.versions.hiltVersion}")
   kaptTest("com.google.dagger:hilt-android-compiler:${Deps.versions.hiltVersion}")
+
+  // Room
+  implementation("androidx.room:room-runtime:2.6.1")
+  kapt("androidx.room:room-compiler:2.6.1")
+  implementation("androidx.room:room-ktx:2.6.1")
 
   androidTestImplementation(Deps.atsl.ext_junit)
   androidTestImplementation(Deps.atsl.espresso)

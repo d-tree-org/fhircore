@@ -17,6 +17,7 @@
 package org.smartregister.fhircore.engine.util.helper
 
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.get
 import com.google.android.fhir.search.search
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -101,6 +102,21 @@ constructor(val simpleWorkerContext: SimpleWorkerContext, val fhirEngine: FhirEn
 
   @Throws(FHIRException::class)
   override fun performSearch(appContext: Any, url: String): List<Base> {
-    return runBlocking { fhirEngine.search(url).map { it.resource } }
+    return runBlocking {
+      try {
+        if (url.startsWith("Patient")) {
+          val id = url.split("_id=").lastOrNull()
+
+          if (id != null) {
+            return@runBlocking listOf(fhirEngine.get<Patient>(id))
+          }
+        }
+        val results = fhirEngine.search(url)
+        results.map { it.resource }
+      } catch (e: Exception) {
+        Timber.e(e)
+        return@runBlocking listOf()
+      }
+    }
   }
 }
