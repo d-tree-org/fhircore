@@ -392,7 +392,7 @@ suspend fun Patient.activeCarePlans(fhirEngine: FhirEngine): List<CarePlan> {
     .asSequence()
     .map { it.resource }
     .filter { it.status == CarePlan.CarePlanStatus.ACTIVE }
-    .sortedBy { it.meta.lastUpdated }
+    .sortedByDescending { it.period.start}
     .toList()
 }
 

@@ -16,6 +16,7 @@
 
 package org.smartregister.fhircore.engine.data.local.register.dao
 
+import ca.uhn.fhir.rest.gclient.DateClientParam
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.SearchResult
 import com.google.android.fhir.datacapture.extensions.logicalId
@@ -155,7 +156,7 @@ constructor(
           },
         )
       }
-      sort(CarePlan.DATE, Order.DESCENDING)
+      sort(DateClientParam("_lastUpdated"), Order.DESCENDING)
 
       block.invoke(this)
     }
