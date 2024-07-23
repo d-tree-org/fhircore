@@ -19,16 +19,24 @@ package org.smartregister.fhircore.quest.ui.patient.profile.tranfer
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ca.uhn.fhir.context.FhirContext
+import ca.uhn.fhir.context.FhirVersionEnum
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.datacapture.extensions.logicalId
+import com.google.android.fhir.datacapture.mapping.ResourceMapper
+import com.google.android.fhir.get
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.hl7.fhir.r4.model.Patient
+import org.hl7.fhir.r4.model.Questionnaire
+import org.hl7.fhir.r4.model.QuestionnaireResponse
+import org.hl7.fhir.r4.model.StringType
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
@@ -39,6 +47,7 @@ import org.smartregister.fhircore.engine.trace.AnalyticsKeys
 import org.smartregister.fhircore.engine.util.ReasonConstants
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
+import org.smartregister.fhircore.engine.util.SystemConstants
 import org.smartregister.fhircore.engine.util.extension.forceTagsUpdate
 import org.smartregister.fhircore.quest.navigation.NavigationArg
 import timber.log.Timber
@@ -55,9 +64,11 @@ constructor(
   configurationRegistry: ConfigurationRegistry,
   private val syncBroadcaster: SyncBroadcaster,
 ) : ViewModel() {
+  private val parser = FhirContext.forCached(FhirVersionEnum.R4).newJsonParser()
+
   private val patientId: String = savedStateHandle[NavigationArg.PATIENT_ID]!!
-  val state = MutableStateFlow<DataLoadState<TransferOutScreenState>>(DataLoadState.Loading)
-  val updateState = MutableStateFlow<DataLoadState<Boolean>>(DataLoadState.Idle)
+  val state = MutableLiveData<DataLoadState<TransferOutScreenState>>(DataLoadState.Loading)
+  val updateState = MutableLiveData<DataLoadState<Boolean>>(DataLoadState.Idle)
 
   private val applicationConfiguration: ApplicationConfiguration =
     configurationRegistry.getAppConfigs()
@@ -73,70 +84,96 @@ constructor(
     fetchPatientDetails()
   }
 
-  fun fetchPatientDetails() {
+  private fun fetchPatientDetails() {
     viewModelScope.launch(Dispatchers.IO) {
       try {
-        state.value = DataLoadState.Loading
+        state.postValue(DataLoadState.Loading)
         val patient: Patient? = defaultRepository.loadResource<Patient>(patientId)
         if (patient == null) {
-          state.value = DataLoadState.Error(java.lang.Exception("Failed to load patient"))
+          state.postValue(DataLoadState.Error(java.lang.Exception("Failed to load patient")))
           return@launch
         }
-        state.value = DataLoadState.Success(TransferOutScreenState.fromPatient(patient))
+        val questionnaire: Questionnaire = fhirEngine.get(id = "patient-transfer-out")
+        val questionnaireResponse: QuestionnaireResponse = generateResponse(questionnaire)
+        val questionnaireString = parser.encodeResourceToString(questionnaire)
+        state.postValue(
+          DataLoadState.Success(
+            TransferOutScreenState(
+              patient = patient,
+              questionnaireString = questionnaireString,
+              questionnaire = questionnaire,
+              questionnaireResponse = questionnaireResponse,
+            ),
+          ),
+        )
       } catch (e: Exception) {
-        state.value = DataLoadState.Error(e)
+        state.postValue(DataLoadState.Error(e))
       }
     }
   }
 
-  fun transferPatient(context: Context) {
-    viewModelScope.launch(Dispatchers.IO) {
-      try {
-        updateState.value = DataLoadState.Loading
-        val value = state.value
-        if (value !is DataLoadState.Success) {
-          updateState.value = DataLoadState.Error(java.lang.Exception())
-          return@launch
-        }
-        val data = value.data
-        val patient = defaultRepository.loadResource<Patient>(data.patientId)
-        if (patient == null) {
-          updateState.value = DataLoadState.Error(java.lang.Exception())
-          return@launch
-        }
-        patient.active = false
-        val meta = patient.meta
-        meta.addTag(ReasonConstants.pendingTransferOutCode)
-        patient.meta = meta
-        fhirEngine.forceTagsUpdate(patient)
-        analytics.log(
-          AnalyticsKeys.TRANSFER_OUT,
-          mapOf(Pair("patient", patient.id), Pair("practitioner", currentPractitioner ?: "")),
-        )
-        val email = applicationConfiguration.supportEmail
-        val subject = "Request for Patient Transfer out for ${data.fullName}"
-        val body =
-          """
-          Where is the patient transferring to?
-          
-          
-          
+  private suspend fun transferPatient(context: Context, valueReference: StringType?) {
+    try {
+      val value = state.value
+      if (value !is DataLoadState.Success) {
+        updateState.postValue(DataLoadState.Error(java.lang.Exception()))
+        return
+      }
+      val data = value.data
+      val patient = data.patient
+      patient.active = false
+      val meta = patient.meta
+      meta.addTag(ReasonConstants.pendingTransferOutCode)
+      patient.meta = meta
+      fhirEngine.forceTagsUpdate(patient)
+      analytics.log(
+        AnalyticsKeys.TRANSFER_OUT,
+        mapOf(Pair("patient", patient.id), Pair("practitioner", currentPractitioner ?: "")),
+      )
+      val email = applicationConfiguration.supportEmail
+      val subject = "Request for Patient Transfer out for ${patient.logicalId}"
+      val body =
+        """
           Do you have any additional information you want to add?
           
           
           
           --------- Do not edit below this line ---------
-          Current facility: ${data.facilityId}
-          Patient id: ${data.patientId}
-          Practitioner: $currentPractitioner 
+          Current facility: ${patient.meta.tag.firstOrNull { it.system == SystemConstants.LOCATION_TAG }?.code ?: "NA"}
+          Patient id: ${patient.logicalId}
+          Practitioner: $currentPractitioner,
+          Location to transfer to: ${valueReference?.value}
                     """
-            .trimIndent()
-        composeEmail(context, arrayOf(email), subject, body)
-        updateState.value = DataLoadState.Success(true)
-        syncBroadcaster.runSync()
+          .trimIndent()
+      composeEmail(context, arrayOf(email), subject, body)
+      updateState.postValue(DataLoadState.Success(true))
+      syncBroadcaster.runSync()
+    } catch (e: Exception) {
+      Timber.e(e)
+      updateState.postValue(DataLoadState.Error(e))
+    }
+  }
+
+  suspend fun generateResponse(questionnaire: Questionnaire): QuestionnaireResponse {
+    val questResponse = ResourceMapper.populate(questionnaire, mapOf())
+    return questResponse
+  }
+
+  fun extractAndSaveResources(
+    context: TransferOutActivity,
+    questionnaireResponse: QuestionnaireResponse,
+  ) {
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        updateState.postValue(DataLoadState.Loading)
+        val location = questionnaireResponse.item.firstOrNull { it.linkId == "location-all" }
+        if (location != null) {
+          transferPatient(context, location.answer.firstOrNull()?.valueStringType)
+        } else {
+          updateState.postValue(DataLoadState.Error(java.lang.Exception("Failed to get location")))
+        }
       } catch (e: Exception) {
-        Timber.e(e)
-        updateState.value = DataLoadState.Error(e)
+        updateState.postValue(DataLoadState.Error(e))
       }
     }
   }

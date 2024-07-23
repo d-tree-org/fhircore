@@ -61,6 +61,7 @@ import org.smartregister.fhircore.quest.navigation.OverflowMenuFactory
 import org.smartregister.fhircore.quest.navigation.OverflowMenuHost
 import org.smartregister.fhircore.quest.ui.family.remove.member.RemoveFamilyMemberQuestionnaireActivity
 import org.smartregister.fhircore.quest.ui.patient.profile.childcontact.ChildContactPagingSource
+import org.smartregister.fhircore.quest.ui.patient.profile.tranfer.TransferOutActivity
 import org.smartregister.fhircore.quest.ui.shared.models.ProfileViewData
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 import org.smartregister.fhircore.quest.util.mappers.ProfileViewDataMapper
@@ -313,17 +314,7 @@ constructor(
             //              questionnaireType = QuestionnaireType.DEFAULT,
             //              populationResources = profile.populationResources,
             //            )
-            patientId.let {
-              val urlParams =
-                NavigationArg.bindArgumentsOf(
-                  Pair(NavigationArg.FEATURE, AppFeature.PatientManagement.name),
-                  Pair(NavigationArg.HEALTH_MODULE, HealthModule.HIV),
-                  Pair(NavigationArg.PATIENT_ID, it),
-                )
-              event.navController.navigate(
-                route = "${MainNavigationScreen.TransferOut.route}/$it$urlParams",
-              )
-            }
+            patientId.let { TransferOutActivity.launch(event.context, patientId) }
           }
           R.id.patient_change_status ->
             QuestionnaireActivity.launchQuestionnaire(
