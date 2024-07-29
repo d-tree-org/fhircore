@@ -16,7 +16,6 @@
 
 package org.smartregister.fhircore.quest.ui.patient.profile.components
 
-import android.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -100,6 +99,7 @@ fun PersonalData(
       ) {
         OtherDetailsItem(title = stringResource(R.string.sex), value = patientProfileViewData.sex)
         OtherDetailsItem(title = stringResource(R.string.age), value = patientProfileViewData.age)
+        patientProfileViewData.visitNumber?.let { OtherDetailsItem(title = stringResource(R.string.visit), value = it) }
       }
     }
   }
@@ -124,6 +124,7 @@ fun PersonalDataPreview() {
       sex = "Female",
       age = "48y",
       dob = "08 Dec",
+      visitNumber = "1",
       identifier = "123455",
     )
   PersonalData(patientProfileViewData = patientProfileData)

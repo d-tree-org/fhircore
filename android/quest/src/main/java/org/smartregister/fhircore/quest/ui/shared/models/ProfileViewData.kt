@@ -63,6 +63,7 @@ sealed class ProfileViewData(
     val addressTracingCatchment: String = "",
     val addressPhysicalLocator: String = "",
     val currentCarePlan: CarePlan? = null,
+    val visitNumber: String? = null,
     val phoneContacts: List<String> = emptyList(),
     val observations: List<Observation> = emptyList(),
     val practitioners: List<Practitioner> = emptyList(),

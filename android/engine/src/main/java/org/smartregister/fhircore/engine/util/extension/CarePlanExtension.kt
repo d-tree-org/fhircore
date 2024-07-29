@@ -82,6 +82,14 @@ fun CarePlan.CarePlanActivityComponent.shouldShowOnProfile(): Boolean {
     .not()
 }
 
+fun CarePlan.extractVisitNumber(): String? {
+  val visitNumberCoding =
+    this.category.firstOrNull {
+      (it.coding.firstOrNull()?.system ?: "") == "https://d-tree.org/fhir/care-plan-visit-number"
+    }
+  return visitNumberCoding?.coding?.firstOrNull()?.code
+}
+
 fun CarePlan.CarePlanStatus.toCoding() = Coding(this.system, this.toCode(), this.display)
 
 fun CarePlan.isLastTask(task: Task) =
