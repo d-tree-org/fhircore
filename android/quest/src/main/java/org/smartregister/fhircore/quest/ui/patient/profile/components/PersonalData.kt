@@ -99,7 +99,9 @@ fun PersonalData(
       ) {
         OtherDetailsItem(title = stringResource(R.string.sex), value = patientProfileViewData.sex)
         OtherDetailsItem(title = stringResource(R.string.age), value = patientProfileViewData.age)
-        patientProfileViewData.visitNumber?.let { OtherDetailsItem(title = stringResource(R.string.visit), value = it) }
+        patientProfileViewData.visitNumber?.let {
+          OtherDetailsItem(title = stringResource(R.string.visit), value = it)
+        }
       }
     }
   }
