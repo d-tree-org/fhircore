@@ -39,6 +39,7 @@ import org.smartregister.fhircore.engine.ui.theme.SuccessColor
 import org.smartregister.fhircore.engine.util.extension.asDdMmYyyy
 import org.smartregister.fhircore.engine.util.extension.canBeCompleted
 import org.smartregister.fhircore.engine.util.extension.extractId
+import org.smartregister.fhircore.engine.util.extension.extractVisitNumber
 import org.smartregister.fhircore.engine.util.extension.getQuestionnaire
 import org.smartregister.fhircore.engine.util.extension.getQuestionnaireName
 import org.smartregister.fhircore.engine.util.extension.makeItReadable
@@ -92,6 +93,7 @@ class ProfileViewDataMapper @Inject constructor(@ApplicationContext val context:
           observations = inputModel.observations,
           guardians = inputModel.guardians,
           currentCarePlan = inputModel.currentCarePlan,
+          visitNumber = inputModel.currentCarePlan?.extractVisitNumber(),
           tasks =
             inputModel.tasks.map {
               PatientProfileRowItem(
