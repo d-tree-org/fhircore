@@ -14,14 +14,24 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.quest.ui.localChange
+package org.smartregister.fhircore.engine.data.local.syncAttempt.repository
 
-import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeEntity
+import com.google.android.fhir.sync.SyncJobStatus
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeStateEvent
+import org.smartregister.fhircore.engine.data.local.syncAttempt.SyncAttemptTrackerEntity
 
-data class LocalChangeState(
-  val localChanges: List<LocalChangeEntity> = emptyList(),
-  val event: LocalChangeStateEvent = LocalChangeStateEvent.Idle,
-  val shouldShow: Boolean = false,
-  val retry: Int = 0,
-)
+interface SyncAttemptTrackerRepo {
+  fun query(): Flow<List<SyncAttemptTrackerEntity>>
+
+  suspend operator fun invoke(syncJobStatus: SyncJobStatus)
+
+  suspend fun upsert(syncAttemptTrackerEntity: SyncAttemptTrackerEntity)
+
+  suspend fun get(): SyncAttemptTrackerEntity?
+
+  suspend fun deleteAll()
+
+  val localChangeChannel: Channel<LocalChangeStateEvent>
+}

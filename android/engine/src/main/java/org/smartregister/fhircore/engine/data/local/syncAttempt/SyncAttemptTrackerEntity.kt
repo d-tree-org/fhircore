@@ -14,17 +14,14 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.quest.data.local
+package org.smartregister.fhircore.engine.data.local.syncAttempt
 
-import androidx.room.Database
-import androidx.room.RoomDatabase
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
-@Database(version = 1, entities = [LocalChangeModel::class])
-abstract class TingatheDatabase : RoomDatabase() {
-
-  abstract val localChangeDao: LocalChangeDao
-
-  companion object {
-    const val NAME = "tingathe_db"
-  }
-}
+@Entity
+data class SyncAttemptTrackerEntity(
+  val attempts: Int = 0,
+  @PrimaryKey val syncOperation: String = "DOWNLOAD",
+  val timestamp: Long = System.currentTimeMillis(),
+)

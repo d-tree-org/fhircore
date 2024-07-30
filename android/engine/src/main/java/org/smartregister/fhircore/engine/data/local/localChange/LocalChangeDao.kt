@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.quest.data.local
+package org.smartregister.fhircore.engine.data.local.localChange
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -25,14 +25,14 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 abstract class LocalChangeDao {
 
-  @Query("SELECT * FROM LocalChangeModel ORDER BY resourceType")
-  abstract fun query(): Flow<List<LocalChangeModel>>
+  @Query("SELECT * FROM LocalChangeEntity ORDER BY resourceType")
+  abstract fun query(): Flow<List<LocalChangeEntity>>
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
-  abstract suspend fun upsert(data: List<LocalChangeModel>)
+  abstract suspend fun upsert(data: List<LocalChangeEntity>)
 
-  @Query("SELECT * FROM LocalChangeModel WHERE status != 2 ORDER BY type")
-  abstract suspend fun get(): List<LocalChangeModel>
+  @Query("SELECT * FROM LocalChangeEntity WHERE status != 2 ORDER BY type")
+  abstract suspend fun get(): List<LocalChangeEntity>
 
-  @Query("DELETE FROM LocalChangeModel") abstract suspend fun clear(): Int
+  @Query("DELETE FROM LocalChangeEntity") abstract suspend fun deleteAll(): Int
 }

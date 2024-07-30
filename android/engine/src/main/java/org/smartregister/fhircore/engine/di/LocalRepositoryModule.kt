@@ -14,29 +14,23 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.quest.di.room
+package org.smartregister.fhircore.engine.di
 
-import android.content.Context
-import androidx.room.Room
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
-import org.smartregister.fhircore.quest.data.local.TingatheDatabase
+import org.smartregister.fhircore.engine.data.local.localChange.repository.LocalChangeRepo
+import org.smartregister.fhircore.engine.data.local.localChange.repository.LocalChangeRepoImpl
+import org.smartregister.fhircore.engine.data.local.syncAttempt.repository.SyncAttemptTrackerRepo
+import org.smartregister.fhircore.engine.data.local.syncAttempt.repository.SyncAttemptTrackerRepoImpl
 
-@Module
 @InstallIn(SingletonComponent::class)
-object RoomDbModule {
+@Module
+abstract class LocalRepositoryModule {
 
-  @Provides
-  @Singleton
-  fun providesDatabase(
-    @ApplicationContext context: Context,
-  ): TingatheDatabase {
-    return Room.databaseBuilder(context, TingatheDatabase::class.java, TingatheDatabase.NAME)
-      .fallbackToDestructiveMigration()
-      .build()
-  }
+  @Binds
+  abstract fun bindSyncAttemptTrackerRepo(param: SyncAttemptTrackerRepoImpl): SyncAttemptTrackerRepo
+
+  @Binds abstract fun bindLocalChangeRepo(param: LocalChangeRepoImpl): LocalChangeRepo
 }

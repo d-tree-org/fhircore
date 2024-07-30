@@ -14,39 +14,33 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.quest.ui.localChange
+package org.smartregister.fhircore.engine.data.local.localChange
 
 import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.context.FhirVersionEnum
 import ca.uhn.fhir.parser.IParser
-import com.google.android.fhir.LocalChange
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.Binary
 import org.hl7.fhir.r4.model.Bundle
 import org.hl7.fhir.r4.model.Resource
-import org.smartregister.fhircore.quest.data.local.LocalChangeModel
-import org.smartregister.fhircore.quest.data.local.LocalChangeModel.Type.Companion.from
+import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeEntity.Type.Companion.from
 
 val jsonParser: IParser = FhirContext.forCached(FhirVersionEnum.R4).newJsonParser()
 const val contentType = "application/json"
 
-fun LocalChange.toEntity(): LocalChangeModel {
-  return LocalChangeModel(resourceId, resourceType, versionId, type.name, payload)
-}
-
 suspend fun bundleComponent(
-  localChangeModels: List<LocalChangeModel>,
+  localChangeEntities: List<LocalChangeEntity>,
 ): List<Bundle.BundleEntryComponent> {
   return withContext(Dispatchers.IO) {
     val updateLocalChange =
-      localChangeModels
-        .filter { from(it.type) == LocalChangeModel.Type.UPDATE }
+      localChangeEntities
+        .filter { from(it.type) == LocalChangeEntity.Type.UPDATE }
         .map { createRequest(it, createPathRequest(it)) }
 
     val insertDeleteLocalChange =
-      localChangeModels
-        .filterNot { from(it.type) == LocalChangeModel.Type.UPDATE }
+      localChangeEntities
+        .filterNot { from(it.type) == LocalChangeEntity.Type.UPDATE }
         .sortedBy { it.versionId }
         .map { change ->
           createRequest(change, (jsonParser.parseResource(change.payload) as Resource))
@@ -55,15 +49,15 @@ suspend fun bundleComponent(
   }
 }
 
-fun createPathRequest(localChangeModel: LocalChangeModel): Binary {
+fun createPathRequest(localChangeEntity: LocalChangeEntity): Binary {
   return Binary().apply {
-    contentType = "$contentType-patch+json"
-    data = localChangeModel.payload.toByteArray()
+    contentType = "application/json-patch+json"
+    data = localChangeEntity.payload.toByteArray()
   }
 }
 
 fun createRequest(
-  localChange: LocalChangeModel,
+  localChange: LocalChangeEntity,
   resourceToUpload: Resource,
 ): Bundle.BundleEntryComponent {
   return Bundle.BundleEntryComponent().apply {
@@ -73,9 +67,9 @@ fun createRequest(
         url = "${localChange.resourceType}/${localChange.resourceId}"
         method =
           when (from(localChange.type)) {
-            LocalChangeModel.Type.INSERT -> Bundle.HTTPVerb.PUT
-            LocalChangeModel.Type.UPDATE -> Bundle.HTTPVerb.PATCH
-            LocalChangeModel.Type.DELETE -> Bundle.HTTPVerb.DELETE
+            LocalChangeEntity.Type.INSERT -> Bundle.HTTPVerb.PUT
+            LocalChangeEntity.Type.UPDATE -> Bundle.HTTPVerb.PATCH
+            LocalChangeEntity.Type.DELETE -> Bundle.HTTPVerb.DELETE
           }
       }
   }

@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.quest.data.local
+package org.smartregister.fhircore.engine.data.local.localChange
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.google.android.fhir.LocalChange
 
 @Entity
-data class LocalChangeModel(
+data class LocalChangeEntity(
   val resourceId: String,
   val resourceType: String,
   val versionId: String? = null,
@@ -40,4 +41,8 @@ data class LocalChangeModel(
       fun from(input: Int): Type = entries.first { it.value == input }
     }
   }
+}
+
+fun LocalChange.toEntity(): LocalChangeEntity {
+  return LocalChangeEntity(resourceId, resourceType, versionId, type.name, payload)
 }

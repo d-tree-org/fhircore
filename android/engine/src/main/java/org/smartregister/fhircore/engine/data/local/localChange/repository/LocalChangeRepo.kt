@@ -14,14 +14,22 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.quest.ui.localChange
+package org.smartregister.fhircore.engine.data.local.localChange.repository
 
-sealed interface LocalChangeStateEvent {
-  data object Idle : LocalChangeStateEvent
+import kotlinx.coroutines.flow.Flow
+import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeEntity
+import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeStateEvent
 
-  data object Processing : LocalChangeStateEvent
+interface LocalChangeRepo {
+  suspend fun queryFHIRLocalChanges()
 
-  data object Finished : LocalChangeStateEvent
+  suspend fun deleteAll()
 
-  data object Failed : LocalChangeStateEvent
+  fun query(): Flow<List<LocalChangeEntity>>
+
+  suspend fun get(): List<LocalChangeEntity>
+
+  suspend fun upsert(data: List<LocalChangeEntity>)
+
+  operator fun invoke(localChange: LocalChangeEntity): Flow<LocalChangeStateEvent>
 }

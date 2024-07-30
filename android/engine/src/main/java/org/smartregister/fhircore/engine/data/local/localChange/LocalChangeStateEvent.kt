@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.quest.ui.localChange
+package org.smartregister.fhircore.engine.data.local.localChange
 
-sealed class LocalChangeEvent {
-  data object Completed : LocalChangeEvent()
+sealed interface LocalChangeStateEvent {
+  data object Idle : LocalChangeStateEvent
 
-  data object Retry : LocalChangeEvent()
+  data object Finished : LocalChangeStateEvent
 
-  data object Query : LocalChangeEvent()
+  data class Processing(val localChange: LocalChangeEntity) : LocalChangeStateEvent
 
-  data object Batch : LocalChangeEvent()
+  data class Completed(val localChange: LocalChangeEntity) : LocalChangeStateEvent
+
+  data class Failed(val p0: LocalChangeEntity, val p1: Exception) : LocalChangeStateEvent
 }
