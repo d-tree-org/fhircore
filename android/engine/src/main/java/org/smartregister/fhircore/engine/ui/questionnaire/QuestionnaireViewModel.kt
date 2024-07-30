@@ -459,12 +459,14 @@ constructor(
 
   private suspend fun updateCarePlanAndTask(extras: List<Resource>, backReference: String?) {
     if (backReference != null && backReference != "notify") {
-      extras.forEach {
-        if (it is Encounter) {
-          fhirCarePlanGenerator.completeTask(
-            backReference.asReference(ResourceType.Task).extractId(),
-            it.status,
-          )
+      extras.forEach { resource ->
+        if (resource is Encounter) {
+          val taskReference = backReference.asReference(ResourceType.Task)
+          val taskID = taskReference.extractId()
+          val encounterStatus = resource.status
+          val encounterReference = resource.asReference().extractId().removePrefix("#")
+
+          fhirCarePlanGenerator.completeTask(taskID, encounterStatus, encounterReference)
         }
       }
     }

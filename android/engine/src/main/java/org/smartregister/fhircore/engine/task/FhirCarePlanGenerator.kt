@@ -28,6 +28,7 @@ import org.hl7.fhir.r4.model.Expression
 import org.hl7.fhir.r4.model.IdType
 import org.hl7.fhir.r4.model.Parameters
 import org.hl7.fhir.r4.model.PlanDefinition
+import org.hl7.fhir.r4.model.Reference
 import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.StructureMap
 import org.hl7.fhir.r4.model.Task
@@ -133,12 +134,19 @@ constructor(val fhirEngine: FhirEngine, val transformSupportServices: TransformS
       }
   }
 
-  suspend fun completeTask(id: String, encounterStatus: EncounterStatus?) {
+  suspend fun completeTask(
+    id: String,
+    encounterStatus: EncounterStatus?,
+    encounterReference: String
+  ) {
     val resourcesToUpdate = mutableListOf<Resource>()
     val task =
       fhirEngine.get<Task>(id).apply {
         this.status = encounterStatusToTaskStatus(encounterStatus)
         this.lastModified = Date()
+        if (encounterReference != null) {
+          this.encounter = Reference(encounterReference)
+        }
       }
     resourcesToUpdate.add(task)
     val carePlanId = task.getCarePlanId()
