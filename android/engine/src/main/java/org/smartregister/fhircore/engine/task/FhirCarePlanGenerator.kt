@@ -137,7 +137,7 @@ constructor(val fhirEngine: FhirEngine, val transformSupportServices: TransformS
   suspend fun completeTask(
     id: String,
     encounterStatus: EncounterStatus?,
-    encounterReference: String
+    encounterReference: String,
   ) {
     val resourcesToUpdate = mutableListOf<Resource>()
     val task =
