@@ -173,7 +173,7 @@ constructor(
         hivPatientProfileData.copy(
           tasks =
             hivPatientProfileData.tasks.filter {
-              it.isGuardianVisit(applicationConfiguration.taskFilterTagViaMetaCodingSystem)
+              it.task.isGuardianVisit(applicationConfiguration.taskFilterTagViaMetaCodingSystem)
             },
         )
       _patientProfileViewDataFlow.value =

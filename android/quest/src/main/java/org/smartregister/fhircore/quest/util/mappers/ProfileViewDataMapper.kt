@@ -97,23 +97,24 @@ class ProfileViewDataMapper @Inject constructor(@ApplicationContext val context:
           tasks =
             inputModel.tasks.map {
               PatientProfileRowItem(
-                id = it.outcomeReference.first().extractId(),
-                actionFormId = if (it.canBeCompleted()) it.getQuestionnaire() else null,
+                id = it.task.outcomeReference.first().extractId(),
+                actionFormId = if (it.task.canBeCompleted()) it.task.getQuestionnaire() else null,
                 title = "", // it.description,
                 subtitle = "", // context.getString(R.string.due_on,
                 // it.executionPeriod.start.makeItReadable()),
+                taskExists = it.taskExists,
                 profileViewSection = PatientProfileViewSection.TASKS,
                 actionButtonIcon =
-                  if (it.detail.status == CarePlan.CarePlanActivityStatus.COMPLETED) {
+                  if (it.task.detail.status == CarePlan.CarePlanActivityStatus.COMPLETED) {
                     Icons.Filled.Check
                   } else Icons.Filled.Add,
                 actionIconColor =
-                  if (it.detail.status == CarePlan.CarePlanActivityStatus.COMPLETED) {
+                  if (it.task.detail.status == CarePlan.CarePlanActivityStatus.COMPLETED) {
                     SuccessColor
-                  } else it.detail.status.retrieveColorCode(),
-                actionButtonColor = it.detail.status.retrieveColorCode(),
-                actionButtonText = it.getQuestionnaireName(),
-                subtitleStatus = it.detail.status.name,
+                  } else it.task.detail.status.retrieveColorCode(),
+                actionButtonColor = it.task.detail.status.retrieveColorCode(),
+                actionButtonText = it.task.getQuestionnaireName(),
+                subtitleStatus = it.task.detail.status.name,
               )
             },
           practitioners = inputModel.practitioners,
