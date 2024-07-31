@@ -28,13 +28,14 @@ import org.hl7.fhir.r4.model.Expression
 import org.hl7.fhir.r4.model.IdType
 import org.hl7.fhir.r4.model.Parameters
 import org.hl7.fhir.r4.model.PlanDefinition
-import org.hl7.fhir.r4.model.Reference
 import org.hl7.fhir.r4.model.Resource
+import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.StructureMap
 import org.hl7.fhir.r4.model.Task
 import org.hl7.fhir.r4.utils.FHIRPathEngine
 import org.hl7.fhir.r4.utils.StructureMapUtilities
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
+import org.smartregister.fhircore.engine.util.extension.asReference
 import org.smartregister.fhircore.engine.util.extension.encodeResourceToString
 import org.smartregister.fhircore.engine.util.extension.getCarePlanId
 import org.smartregister.fhircore.engine.util.extension.taskStatusToCarePlanActivityStatus
@@ -144,7 +145,7 @@ constructor(val fhirEngine: FhirEngine, val transformSupportServices: TransformS
       fhirEngine.get<Task>(id).apply {
         this.status = encounterStatusToTaskStatus(encounterStatus)
         this.lastModified = Date()
-        this.encounter = Reference(encounterReference)
+        this.encounter = encounterReference.asReference(ResourceType.Encounter)
       }
     resourcesToUpdate.add(task)
     val carePlanId = task.getCarePlanId()
