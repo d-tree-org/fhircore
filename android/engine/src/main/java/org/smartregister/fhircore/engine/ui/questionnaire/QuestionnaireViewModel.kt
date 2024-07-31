@@ -464,8 +464,7 @@ constructor(
           val taskReference = backReference.asReference(ResourceType.Task)
           val taskID = taskReference.extractId()
           val encounterStatus = resource.status
-          val encounterReference = resource.asReference().extractId().removePrefix("#")
-
+          val encounterReference = resource.logicalId.removePrefix("#")
           fhirCarePlanGenerator.completeTask(taskID, encounterStatus, encounterReference)
         }
       }

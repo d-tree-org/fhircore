@@ -144,9 +144,7 @@ constructor(val fhirEngine: FhirEngine, val transformSupportServices: TransformS
       fhirEngine.get<Task>(id).apply {
         this.status = encounterStatusToTaskStatus(encounterStatus)
         this.lastModified = Date()
-        if (encounterReference != null) {
-          this.encounter = Reference(encounterReference)
-        }
+        this.encounter = Reference(encounterReference)
       }
     resourcesToUpdate.add(task)
     val carePlanId = task.getCarePlanId()
