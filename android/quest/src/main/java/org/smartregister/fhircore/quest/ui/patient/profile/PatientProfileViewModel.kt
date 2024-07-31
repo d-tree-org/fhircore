@@ -60,6 +60,8 @@ import org.smartregister.fhircore.quest.navigation.NavigationArg
 import org.smartregister.fhircore.quest.navigation.OverflowMenuFactory
 import org.smartregister.fhircore.quest.navigation.OverflowMenuHost
 import org.smartregister.fhircore.quest.ui.family.remove.member.RemoveFamilyMemberQuestionnaireActivity
+import org.smartregister.fhircore.quest.ui.patient.fix.FixPatientViewModel
+import org.smartregister.fhircore.quest.ui.patient.fix.FixStartState
 import org.smartregister.fhircore.quest.ui.patient.profile.childcontact.ChildContactPagingSource
 import org.smartregister.fhircore.quest.ui.patient.profile.tranfer.TransferOutActivity
 import org.smartregister.fhircore.quest.ui.shared.models.ProfileViewData
@@ -355,6 +357,18 @@ constructor(
           event.navController.navigate(
             route = MainNavigationScreen.PatientProfile.route + urlParams,
           )
+      }
+      is PatientProfileEvent.OpenPatientFixer -> {
+        val urlParams =
+          NavigationArg.bindArgumentsOf(
+            Pair(NavigationArg.FEATURE, AppFeature.PatientManagement.name),
+            Pair(NavigationArg.HEALTH_MODULE, healthModule),
+            Pair(NavigationArg.PATIENT_ID, patientId),
+            Pair(FixPatientViewModel.NAVIGATION_ARG_START, FixStartState.StartFix.name),
+          )
+        event.navController.navigate(
+          route = MainNavigationScreen.FixPatientProfile.route + urlParams,
+        )
       }
     }
   }

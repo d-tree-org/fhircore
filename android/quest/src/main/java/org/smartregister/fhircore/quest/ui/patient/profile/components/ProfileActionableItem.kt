@@ -82,7 +82,7 @@ fun ProfileActionableItem(
           ) {
             Row(
               verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(2.dp)
+              horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
               Icon(Icons.Filled.Error, contentDescription = "", tint = MaterialTheme.colors.onError)
               Text(text = "Missing Task", color = MaterialTheme.colors.onError)

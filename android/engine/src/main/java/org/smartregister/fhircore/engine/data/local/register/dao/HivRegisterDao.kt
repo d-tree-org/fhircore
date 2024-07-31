@@ -534,6 +534,7 @@ constructor(
       if (tasksToFetch.isNotEmpty()) {
         val tasks = fhirEngine.getResourcesByIds<Task>(tasksToFetch).associateBy { it.logicalId }
         activityOnList.map { (taskId, carePlanTask) ->
+          println(taskId)
           tasks[taskId]?.let { task ->
             val updatedTask =
               carePlanTask.task.apply { detail?.status = task.taskStatusToCarePlanActivityStatus() }

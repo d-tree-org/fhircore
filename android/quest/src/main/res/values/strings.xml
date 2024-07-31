@@ -146,4 +146,5 @@
     <string name="appointments_counter_label">Appointments</string>
     <string name="insights" translatable="false">Insights</string>
     <string name="ram_available" translatable="false">RAM Available</string>
+    <string name="fix_patient">Fix Patient</string>
 </resources>

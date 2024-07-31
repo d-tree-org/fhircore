@@ -41,4 +41,6 @@ sealed class PatientProfileEvent {
 
   data class OpenChildProfile(val patientId: String, val navController: NavHostController) :
     PatientProfileEvent()
+
+  data class OpenPatientFixer(val navController: NavHostController) : PatientProfileEvent()
 }

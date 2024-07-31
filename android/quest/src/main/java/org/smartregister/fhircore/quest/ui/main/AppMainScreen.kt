@@ -25,9 +25,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Scaffold
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -49,6 +47,8 @@ import org.smartregister.fhircore.quest.ui.counters.CountersScreen
 import org.smartregister.fhircore.quest.ui.family.profile.FamilyProfileScreen
 import org.smartregister.fhircore.quest.ui.insights.InsightsScreen
 import org.smartregister.fhircore.quest.ui.main.components.AppDrawer
+import org.smartregister.fhircore.quest.ui.patient.fix.FixPatientScreen
+import org.smartregister.fhircore.quest.ui.patient.fix.FixPatientViewModel
 import org.smartregister.fhircore.quest.ui.patient.profile.PatientProfileScreen
 import org.smartregister.fhircore.quest.ui.patient.profile.childcontact.ChildContactsProfileScreen
 import org.smartregister.fhircore.quest.ui.patient.profile.guardians.GuardianRelatedPersonProfileScreen
@@ -198,6 +198,14 @@ private fun AppMainNavigationGraph(
             arguments = commonNavArgs.plus(patientIdNavArgument()),
           ) {
             PatientProfileScreen(navController = navController, appMainViewModel = appMainViewModel)
+          }
+        MainNavigationScreen.FixPatientProfile ->
+          composable(
+            route =
+              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID, FixPatientViewModel.NAVIGATION_ARG_START)}",
+            arguments = commonNavArgs.plus(patientIdNavArgument()),
+          ) {
+            FixPatientScreen(navController = navController, appMainViewModel = appMainViewModel)
           }
         MainNavigationScreen.TracingProfile ->
           composable(
