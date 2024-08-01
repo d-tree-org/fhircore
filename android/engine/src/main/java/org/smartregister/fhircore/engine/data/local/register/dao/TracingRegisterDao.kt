@@ -18,6 +18,7 @@ package org.smartregister.fhircore.engine.data.local.register.dao
 
 import androidx.annotation.VisibleForTesting
 import androidx.annotation.VisibleForTesting.Companion.PROTECTED
+import ca.uhn.fhir.model.api.TemporalPrecisionEnum
 import ca.uhn.fhir.rest.gclient.TokenClientParam
 import ca.uhn.fhir.rest.param.ParamPrefixEnum
 import com.google.android.fhir.FhirEngine
@@ -25,10 +26,11 @@ import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.search.BaseSearch
 import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Order
+import com.google.android.fhir.search.Search
 import com.google.android.fhir.search.StringFilterModifier
-import com.google.android.fhir.search.filter.ReferenceParamFilterCriterion
 import com.google.android.fhir.search.filter.TokenParamFilterCriterion
 import com.google.android.fhir.search.has
+import com.google.android.fhir.search.revInclude
 import com.google.android.fhir.search.search
 import java.time.LocalDate
 import java.time.ZoneId
@@ -40,6 +42,7 @@ import org.hl7.fhir.r4.model.CarePlan
 import org.hl7.fhir.r4.model.CodeType
 import org.hl7.fhir.r4.model.Coding
 import org.hl7.fhir.r4.model.DateTimeType
+import org.hl7.fhir.r4.model.DateType
 import org.hl7.fhir.r4.model.ListResource
 import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.Practitioner
@@ -54,6 +57,7 @@ import org.smartregister.fhircore.engine.data.local.RegisterFilter
 import org.smartregister.fhircore.engine.data.local.TracingAgeFilterEnum
 import org.smartregister.fhircore.engine.data.local.TracingRegisterFilter
 import org.smartregister.fhircore.engine.data.local.tracing.TracingRepository
+import org.smartregister.fhircore.engine.domain.model.HealthStatus
 import org.smartregister.fhircore.engine.domain.model.ProfileData
 import org.smartregister.fhircore.engine.domain.model.RegisterData
 import org.smartregister.fhircore.engine.domain.repository.RegisterDao
@@ -116,138 +120,145 @@ abstract class TracingRegisterDao(
     filter(
       Task.PERIOD,
       {
-        value = of(DateTimeType.now())
-        prefix = ParamPrefixEnum.GREATERTHAN
+        val today = LocalDate.now().atStartOfDay(ZoneId.systemDefault())
+        value =
+          of(DateTimeType(Date.from(today.plusDays(1L).toInstant()), TemporalPrecisionEnum.DAY))
+        prefix = ParamPrefixEnum.LESSTHAN
       },
     )
   }
+
+  private val filterPatientSearchWithText: Search.(String) -> Unit = { patientSearchText ->
+    if (patientSearchText.contains(Regex("[0-9]{2}"))) {
+      filter(Patient.IDENTIFIER, { value = of(patientSearchText) })
+    } else {
+      filter(
+        Patient.NAME,
+        {
+          modifier = StringFilterModifier.CONTAINS
+          value = patientSearchText
+        },
+      )
+    }
+  }
+
+  private val filterPatientSearchWithHealthStatus: Search.(Iterable<HealthStatus>) -> Unit =
+    { healthStatuses ->
+      val tagFilterCriteria =
+        healthStatuses
+          .map { it.name.lowercase() }
+          .flatMap { listOf(CodeType(it), CodeType(it.replace("_", "-"))) }
+          .map<CodeType, TokenParamFilterCriterion.() -> Unit> {
+            return@map { value = of(it) }
+          }
+
+      filter(TokenClientParam("_tag"), *tagFilterCriteria.toTypedArray(), operation = Operation.OR)
+    }
+
+  private val filterPatientSearchWithAge: Search.(TracingAgeFilterEnum) -> Unit =
+    { tracingAgeFilterEnum ->
+      val today = LocalDate.now().atStartOfDay(ZoneId.systemDefault())
+      when (tracingAgeFilterEnum) {
+        TracingAgeFilterEnum.ZERO_TO_2 -> {
+          filter(
+            Patient.BIRTHDATE,
+            {
+              value = of(DateType(Date.from(today.minusYears(2L).toInstant())))
+              prefix = ParamPrefixEnum.GREATERTHAN
+            },
+          )
+        }
+        TracingAgeFilterEnum.ZERO_TO_18 -> {
+          filter(
+            Patient.BIRTHDATE,
+            {
+              value = of(DateType(Date.from(today.minusYears(18L).toInstant())))
+              prefix = ParamPrefixEnum.GREATERTHAN
+            },
+          )
+        }
+        TracingAgeFilterEnum.PLUS_18 -> {
+          filter(
+            Patient.BIRTHDATE,
+            {
+              value = of(DateType(Date.from(today.minusYears(18L).toInstant())))
+              prefix = ParamPrefixEnum.LESSTHAN_OR_EQUALS
+            },
+          )
+        }
+      }
+    }
 
   private suspend fun searchRegister(
     filters: RegisterFilter,
     loadAll: Boolean,
     page: Int = -1,
     patientSearchText: String? = null,
-  ): List<Pair<Patient, Iterable<Task>>> {
+    includeListResource: Boolean = false,
+  ): List<PatientTracingItem> {
     filters as TracingRegisterFilter
-    val filterFilter = applicationConfiguration().patientTypeFilterTagViaMetaCodingSystem
-    val patients: List<Patient> =
-      fhirEngine
-        .fetch<Patient>(
-          offset = max(page, 0) * PaginationConstant.DEFAULT_PAGE_SIZE,
-          loadAll = loadAll,
-        ) {
-          has<Task>(Task.SUBJECT) { filtersForValidTask() }
+    return fhirEngine
+      .fetch<Patient>(
+        offset = max(page, 0) * PaginationConstant.DEFAULT_PAGE_SIZE,
+        loadAll = loadAll,
+      ) {
+        has<Task>(Task.SUBJECT) { filtersForValidTask() }
 
-          if (!patientSearchText.isNullOrBlank()) {
-            if (patientSearchText.contains(Regex("[0-9]{2}"))) {
-              filter(Patient.IDENTIFIER, { value = of(patientSearchText) })
-            } else {
-              filter(
-                Patient.NAME,
-                {
-                  modifier = StringFilterModifier.CONTAINS
-                  value = patientSearchText
-                },
-              )
-            }
-          }
+        if (!patientSearchText.isNullOrBlank()) {
+          filterPatientSearchWithText(patientSearchText)
+        }
 
-          filters.patientCategory?.let {
-            val paramQueries: List<(TokenParamFilterCriterion.() -> Unit)> =
-              it.flatMap { healthStatus ->
-                val coding: Coding =
-                  Coding().apply {
-                    system = filterFilter
-                    code = healthStatus.name.lowercase().replace("_", "-")
-                  }
-                val alternativeCoding: Coding =
-                  Coding().apply {
-                    system = filterFilter
-                    code = healthStatus.name.lowercase()
-                  }
+        filters.patientCategory?.let { filterPatientSearchWithHealthStatus(it) }
 
-                return@flatMap listOf<Coding>(coding, alternativeCoding).map<
-                  Coding,
-                  TokenParamFilterCriterion.() -> Unit,
-                > { c ->
-                  { value = of(c) }
-                }
-              }
-
-            filter(TokenClientParam("_tag"), *paramQueries.toTypedArray(), operation = Operation.OR)
-          }
-
-          if (filters.isAssignedToMe && currentPractitioner != null) {
+        if (filters.isAssignedToMe) {
+          currentPractitioner?.let {
             filter(
               Patient.GENERAL_PRACTITIONER,
-              { value = currentPractitioner?.asReference(ResourceType.Practitioner)?.reference },
+              { value = it.asReference(ResourceType.Practitioner).reference },
             )
           }
         }
-        .map { it.resource }
-        .filter {
-          val isInRange =
-            if (filters.age != null) {
-              val today = LocalDate.now().atStartOfDay(ZoneId.systemDefault())
-              when (filters.age) {
-                TracingAgeFilterEnum.ZERO_TO_2 -> {
-                  val date = Date.from(today.minusYears(2L).toInstant())
-                  it.birthDate?.after(date)
-                }
-                TracingAgeFilterEnum.ZERO_TO_18 -> {
-                  val date = Date.from(today.minusYears(18L).toInstant())
-                  it.birthDate?.after(date)
-                }
-                TracingAgeFilterEnum.PLUS_18 -> {
-                  val date = Date.from(today.minusYears(18L).toInstant())
-                  it.birthDate?.before(date)
-                }
-              }
-            } else {
-              true
-            }
 
-          isInRange ?: false
-        }
+        filters.age?.let { filterPatientSearchWithAge(it) }
 
-    val patientRefs =
-      patients
-        .map<Patient, (ReferenceParamFilterCriterion.() -> Unit)> {
-          return@map { value = it.referenceValue() }
-        }
-        .toTypedArray()
+        revInclude<Task>(Task.SUBJECT) { filtersForValidTask() }
 
-    val tasks: List<Task> =
-      if (patientRefs.isNotEmpty()) {
-        fhirEngine
-          .fetch<Task> {
-            filtersForValidTask()
-            filter(Task.SUBJECT, *patientRefs, operation = Operation.OR)
+        if (includeListResource) {
+          revInclude<ListResource>(ListResource.SUBJECT) {
+            filter(ListResource.STATUS, { value = of(ListResource.ListStatus.CURRENT.toCode()) })
+            sort(ListResource.TITLE, Order.DESCENDING)
           }
-          .map { it.resource }
-          .filter {
-            it.status in listOf(Task.TaskStatus.INPROGRESS, Task.TaskStatus.READY) &&
-              it.executionPeriod.hasStart() &&
-              it.executionPeriod.start
-                .before(Date())
-                .or(it.executionPeriod.start.asDdMmmYyyy() == Date().asDdMmmYyyy())
-          }
-      } else {
-        emptyList()
+        }
       }
+      .mapNotNull { searchResult ->
+        val tasks =
+          searchResult.revIncluded
+            ?.get(ResourceType.Task to Task.SUBJECT.paramName)
+            ?.map { it as Task }
+            ?.filter {
+              val matchesReasonCode =
+                filters.reasonCode != null &&
+                  it.reasonCode.coding.any { coding ->
+                    coding.code.equals(filters.reasonCode, ignoreCase = true)
+                  }
+              matchesReasonCode || !it.reasonCode.isEmpty
+            } ?: emptyList()
+        val listResource =
+          searchResult.revIncluded
+            ?.get(ResourceType.List to ListResource.SUBJECT.paramName)
+            ?.map { it as ListResource }
+            ?.maxBy { it.title }
 
-    val filteredTasks =
-      filters.reasonCode?.let { reasonCode ->
-        tasks.filter { it.reasonCode.coding.any { coding -> coding.code == reasonCode } }
-      } ?: tasks
-    val groupedTasks = filteredTasks.groupBy { it.`for`.reference }
-
-    return patients
-      .filter {
-        val ref = it.asReference().reference
-        ref in groupedTasks && groupedTasks[ref] != null && groupedTasks[ref]!!.any()
+        if (tasks.isEmpty()) {
+          null
+        } else {
+          PatientTracingItem(
+            patient = searchResult.resource,
+            tracingTasks = tasks,
+            tracingListResource = listResource,
+          )
+        }
       }
-      .map { it to groupedTasks[it.asReference().reference]!! }
   }
 
   override suspend fun loadRegisterFiltered(
@@ -256,37 +267,19 @@ abstract class TracingRegisterDao(
     filters: RegisterFilter,
     patientSearchText: String?,
   ): List<RegisterData> {
-    val patientTasksPairs =
-      searchRegister(filters, patientSearchText = patientSearchText, loadAll = true)
-    val patientSubjectRefFilterCriteria =
-      patientTasksPairs
-        .map { it.first }
-        .map<Patient, (ReferenceParamFilterCriterion.() -> Unit)> {
-          return@map { value = it.referenceValue() }
-        }
-        .toTypedArray()
-    val subjectListResourcesGroup: Map<String, ListResource> =
-      if (patientSubjectRefFilterCriteria.isNotEmpty()) {
-        fhirEngine
-          .fetch<ListResource> {
-            filter(ListResource.SUBJECT, *patientSubjectRefFilterCriteria, operation = Operation.OR)
-            filter(ListResource.STATUS, { value = of(ListResource.ListStatus.CURRENT.toCode()) })
-            sort(ListResource.TITLE, Order.DESCENDING)
-          }
-          .map { it.resource }
-          .filter { it.status == ListResource.ListStatus.CURRENT }
-          .groupingBy { it.subject.reference }
-          .reduce { _, accumulator, element -> maxOf(accumulator, element, compareBy { it.title }) }
-      } else {
-        emptyMap()
-      }
+    val patientTracingItems =
+      searchRegister(
+        filters,
+        patientSearchText = patientSearchText,
+        includeListResource = true,
+        loadAll = true,
+      )
 
     val tracingData: List<RegisterData.TracingRegisterData> =
-      patientTasksPairs
-        .map { ptp ->
-          val (patient, tasks) = ptp
-          val listResource = subjectListResourcesGroup[patient.referenceValue()]
-          patient.toTracingRegisterData(tasks, listResource)
+      patientTracingItems
+        .map {
+          val patient = it.patient
+          patient.toTracingRegisterData(it.tracingTasks, it.tracingListResource)
         }
         .filter { it.reasons.any() }
         .sortedWith(compareBy({ it.attempts }, { it.lastAttemptDate }, { it.firstAdded }))
@@ -311,17 +304,7 @@ abstract class TracingRegisterDao(
         has<Task>(Task.SUBJECT) { filtersForValidTask() }
 
         if (!patientSearchText.isNullOrBlank()) {
-          if (patientSearchText.contains(Regex("[0-9]{2}"))) {
-            filter(Patient.IDENTIFIER, { value = of(patientSearchText) })
-          } else {
-            filter(
-              Patient.NAME,
-              {
-                modifier = StringFilterModifier.CONTAINS
-                value = patientSearchText
-              },
-            )
-          }
+          filterPatientSearchWithText(patientSearchText)
         }
       }
 
@@ -502,3 +485,9 @@ abstract class TracingRegisterDao(
     return this.toTracingRegisterData(tasks, listResource)
   }
 }
+
+internal data class PatientTracingItem(
+  val patient: Patient,
+  val tracingTasks: List<Task>,
+  val tracingListResource: ListResource?,
+)

@@ -16,11 +16,11 @@
 
 package org.smartregister.fhircore.engine.data.local.register.dao
 
+import ca.uhn.fhir.model.api.TemporalPrecisionEnum
 import ca.uhn.fhir.rest.param.ParamPrefixEnum
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.search.Operation
-import com.google.android.fhir.search.Order
 import com.google.android.fhir.search.Search
 import com.google.android.fhir.search.StringFilterModifier
 import com.google.android.fhir.search.has
@@ -164,8 +164,6 @@ constructor(
           patientCategory = filters.patientCategory,
           myPatients = filters.myPatients,
         )
-
-        sort(Appointment.DATE, Order.ASCENDING)
       }
 
     val keySet = mutableSetOf<String>()
@@ -234,7 +232,7 @@ constructor(
       filter(
         Appointment.DATE,
         {
-          value = of(DateTimeType(dateOfAppointment))
+          value = of(DateTimeType(dateOfAppointment, TemporalPrecisionEnum.DAY))
           prefix = ParamPrefixEnum.EQUAL
         },
       )
@@ -292,6 +290,7 @@ constructor(
       isPregnant = pregnancyStatus == PregnancyStatus.Pregnant,
       isBreastfeeding = pregnancyStatus == PregnancyStatus.BreastFeeding,
       reasons = appointment.reasonCode.flatMap { cc -> cc.coding.map { coding -> coding.code } },
+      dateOfAppointment = appointment.start!!,
     )
   }
 
@@ -305,11 +304,15 @@ constructor(
       .map { transformAppointment(it) }
       .sortedWith(
         nullsFirst(
-          compareBy {
+            compareBy<RegisterData> {
+              it as RegisterData.AppointmentRegisterData
+              it.identifier
+            },
+          )
+          .thenComparing { it ->
             it as RegisterData.AppointmentRegisterData
-            it.identifier
+            it.dateOfAppointment
           },
-        ),
       )
       .let {
         if (!loadAll) {
