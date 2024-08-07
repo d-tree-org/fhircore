@@ -24,6 +24,7 @@ import java.util.Date
 import javax.inject.Inject
 import org.hl7.fhir.r4.model.Bundle
 import org.hl7.fhir.r4.model.CarePlan
+import org.hl7.fhir.r4.model.CarePlan.CarePlanActivityComponent
 import org.hl7.fhir.r4.model.Coding
 import org.hl7.fhir.r4.model.Meta
 import org.hl7.fhir.r4.model.Period
@@ -58,9 +59,9 @@ constructor(
     return
   }
 
-  private suspend fun getMissingTasks(carePlan: CarePlan): List<TaskHolder> {
-    val activityOnList = mutableMapOf<String, CarePlan.CarePlanActivityComponent>()
-    val missingTasks = mutableListOf<TaskHolder>()
+  private suspend fun getMissingTasks(carePlan: CarePlan): List<CarePlanActivityComponent> {
+    val activityOnList = mutableMapOf<String, CarePlanActivityComponent>()
+    val missingTasks = mutableListOf<CarePlanActivityComponent>()
     val tasksToFetch =
       carePlan.activity.mapNotNull { planActivity ->
         if (planActivity.shouldShowOnProfile()) {
@@ -75,14 +76,7 @@ constructor(
     activityOnList.forEach { (taskId, activity) ->
       if (activity.detail?.status != CarePlan.CarePlanActivityStatus.SCHEDULED) {
         if (!tasks.containsKey(taskId)) {
-          missingTasks.add(
-            TaskHolder(
-              taskId = taskId,
-              carePlanActivityStatus = activity.detail.status,
-              taskDescription = activity.detail.description,
-              questId = activity.detail.code.coding.firstOrNull()?.code,
-            ),
-          )
+          missingTasks.add(activity)
         }
       }
     }
@@ -92,23 +86,24 @@ constructor(
   private suspend fun handleMissingTasks(
     patientId: String,
     carePlan: CarePlan,
-    tasks: List<TaskHolder>,
+    tasks: List<CarePlanActivityComponent>,
   ) {
     val bundle = Bundle()
     bundle.setType(Bundle.BundleType.TRANSACTION)
     bundle.entry.addAll(
       tasks.map { task ->
+        val taskId = task.outcomeReference.firstOrNull()?.extractId()
         Bundle.BundleEntryComponent().apply {
           request =
             Bundle.BundleEntryRequestComponent().apply {
               method = Bundle.HTTPVerb.GET
-              url = "${ResourceType.Task.name}/${task.taskId}"
+              url = "${ResourceType.Task.name}/$taskId"
             }
         }
       },
     )
 
-    val tasksToRecreate = mutableListOf<TaskHolder>()
+    val tasksToRecreate = mutableListOf<CarePlanActivityComponent>()
     val existingTasks = mutableListOf<Task>()
 
     val resBundle = fhirClient.transaction().withBundle(bundle).execute()
@@ -122,34 +117,30 @@ constructor(
 
     val resourceToSave = mutableListOf<Resource>()
     resourceToSave.addAll(existingTasks)
+
     if (tasksToRecreate.isNotEmpty()) {
       resourceToSave.addAll(
         tasksToRecreate.map {
           createGenericTask(
-            taskId = it.taskId,
             patientId = patientId,
-            taskDescription = it.taskDescription,
-            questId = it.questId ?: "",
+            activity = it,
             carePlan = carePlan,
-            taskStatus = it.carePlanActivityStatus.toTaskStatus(),
           )
         },
       )
     }
+
     Timber.e("Task on server: ${existingTasks.size}, Tasks to recreate: ${tasksToRecreate.size}")
     fhirEngine.create(*resourceToSave.toTypedArray())
   }
 
   private fun createGenericTask(
-    taskId: String,
     patientId: String,
-    taskDescription: String,
-    questId: String,
+    activity: CarePlanActivityComponent,
     carePlan: CarePlan,
-    taskStatus: Task.TaskStatus,
   ): Task {
+    val questId = activity.detail.code.coding.firstOrNull()?.code
     val patientReference = Reference().apply { reference = "Patient/$patientId" }
-
     val questRef = Reference().apply { reference = questId }
 
     val period =
@@ -160,11 +151,11 @@ constructor(
 
     val task =
       Task().apply {
-        id = taskId
-        status = taskStatus
+        id = activity.outcomeReference.firstOrNull()?.extractId()
+        status = activity.detail.status.toTaskStatus()
         intent = Task.TaskIntent.PLAN
         priority = Task.TaskPriority.ROUTINE
-        description = taskDescription
+        description = activity.detail.description
         authoredOn = Date()
         lastModified = Date()
         `for` = patientReference
@@ -202,10 +193,3 @@ constructor(
     return task
   }
 }
-
-private data class TaskHolder(
-  val taskId: String,
-  val taskDescription: String,
-  val questId: String?,
-  val carePlanActivityStatus: CarePlan.CarePlanActivityStatus,
-)
