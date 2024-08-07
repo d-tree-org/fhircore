@@ -21,15 +21,23 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import org.smartregister.fhircore.engine.data.remote.fhir.resource.ResourceFixerService
 import org.smartregister.fhircore.engine.domain.util.DataLoadState
 import org.smartregister.fhircore.quest.navigation.NavigationArg
 import timber.log.Timber
 
 @HiltViewModel
-class FixPatientViewModel @Inject constructor(savedStateHandle: SavedStateHandle) : ViewModel() {
+class FixPatientViewModel
+@Inject
+constructor(
+  savedStateHandle: SavedStateHandle,
+  private val resourceFixerService: ResourceFixerService,
+) : ViewModel() {
   val patientId = savedStateHandle.get<String>(NavigationArg.PATIENT_ID) ?: ""
+  private val carePlanId = savedStateHandle.get<String>(NAVIGATION_ARG_CARE_PLAN)
   private val startState =
     savedStateHandle.get<String>(NAVIGATION_ARG_START)?.let { FixStartState.valueOf(it) }
       ?: FixStartState.All
@@ -48,9 +56,14 @@ class FixPatientViewModel @Inject constructor(savedStateHandle: SavedStateHandle
   }
 
   fun startFix() {
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       try {
         fixState.emit(DataLoadState.Loading)
+        if (carePlanId == null) {
+          return@launch
+        }
+        resourceFixerService.fixCurrentCarePlan(patientId, carePlanId)
+        fixState.emit(DataLoadState.Success(true))
       } catch (e: Exception) {
         Timber.e(e)
         fixState.value = DataLoadState.Error(e)
@@ -60,6 +73,7 @@ class FixPatientViewModel @Inject constructor(savedStateHandle: SavedStateHandle
 
   companion object {
     const val NAVIGATION_ARG_START = "fix_start_state"
+    const val NAVIGATION_ARG_CARE_PLAN = "fix_care_plan"
   }
 }
 

@@ -29,6 +29,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.sync.SyncJobStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -359,16 +360,22 @@ constructor(
           )
       }
       is PatientProfileEvent.OpenPatientFixer -> {
-        val urlParams =
-          NavigationArg.bindArgumentsOf(
-            Pair(NavigationArg.FEATURE, AppFeature.PatientManagement.name),
-            Pair(NavigationArg.HEALTH_MODULE, healthModule),
-            Pair(NavigationArg.PATIENT_ID, patientId),
-            Pair(FixPatientViewModel.NAVIGATION_ARG_START, FixStartState.StartFix.name),
+        if (patientProfileData != null && patientProfileData is ProfileData.HivProfileData) {
+          val urlParams =
+            NavigationArg.bindArgumentsOf(
+              Pair(NavigationArg.FEATURE, AppFeature.PatientManagement.name),
+              Pair(NavigationArg.HEALTH_MODULE, healthModule),
+              Pair(NavigationArg.PATIENT_ID, patientId),
+              Pair(FixPatientViewModel.NAVIGATION_ARG_START, FixStartState.StartFix.name),
+              Pair(
+                FixPatientViewModel.NAVIGATION_ARG_CARE_PLAN,
+                (patientProfileData as ProfileData.HivProfileData).currentCarePlan?.logicalId,
+              ),
+            )
+          event.navController.navigate(
+            route = MainNavigationScreen.FixPatientProfile.route + urlParams,
           )
-        event.navController.navigate(
-          route = MainNavigationScreen.FixPatientProfile.route + urlParams,
-        )
+        }
       }
     }
   }

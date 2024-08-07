@@ -34,6 +34,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -56,6 +57,12 @@ fun FixPatientScreen(
 ) {
   val state by viewModel.screenState.collectAsState()
   val fixState by viewModel.fixState.collectAsState()
+
+  LaunchedEffect(fixState) {
+    if (fixState is DataLoadState.Success || fixState is DataLoadState.Error) {
+      appMainViewModel.onTaskComplete(System.currentTimeMillis().toString())
+    }
+  }
 
   Scaffold(
     topBar = {
@@ -101,7 +108,7 @@ fun FixPatientScreen(
 fun PatientFixActionStartContainer(
   state: DataLoadState<Boolean>,
   close: () -> Unit,
-  retry: () -> Unit
+  retry: () -> Unit,
 ) {
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,

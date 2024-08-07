@@ -212,6 +212,8 @@ dependencies {
   api("com.squareup.retrofit2:retrofit-mock:$retrofitVersion")
   api("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:0.8.0")
 
+  implementation("ca.uhn.hapi.fhir:hapi-fhir-client-okhttp:${Dependencies.Versions.hapiFhir}")
+
   val okhttpVersion = "4.12.0"
   api("com.squareup.okhttp3:okhttp:$okhttpVersion")
   api("com.squareup.okhttp3:logging-interceptor:$okhttpVersion")

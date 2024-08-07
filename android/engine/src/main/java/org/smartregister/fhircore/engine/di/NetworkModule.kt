@@ -17,7 +17,9 @@
 package org.smartregister.fhircore.engine.di
 
 import ca.uhn.fhir.context.FhirContext
+import ca.uhn.fhir.okhttp.client.OkHttpRestfulClientFactory
 import ca.uhn.fhir.parser.IParser
+import ca.uhn.fhir.rest.client.api.IGenericClient
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -165,6 +167,19 @@ class NetworkModule {
   @Provides
   fun provideFhirResourceService(@RegularRetrofit retrofit: Retrofit): FhirResourceService =
     retrofit.create(FhirResourceService::class.java)
+
+  @Provides
+  fun providesGenericFhirClient(
+    @WithAuthorizationOkHttpClientQualifier okHttpClient: OkHttpClient,
+    configService: ConfigService,
+  ): IGenericClient {
+    val factory = OkHttpRestfulClientFactory()
+    val ctx = FhirContext.forR4()
+    factory.fhirContext = ctx
+    factory.setHttpClient(okHttpClient)
+    ctx.restfulClientFactory = factory
+    return ctx.newRestfulGenericClient(configService.provideAuthConfiguration().fhirServerBaseUrl)
+  }
 
   companion object {
     const val TIMEOUT_DURATION = 120L

@@ -202,7 +202,7 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.FixPatientProfile ->
           composable(
             route =
-              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID, FixPatientViewModel.NAVIGATION_ARG_START)}",
+              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID, FixPatientViewModel.NAVIGATION_ARG_START, FixPatientViewModel.NAVIGATION_ARG_CARE_PLAN)}",
             arguments = commonNavArgs.plus(patientIdNavArgument()),
           ) {
             FixPatientScreen(navController = navController, appMainViewModel = appMainViewModel)
