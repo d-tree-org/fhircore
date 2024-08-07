@@ -72,8 +72,8 @@ constructor(
       with(localChangeRepo.get()) getLocalChangeRepo@{
         forEachIndexed { index, value ->
           localChangeRepo
-            .invoke(value)
-            .onEach { event -> localChangeChannel.send(event) }
+            .invoke(index, value)
+            .onEach { event -> localChangeChannel.send(event.event) }
             .launchIn(this@withContext)
           if (index == this@getLocalChangeRepo.size.minus(1)) {
             deleteAll()

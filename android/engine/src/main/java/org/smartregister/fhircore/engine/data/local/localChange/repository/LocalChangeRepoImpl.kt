@@ -102,14 +102,16 @@ constructor(
   private suspend infix fun LocalChangeEntity.upsert(status: Int) =
     upsert(listOf(copy(status = status)))
 
-  override operator fun invoke(localChange: LocalChangeEntity) = flow {
+  override operator fun invoke(index: Int, localChange: LocalChangeEntity) = flow {
     with(onPutPost(localChange)) {
       when (this) {
         is LocalChangeStateEvent.Completed -> localChange upsert 2
         is LocalChangeStateEvent.Failed -> localChange upsert 3
         else -> Unit
       }
-      emit(this)
+      emit(LocalChangeIndex(index, this))
     }
   }
 }
+
+data class LocalChangeIndex(val index: Int, val event: LocalChangeStateEvent)

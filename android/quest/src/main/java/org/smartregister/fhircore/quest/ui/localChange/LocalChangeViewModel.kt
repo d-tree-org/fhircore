@@ -54,7 +54,7 @@ constructor(
   private fun listenToLocalChangeRepo() =
     localChangeRepo
       .query()
-      .onEach { patch -> _state.update { it.copy(localChanges = patch) } }
+      .onEach { localChanges -> _state.update { it.copy(localChanges = localChanges) } }
       .launchIn(viewModelScope)
 
   private fun shouldShowLocalChangeScreen() =
@@ -76,8 +76,6 @@ constructor(
 
   init {
     listenToLocalChangeRepo()
-    shouldShowLocalChangeScreen()
-    syncAttemptChannelFlow()
   }
 
   private fun onQuery() {
@@ -92,12 +90,14 @@ constructor(
       with(localChangeRepo.get()) getLocalChangeRepo@{
         forEachIndexed { index, value ->
           localChangeRepo
-            .invoke(value)
-            .onEach { event -> _state.update { it.copy(event = event) } }
+            .invoke(index, value)
+            .onEach { event ->
+              _state.update { it.copy(event = event.event) }
+              if (event.index.plus(1) == this@getLocalChangeRepo.size) {
+                _state.update { it.copy(event = LocalChangeStateEvent.Finished) }
+              }
+            }
             .launchIn(this@launch)
-          if (index == this@getLocalChangeRepo.size) {
-            _state.update { it.copy(event = LocalChangeStateEvent.Finished) }
-          }
         }
       }
     }
@@ -106,7 +106,6 @@ constructor(
     viewModelScope.launch {
       syncBroadcaster.runSync()
       localChangeRepo.deleteAll()
-      _state.update { it.copy(retry = 0) }
     }
   }
 

@@ -21,6 +21,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -28,10 +29,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Badge
+import androidx.compose.material.Button
 import androidx.compose.material.Card
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.FloatingActionButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -42,10 +46,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeStateEvent
@@ -98,48 +103,70 @@ fun LocalChangeScreen(
         Column(modifier = Modifier.weight(1f)) {
           Text(
             text = "Staged Resources",
-            style = MaterialTheme.typography.h4.copy(color = Color.Gray),
+            style = MaterialTheme.typography.h5.copy(color = Color.Gray),
           )
+          AnimatedVisibility(animateState != 0) {
+            Text(text = "${state.localChanges.count { it.status == 2 }} completed of $animateState")
+          }
 
-          Row(modifier = Modifier.padding(vertical = 2.dp)) {
-            AnimatedVisibility(state.localChanges.any { it.status == 2 }) {
-              Badge(
-                backgroundColor = Color(0xFF033603),
-                modifier = Modifier.clip(RoundedCornerShape(50)),
-              ) {
-                Text(
-                  text = "${state.localChanges.count { it.status == 2 }} SUCCEED",
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.padding(4.dp),
-                  color = Color.White,
-                  style = MaterialTheme.typography.button.copy(letterSpacing = 0.sp),
-                )
-              }
-            }
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            AnimatedVisibility(state.localChanges.any { it.status == 3 }) {
-              Badge(
-                modifier = Modifier.clip(RoundedCornerShape(50)),
-              ) {
-                Text(
-                  text = "${state.localChanges.count { it.status == 3 }} FAILED",
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.padding(4.dp),
-                  style = MaterialTheme.typography.button.copy(letterSpacing = 0.sp),
-                )
-              }
+          AnimatedVisibility(state.localChanges.any { it.status == 3 }) {
+            Badge {
+              Text(
+                text = "${state.localChanges.count { it.status == 3 }} FAILED",
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 2.dp),
+                style = MaterialTheme.typography.button.copy(letterSpacing = 0.sp),
+              )
             }
           }
         }
 
-        Text(
-          text = "$animateState",
-          style = MaterialTheme.typography.h3.copy(color = Color.Black),
-        )
+        AnimatedVisibility(animateState != 0) {
+          Box(
+            contentAlignment = Alignment.Center,
+          ) {
+            val isVisible = state.event !is LocalChangeStateEvent.Completed
+
+            CircularProgressIndicator(
+              modifier = Modifier.alpha(if (isVisible) 0f else 1f).size(64.dp),
+              strokeWidth = 8.dp,
+              backgroundColor = Color.LightGray,
+            )
+
+            FloatingActionButton(
+              onClick = {
+                if (state.event !is LocalChangeStateEvent.Completed) {
+                  event(LocalChangeEvent.Batch)
+                }
+              },
+              backgroundColor = MaterialTheme.colors.onPrimary,
+            ) {
+              Text(
+                text = "Push",
+                letterSpacing = 0.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
+          }
+        }
 
         Spacer(modifier = Modifier.width(8.dp))
+
+        AnimatedVisibility(state.event !is LocalChangeStateEvent.Completed) {
+          Button(
+            onClick = {
+              if (state.localChanges.any { it.status == 3 }) {
+                event(LocalChangeEvent.Retry)
+                event(LocalChangeEvent.Batch)
+                return@Button
+              }
+              event(LocalChangeEvent.Query)
+            },
+          ) {
+            Text(text = "Load")
+          }
+        }
       }
     }
   }

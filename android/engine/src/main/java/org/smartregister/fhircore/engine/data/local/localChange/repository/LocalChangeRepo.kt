@@ -18,7 +18,6 @@ package org.smartregister.fhircore.engine.data.local.localChange.repository
 
 import kotlinx.coroutines.flow.Flow
 import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeEntity
-import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeStateEvent
 
 interface LocalChangeRepo {
   suspend fun queryFHIRLocalChanges()
@@ -31,5 +30,5 @@ interface LocalChangeRepo {
 
   suspend fun upsert(data: List<LocalChangeEntity>)
 
-  operator fun invoke(localChange: LocalChangeEntity): Flow<LocalChangeStateEvent>
+  operator fun invoke(index: Int, localChange: LocalChangeEntity): Flow<LocalChangeIndex>
 }
