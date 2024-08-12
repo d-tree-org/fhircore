@@ -31,8 +31,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.work.WorkInfo
+import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.domain.util.DataLoadState
 import org.smartregister.fhircore.engine.ui.settings.DevViewModel
 import org.smartregister.fhircore.engine.util.annotation.ExcludeFromJacocoGeneratedReport
@@ -45,12 +47,12 @@ fun DevMenu(viewModel: DevViewModel) {
   val appointmentList by viewModel.observeMissedAppointment(context).collectAsState(listOf())
   val interruptedList by viewModel.observeInterrupted(context).collectAsState(listOf())
   val resourcePurger by viewModel.observeResourcePurgerWorker(context).collectAsState(listOf())
-  val cleanState by viewModel.cleanCorruptedState.collectAsState()
+//  val cleanState by viewModel.cleanCorruptedState.collectAsState()
 
   Column(
     modifier = Modifier.padding(16.dp).padding(vertical = 20.dp).fillMaxWidth(),
   ) {
-    SectionTitle(text = "Developer Options")
+    SectionTitle(text = stringResource(id = R.string.background_taks))
     UserProfileRow(
       iconAlt = { WorkerStateIcon(states = missedTasks) },
       text = "Run missed task worker",
@@ -71,11 +73,11 @@ fun DevMenu(viewModel: DevViewModel) {
       text = "Run Resource Purger Worker",
       clickListener = @ExcludeFromJacocoGeneratedReport { viewModel.resourcePurger(context) },
     )
-    UserProfileRow(
-      iconAlt = { LoadableStateIcon(cleanState) },
-      text = "Run Clean corrupted resources",
-      clickListener = @ExcludeFromJacocoGeneratedReport { viewModel.clearCorruptedEvents() },
-    )
+//    UserProfileRow(
+//      iconAlt = { LoadableStateIcon(cleanState) },
+//      text = "Run Clean corrupted resources",
+//      clickListener = @ExcludeFromJacocoGeneratedReport { viewModel.clearCorruptedEvents() },
+//    )
   }
 }
 

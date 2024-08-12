@@ -29,13 +29,11 @@ import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Upload
-import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CleaningServices
-import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.Report
-import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.Task
 import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -53,6 +51,7 @@ import me.zhanghai.compose.preference.PreferenceCategory
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.getPreferenceFlow
 import me.zhanghai.compose.preference.listPreference
+import me.zhanghai.compose.preference.switchPreference
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.configuration.preferences.SyncUploadStrategy
 import org.smartregister.fhircore.engine.ui.settings.views.DevMenu
@@ -117,12 +116,12 @@ fun SettingsScreen(
               //            clickListener = settingsViewModel::fetchPractitionerDetails,
               //            modifier = modifier,
               //          )
-              UserProfileRow(
-                icon = Icons.Rounded.Sync,
-                text = stringResource(id = R.string.sync),
-                clickListener = settingsViewModel::runSync,
-                modifier = modifier,
-              )
+              //              UserProfileRow(
+              //                icon = Icons.Rounded.Sync,
+              //                text = stringResource(id = R.string.sync),
+              //                clickListener = settingsViewModel::runSync,
+              //                modifier = modifier,
+              //              )
               UserProfileRow(
                 icon = Icons.Rounded.Report,
                 text = stringResource(R.string.reports),
@@ -130,37 +129,17 @@ fun SettingsScreen(
                 modifier = modifier,
               )
               UserProfileRow(
-                icon = Icons.Rounded.BugReport,
-                text = stringResource(R.string.dev_menu),
+                icon = Icons.Rounded.Task,
+                text = stringResource(R.string.background_taks),
                 clickListener = { scope.launch { devMenuSheetState.show() } },
                 modifier = modifier,
               )
-              UserProfileRow(
-                icon = Icons.Rounded.Logout,
-                text = stringResource(id = R.string.logout),
-                clickListener = { settingsViewModel.logoutUser(context) },
-                modifier = modifier,
-              )
-
-              val timestamp = settingsViewModel.sharedPreferences.read(LAST_PURGE_KEY.name, 0L)
-              val simpleDateFormat =
-                SimpleDateFormat(SYNC_TIMESTAMP_OUTPUT_FORMAT, Locale.getDefault())
-              val text = context.resources.getString(R.string.last_purge)
-              val dateFormat = simpleDateFormat.format(timestamp)
-
-              if (timestamp > 0L) {
-                UserProfileRow(
-                  icon = Icons.Rounded.CleaningServices,
-                  text = "$text: $dateFormat",
-                  clickable = false,
-                  modifier = modifier,
-                )
-              }
             }
             item {
               Divider(color = DividerColor, modifier = Modifier.padding(vertical = 10.dp))
               PreferenceCategory(title = { Text(text = "Preferences") })
             }
+
             listPreference(
               key = SharedPreferenceKey.SYNC_UPLOAD_STRATEGY.name,
               defaultValue = SyncUploadStrategy.Default.name,
@@ -179,6 +158,41 @@ fun SettingsScreen(
               },
               values = SyncUploadStrategy.entries.map { it.name },
             )
+
+            switchPreference(
+              key = SharedPreferenceKey.PATIENT_FIX_TYPE.name,
+              defaultValue = false,
+              title = { Text(text = "Fix patients offline") },
+            )
+
+            item {
+              Divider(color = DividerColor, modifier = Modifier.padding(vertical = 10.dp))
+              PreferenceCategory(title = { Text(text = "Others") })
+            }
+            item {
+              UserProfileRow(
+                icon = Icons.AutoMirrored.Rounded.Logout,
+                text = stringResource(id = R.string.logout),
+                clickListener = { settingsViewModel.logoutUser(context) },
+                modifier = modifier,
+              )
+            }
+            item {
+              val timestamp = settingsViewModel.sharedPreferences.read(LAST_PURGE_KEY.name, 0L)
+              val simpleDateFormat =
+                SimpleDateFormat(SYNC_TIMESTAMP_OUTPUT_FORMAT, Locale.getDefault())
+              val text = context.resources.getString(R.string.last_purge)
+              val dateFormat = simpleDateFormat.format(timestamp)
+
+              if (timestamp > 0L) {
+                UserProfileRow(
+                  icon = Icons.Rounded.CleaningServices,
+                  text = "$text: $dateFormat",
+                  clickable = false,
+                  modifier = modifier,
+                )
+              }
+            }
           }
         }
       }

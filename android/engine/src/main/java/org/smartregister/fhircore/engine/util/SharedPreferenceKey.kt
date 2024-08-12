@@ -31,4 +31,5 @@ enum class SharedPreferenceKey {
   LAST_PURGE_KEY,
   USER_CLAIM_INFO,
   SYNC_UPLOAD_STRATEGY,
+  PATIENT_FIX_TYPE,
 }

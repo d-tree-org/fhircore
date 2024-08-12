@@ -32,6 +32,8 @@ import org.hl7.fhir.r4.model.Reference
 import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.Task
+import org.smartregister.fhircore.engine.util.SharedPreferenceKey
+import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.SystemConstants.CARE_PLAN_REFERENCE_SYSTEM
 import org.smartregister.fhircore.engine.util.SystemConstants.QUESTIONNAIRE_REFERENCE_SYSTEM
 import org.smartregister.fhircore.engine.util.SystemConstants.RESOURCE_CREATED_ON_TAG_SYSTEM
@@ -47,6 +49,7 @@ class ResourceFixerService
 constructor(
   private val fhirClient: IGenericClient,
   private val fhirEngine: FhirEngine,
+  private val sharedPreferences: SharedPreferencesHelper,
 ) {
   suspend fun fixCurrentCarePlan(patientId: String, carePlanId: String) {
     val carePlan: CarePlan = fhirEngine.get(carePlanId)
@@ -55,7 +58,8 @@ constructor(
       return
     }
     Timber.i("Found missing tasks: ${tasks.size}")
-    handleMissingTasks(patientId, carePlan, tasks)
+    val isOffline = sharedPreferences.read(SharedPreferenceKey.PATIENT_FIX_TYPE.name, false)
+    handleMissingTasks(patientId, carePlan, tasks, recreateAll = isOffline)
     return
   }
 
@@ -87,40 +91,13 @@ constructor(
     patientId: String,
     carePlan: CarePlan,
     tasks: List<CarePlanActivityComponent>,
+    recreateAll: Boolean,
   ) {
-    val bundle = Bundle()
-    bundle.setType(Bundle.BundleType.TRANSACTION)
-    bundle.entry.addAll(
-      tasks.map { task ->
-        val taskId = task.outcomeReference.firstOrNull()?.extractId()
-        Bundle.BundleEntryComponent().apply {
-          request =
-            Bundle.BundleEntryRequestComponent().apply {
-              method = Bundle.HTTPVerb.GET
-              url = "${ResourceType.Task.name}/$taskId"
-            }
-        }
-      },
-    )
-
-    val tasksToRecreate = mutableListOf<CarePlanActivityComponent>()
-    val existingTasks = mutableListOf<Task>()
-
-    val resBundle = fhirClient.transaction().withBundle(bundle).execute()
-    for ((index, entry) in resBundle.entry.withIndex()) {
-      if (entry.hasResource()) {
-        existingTasks.add(entry.resource as Task)
-      } else {
-        tasksToRecreate.add(tasks[index])
-      }
-    }
-
     val resourceToSave = mutableListOf<Resource>()
-    resourceToSave.addAll(existingTasks)
 
-    if (tasksToRecreate.isNotEmpty()) {
+    if (recreateAll) {
       resourceToSave.addAll(
-        tasksToRecreate.map {
+        tasks.map {
           createGenericTask(
             patientId = patientId,
             activity = it,
@@ -128,9 +105,49 @@ constructor(
           )
         },
       )
+      Timber.e("Recreating tasks: ${resourceToSave.size}")
+    } else {
+      val bundle = Bundle()
+      bundle.setType(Bundle.BundleType.TRANSACTION)
+      bundle.entry.addAll(
+        tasks.map { task ->
+          val taskId = task.outcomeReference.firstOrNull()?.extractId()
+          Bundle.BundleEntryComponent().apply {
+            request =
+              Bundle.BundleEntryRequestComponent().apply {
+                method = Bundle.HTTPVerb.GET
+                url = "${ResourceType.Task.name}/$taskId"
+              }
+          }
+        },
+      )
+
+      val tasksToRecreate = mutableListOf<CarePlanActivityComponent>()
+      val existingTasks = mutableListOf<Task>()
+
+      val resBundle = fhirClient.transaction().withBundle(bundle).execute()
+      for ((index, entry) in resBundle.entry.withIndex()) {
+        if (entry.hasResource()) {
+          existingTasks.add(entry.resource as Task)
+        } else {
+          tasksToRecreate.add(tasks[index])
+        }
+      }
+      resourceToSave.addAll(existingTasks)
+      if (tasksToRecreate.isNotEmpty()) {
+        resourceToSave.addAll(
+          tasksToRecreate.map {
+            createGenericTask(
+              patientId = patientId,
+              activity = it,
+              carePlan = carePlan,
+            )
+          },
+        )
+      }
+      Timber.e("Task on server: ${existingTasks.size}, Tasks to recreate: ${tasksToRecreate.size}")
     }
 
-    Timber.e("Task on server: ${existingTasks.size}, Tasks to recreate: ${tasksToRecreate.size}")
     fhirEngine.create(*resourceToSave.toTypedArray())
   }
 
