@@ -45,6 +45,7 @@ import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
+import org.smartregister.fhircore.engine.data.local.syncAttempt.repository.SyncAttemptTrackerRepo
 import org.smartregister.fhircore.engine.data.remote.shared.TokenAuthenticator
 import org.smartregister.fhircore.engine.trace.PerformanceReporter
 import org.smartregister.fhircore.engine.util.DefaultDispatcherProvider
@@ -70,6 +71,7 @@ constructor(
   val sharedPreferencesHelper: SharedPreferencesHelper,
   val tokenAuthenticator: TokenAuthenticator,
   @ApplicationContext val appContext: Context,
+  private val syncAttemptTrackerRepo: SyncAttemptTrackerRepo,
 ) {
 
   private inline fun <reified W : FhirSyncWorker> getWorkerInfo(): Flow<SyncJobStatus> {
@@ -88,6 +90,7 @@ constructor(
         val resourceSyncException =
           listOf(ResourceSyncException(ResourceType.Flag, java.lang.Exception(message)))
         sharedSyncStatus.emit(SyncJobStatus.Failed(resourceSyncException))
+        syncAttemptTrackerRepo(SyncJobStatus.Failed(resourceSyncException))
         return@launch
       }
       val isAuthenticated = tokenAuthenticator.sessionActive()
@@ -105,6 +108,7 @@ constructor(
       getWorkerInfo<AppSyncWorker>().collect {
         sharedSyncStatus.emit(it)
         this@SyncBroadcaster.traceSync(it)
+        syncAttemptTrackerRepo(it)
       }
     }
   }

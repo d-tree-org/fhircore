@@ -34,7 +34,9 @@ import org.smartregister.fhircore.engine.auditEvent.AuditEventRepository
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
+import org.smartregister.fhircore.engine.data.local.TingatheDatabase
 import org.smartregister.fhircore.engine.data.local.register.dao.HivRegisterDao
+import org.smartregister.fhircore.engine.data.local.syncAttempt.repository.SyncAttemptTrackerRepo
 import org.smartregister.fhircore.engine.data.remote.shared.TokenAuthenticator
 import org.smartregister.fhircore.engine.domain.repository.PatientDao
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
@@ -56,6 +58,7 @@ class CoreModule {
     tracer: PerformanceReporter,
     tokenAuthenticator: TokenAuthenticator,
     sharedPreferencesHelper: SharedPreferencesHelper,
+    syncAttemptTrackerRepo: SyncAttemptTrackerRepo,
   ) =
     SyncBroadcaster(
       configurationRegistry = configurationRegistry,
@@ -65,6 +68,7 @@ class CoreModule {
       tracer = tracer,
       tokenAuthenticator = tokenAuthenticator,
       sharedPreferencesHelper = sharedPreferencesHelper,
+      //      syncAttemptTrackerRepo = syncAttemptTrackerRepo,
     )
 
   @Singleton
@@ -114,4 +118,9 @@ class CoreModule {
     defaultRepository: DefaultRepository,
     sharedPreferencesHelper: SharedPreferencesHelper,
   ): AuditEventRepository = AuditEventRepository(defaultRepository, sharedPreferencesHelper)
+
+  @Provides
+  @Singleton
+  fun providesDatabase(@ApplicationContext context: Context) =
+    TingatheDatabase.databaseBuilder(context).fallbackToDestructiveMigration().build()
 }
