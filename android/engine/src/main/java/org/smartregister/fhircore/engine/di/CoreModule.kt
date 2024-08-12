@@ -68,7 +68,7 @@ class CoreModule {
       tracer = tracer,
       tokenAuthenticator = tokenAuthenticator,
       sharedPreferencesHelper = sharedPreferencesHelper,
-      //      syncAttemptTrackerRepo = syncAttemptTrackerRepo,
+      syncAttemptTrackerRepo = syncAttemptTrackerRepo,
     )
 
   @Singleton
