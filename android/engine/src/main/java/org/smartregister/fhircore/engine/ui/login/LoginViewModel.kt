@@ -204,10 +204,13 @@ constructor(
           val practitionerDetailsResult = fetchPractitioner(userInfo.keycloakUuid)
           if (practitionerDetailsResult.isFailure) return
 
-          savePractitionerDetails(practitionerDetailsResult.getOrDefault(Bundle()), userInfo)
+          if (savePractitionerDetails(practitionerDetailsResult.getOrDefault(Bundle()), userInfo)) {
+            updateNavigateHome(true)
+          } else {
+            _loginErrorState.postValue(LoginErrorState.ACCOUNT_NOT_CONFIGURED_PROPERLY)
+          }
 
           _showProgressBar.postValue(false)
-          updateNavigateHome(true)
         }
       }
     } catch (ex: Exception) {
@@ -272,8 +275,8 @@ constructor(
     _navigateToHome.postValue(navigateHome)
   }
 
-  suspend fun savePractitionerDetails(bundle: Bundle, userClaimInfo: UserClaimInfo) {
-    if (bundle.entry.isNullOrEmpty()) return
+  suspend fun savePractitionerDetails(bundle: Bundle, userClaimInfo: UserClaimInfo): Boolean {
+    if (bundle.entry.isNullOrEmpty()) return false
     val practitionerDetails = bundle.entry.first().resource as PractitionerDetails
 
     if (
@@ -292,6 +295,8 @@ constructor(
     val practitionerRoles =
       practitionerDetails.fhirPractitionerDetails?.practitionerRoles ?: emptyList()
     val practitioners = practitionerDetails.fhirPractitionerDetails?.practitioners ?: emptyList()
+
+    if (organizations.isEmpty() || locations.isEmpty() || careTeams.isEmpty()) return false
 
     val remoteResources =
       careTeams.toTypedArray<Resource>() +
@@ -330,6 +335,7 @@ constructor(
         ),
       )
     }
+    return true
   }
 
   fun loadLastLoggedInUsername() {
