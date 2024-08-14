@@ -30,9 +30,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -69,7 +71,26 @@ fun ProfileActionableItem(
     verticalAlignment = Alignment.CenterVertically,
   ) {
     if (patientProfileRowItem.title.isEmpty() && patientProfileRowItem.subtitle.isEmpty()) {
-      ActionButton(patientProfileRowItem, modifier = modifier.fillMaxWidth(1f), onActionClick)
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        if (!patientProfileRowItem.taskExists) {
+          Box(
+            modifier
+              .padding(end = 8.dp)
+              .clip(RoundedCornerShape(6.dp))
+              .background(MaterialTheme.colors.error)
+              .padding(8.dp),
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+              Icon(Icons.Filled.Error, contentDescription = "", tint = MaterialTheme.colors.onError)
+              Text(text = "Missing Task", color = MaterialTheme.colors.onError)
+            }
+          }
+        }
+        ActionButton(patientProfileRowItem, modifier = modifier.fillMaxWidth(1f), onActionClick)
+      }
     } else {
       Row(verticalAlignment = Alignment.CenterVertically) {
         if (
@@ -255,6 +276,20 @@ fun ProfileActionableItemForVisitPreview() {
         profileViewSection = PatientProfileViewSection.TASKS,
         actionButtonColor = OverdueColor,
         actionButtonText = "Malaria medicine",
+      ),
+      onActionClick = { _, _ -> },
+    )
+    Divider()
+    ProfileActionableItem(
+      PatientProfileRowItem(
+        id = "3",
+        title = "",
+        titleIcon = R.drawable.ic_pregnant,
+        subtitle = "",
+        profileViewSection = PatientProfileViewSection.TASKS,
+        actionButtonColor = OverdueColor,
+        actionButtonText = "Malaria medicine",
+        taskExists = false,
       ),
       onActionClick = { _, _ -> },
     )

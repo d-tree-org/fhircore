@@ -38,4 +38,5 @@ data class PatientProfileRowItem(
   val actionButtonText: String? = null,
   val showAngleRightIcon: Boolean = false,
   val showDot: Boolean = false,
+  val taskExists: Boolean = true,
 )

@@ -77,6 +77,7 @@ import org.smartregister.fhircore.quest.ui.main.AppMainViewModel
 import org.smartregister.fhircore.quest.ui.patient.profile.components.PersonalData
 import org.smartregister.fhircore.quest.ui.patient.profile.components.ProfileActionableItem
 import org.smartregister.fhircore.quest.ui.patient.profile.components.ProfileCard
+import org.smartregister.fhircore.quest.ui.patient.profile.components.ProfileErrorCard
 import org.smartregister.fhircore.quest.ui.shared.models.PatientProfileViewSection
 
 @Composable
@@ -202,6 +203,10 @@ fun PatientProfileScreen(
             PersonalData(profileViewData, color = WelcomeServiceBackToCareColor)
           } else {
             PersonalData(profileViewData)
+          }
+
+          ProfileErrorCard(profileViewData) {
+            patientProfileViewModel.onEvent(PatientProfileEvent.OpenPatientFixer(navController))
           }
 
           // Patient tasks: List of tasks for the patients

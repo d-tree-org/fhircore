@@ -48,6 +48,7 @@ import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.data.domain.Guardian
 import org.smartregister.fhircore.engine.data.domain.PregnancyStatus
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
+import org.smartregister.fhircore.engine.domain.model.CarePlanTask
 import org.smartregister.fhircore.engine.domain.model.HealthStatus
 import org.smartregister.fhircore.engine.domain.model.ProfileData
 import org.smartregister.fhircore.engine.domain.model.RegisterData
@@ -245,7 +246,7 @@ constructor(
     fhirEngine.withTransaction {
       val patient = defaultRepository.loadResource<Patient>(resourceId)!!
       val carePlan = patient.activeCarePlans(fhirEngine).firstOrNull()
-
+      val (exists, activities) = fetchCarePlanActivities(carePlan)
       profileData =
         ProfileData.HivProfileData(
           logicalId = patient.logicalId,
@@ -265,7 +266,8 @@ constructor(
           showIdentifierInProfile = true,
           currentCarePlan = carePlan,
           healthStatus = patient.extractHealthStatusFromMeta(patientTypeMetaTagCodingSystem),
-          tasks = fetchCarePlanActivities(carePlan),
+          tasks = activities,
+          hasMissingTasks = exists,
           conditions = defaultRepository.activePatientConditions(patient.logicalId),
           otherPatients = patient.otherChildren(),
           guardians = patient.guardians(),
@@ -512,33 +514,49 @@ constructor(
 
   private suspend fun fetchCarePlanActivities(
     carePlan: CarePlan?,
-  ): List<CarePlan.CarePlanActivityComponent> {
-    if (carePlan == null) return emptyList()
-    val activityOnList = mutableMapOf<String, CarePlan.CarePlanActivityComponent>()
-    val tasksToFetch = mutableListOf<String>()
-    for (planActivity in carePlan.activity) {
-      if (!planActivity.shouldShowOnProfile()) {
-        continue
-      }
-      val taskId = planActivity.outcomeReference.firstOrNull()?.extractId()
-      if (taskId != null) {
-        tasksToFetch.add(taskId)
-        activityOnList[taskId] = planActivity
-      }
-    }
-    if (tasksToFetch.isNotEmpty()) {
-      val tasks = fhirEngine.getResourcesByIds<Task>(tasksToFetch)
-      tasks.forEach { task ->
-        val planActivity: CarePlan.CarePlanActivityComponent? = activityOnList[task.logicalId]
-        if (planActivity != null) {
-          planActivity.detail?.status = task.taskStatusToCarePlanActivityStatus()
-          activityOnList[task.logicalId] = planActivity
+  ): Pair<Boolean, List<CarePlanTask>> {
+    if (carePlan == null) return Pair(false, emptyList())
+
+    val activityOnList = mutableMapOf<String, CarePlanTask>()
+    val tasksToFetch =
+      carePlan.activity.mapNotNull { planActivity ->
+        if (planActivity.shouldShowOnProfile()) {
+          planActivity.outcomeReference.firstOrNull()?.extractId()?.also { taskId ->
+            activityOnList[taskId] = CarePlanTask(planActivity, false)
+          }
+        } else {
+          null
         }
       }
-    }
-    return activityOnList.values.sortedWith(
-      compareBy(nullsLast()) { it.detail?.code?.text?.toBigIntegerOrNull() },
-    )
+
+    var hasMissingTask = false
+    val items: List<CarePlanTask> =
+      if (tasksToFetch.isNotEmpty()) {
+        val tasks = fhirEngine.getResourcesByIds<Task>(tasksToFetch).associateBy { it.logicalId }
+        activityOnList.map { (taskId, carePlanTask) ->
+          println(taskId)
+          tasks[taskId]?.let { task ->
+            val updatedTask =
+              carePlanTask.task.apply { detail?.status = task.taskStatusToCarePlanActivityStatus() }
+            carePlanTask.copy(task = updatedTask, taskExists = true)
+          }
+            ?: run {
+              if (carePlanTask.task.detail?.status != CarePlan.CarePlanActivityStatus.SCHEDULED) {
+                hasMissingTask = true
+              }
+              carePlanTask.copy(taskExists = false)
+            }
+        }
+      } else {
+        activityOnList.values.toList()
+      }
+
+    val sortedItems =
+      items.sortedWith(
+        compareBy(nullsLast()) { it.task.detail?.code?.text?.toBigIntegerOrNull() },
+      )
+
+    return Pair(hasMissingTask, sortedItems)
   }
 
   object ResourceValue {

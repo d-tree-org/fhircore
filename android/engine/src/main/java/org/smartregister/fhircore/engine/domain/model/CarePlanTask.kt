@@ -14,22 +14,11 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.util
+package org.smartregister.fhircore.engine.domain.model
 
-enum class SharedPreferenceKey {
-  APP_ID,
-  LAST_SYNC_TIMESTAMP,
-  LANG,
-  PRACTITIONER_ID,
-  PRACTITIONER_DETAILS,
-  PRACTITIONER_LOCATION_HIERARCHIES,
-  THEME,
-  REMOTE_SYNC_RESOURCES,
-  OVERDUE_TASK_LAST_AUTHORED_ON_DATE,
-  LOGIN_CREDENTIAL_KEY,
-  LOGIN_PIN_KEY,
-  LAST_PURGE_KEY,
-  USER_CLAIM_INFO,
-  SYNC_UPLOAD_STRATEGY,
-  PATIENT_FIX_TYPE,
-}
+import org.hl7.fhir.r4.model.CarePlan
+
+data class CarePlanTask(
+  val task: CarePlan.CarePlanActivityComponent,
+  val taskExists: Boolean,
+)

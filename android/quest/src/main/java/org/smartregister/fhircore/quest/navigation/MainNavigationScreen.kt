@@ -77,6 +77,12 @@ sealed class MainNavigationScreen(
       route = "patientProfileRoute",
     )
 
+  data object FixPatientProfile :
+    MainNavigationScreen(
+      titleResource = R.string.fix_patient,
+      route = "fixPatientProfileRoute",
+    )
+
   data object TracingProfile :
     MainNavigationScreen(
       titleResource = org.smartregister.fhircore.engine.R.string.profile,
@@ -106,6 +112,7 @@ sealed class MainNavigationScreen(
         Reports,
         Settings,
         PatientProfile,
+        FixPatientProfile,
         PatientGuardians,
         FamilyProfile,
         ViewChildContacts,

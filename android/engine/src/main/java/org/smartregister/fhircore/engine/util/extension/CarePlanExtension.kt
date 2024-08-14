@@ -94,3 +94,16 @@ fun CarePlan.CarePlanStatus.toCoding() = Coding(this.system, this.toCode(), this
 
 fun CarePlan.isLastTask(task: Task) =
   this.activity.last()?.outcomeReference?.last()?.extractId() == task.logicalId
+
+fun CarePlan.CarePlanActivityStatus.toTaskStatus(): Task.TaskStatus {
+  return when (this) {
+    CarePlan.CarePlanActivityStatus.STOPPED -> Task.TaskStatus.FAILED
+    CarePlan.CarePlanActivityStatus.CANCELLED -> Task.TaskStatus.CANCELLED
+    CarePlan.CarePlanActivityStatus.NOTSTARTED -> Task.TaskStatus.READY
+    CarePlan.CarePlanActivityStatus.COMPLETED -> Task.TaskStatus.COMPLETED
+    CarePlan.CarePlanActivityStatus.ONHOLD -> Task.TaskStatus.ONHOLD
+    CarePlan.CarePlanActivityStatus.INPROGRESS -> Task.TaskStatus.INPROGRESS
+    CarePlan.CarePlanActivityStatus.ENTEREDINERROR -> Task.TaskStatus.ENTEREDINERROR
+    else -> Task.TaskStatus.NULL
+  }
+}

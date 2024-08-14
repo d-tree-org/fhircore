@@ -29,6 +29,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.sync.SyncJobStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -60,6 +61,8 @@ import org.smartregister.fhircore.quest.navigation.NavigationArg
 import org.smartregister.fhircore.quest.navigation.OverflowMenuFactory
 import org.smartregister.fhircore.quest.navigation.OverflowMenuHost
 import org.smartregister.fhircore.quest.ui.family.remove.member.RemoveFamilyMemberQuestionnaireActivity
+import org.smartregister.fhircore.quest.ui.patient.fix.FixPatientViewModel
+import org.smartregister.fhircore.quest.ui.patient.fix.FixStartState
 import org.smartregister.fhircore.quest.ui.patient.profile.childcontact.ChildContactPagingSource
 import org.smartregister.fhircore.quest.ui.patient.profile.tranfer.TransferOutActivity
 import org.smartregister.fhircore.quest.ui.shared.models.ProfileViewData
@@ -173,7 +176,7 @@ constructor(
         hivPatientProfileData.copy(
           tasks =
             hivPatientProfileData.tasks.filter {
-              it.isGuardianVisit(applicationConfiguration.taskFilterTagViaMetaCodingSystem)
+              it.task.isGuardianVisit(applicationConfiguration.taskFilterTagViaMetaCodingSystem)
             },
         )
       _patientProfileViewDataFlow.value =
@@ -355,6 +358,24 @@ constructor(
           event.navController.navigate(
             route = MainNavigationScreen.PatientProfile.route + urlParams,
           )
+      }
+      is PatientProfileEvent.OpenPatientFixer -> {
+        if (patientProfileData != null && patientProfileData is ProfileData.HivProfileData) {
+          val urlParams =
+            NavigationArg.bindArgumentsOf(
+              Pair(NavigationArg.FEATURE, AppFeature.PatientManagement.name),
+              Pair(NavigationArg.HEALTH_MODULE, healthModule),
+              Pair(NavigationArg.PATIENT_ID, patientId),
+              Pair(FixPatientViewModel.NAVIGATION_ARG_START, FixStartState.StartFix.name),
+              Pair(
+                FixPatientViewModel.NAVIGATION_ARG_CARE_PLAN,
+                (patientProfileData as ProfileData.HivProfileData).currentCarePlan?.logicalId,
+              ),
+            )
+          event.navController.navigate(
+            route = MainNavigationScreen.FixPatientProfile.route + urlParams,
+          )
+        }
       }
     }
   }
