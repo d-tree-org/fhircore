@@ -277,6 +277,11 @@ fun LoginPage(
                   id = R.string.login_error,
                   stringResource(R.string.error_fetching_user_details),
                 )
+              LoginErrorState.ACCOUNT_NOT_CONFIGURED_PROPERLY ->
+                stringResource(
+                  id = R.string.login_error,
+                  stringResource(R.string.error_account_not_configured_properly),
+                )
             },
           modifier =
             modifier
