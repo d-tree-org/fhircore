@@ -47,7 +47,7 @@ fun DevMenu(viewModel: DevViewModel) {
   val appointmentList by viewModel.observeMissedAppointment(context).collectAsState(listOf())
   val interruptedList by viewModel.observeInterrupted(context).collectAsState(listOf())
   val resourcePurger by viewModel.observeResourcePurgerWorker(context).collectAsState(listOf())
-//  val cleanState by viewModel.cleanCorruptedState.collectAsState()
+  //  val cleanState by viewModel.cleanCorruptedState.collectAsState()
 
   Column(
     modifier = Modifier.padding(16.dp).padding(vertical = 20.dp).fillMaxWidth(),
@@ -73,11 +73,11 @@ fun DevMenu(viewModel: DevViewModel) {
       text = "Run Resource Purger Worker",
       clickListener = @ExcludeFromJacocoGeneratedReport { viewModel.resourcePurger(context) },
     )
-//    UserProfileRow(
-//      iconAlt = { LoadableStateIcon(cleanState) },
-//      text = "Run Clean corrupted resources",
-//      clickListener = @ExcludeFromJacocoGeneratedReport { viewModel.clearCorruptedEvents() },
-//    )
+    //    UserProfileRow(
+    //      iconAlt = { LoadableStateIcon(cleanState) },
+    //      text = "Run Clean corrupted resources",
+    //      clickListener = @ExcludeFromJacocoGeneratedReport { viewModel.clearCorruptedEvents() },
+    //    )
   }
 }
 
