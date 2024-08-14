@@ -22,11 +22,9 @@ import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.smartregister.fhircore.engine.data.local.TingatheDatabase
 import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeStateEvent
@@ -84,30 +82,20 @@ constructor(
       }
     }
 
-  override suspend fun invoke(syncJobStatus: SyncJobStatus) =
+  override suspend fun invoke(syncJobStatus: SyncJobStatus) {
     withContext(Dispatchers.IO) {
       when (syncJobStatus) {
         is SyncJobStatus.Failed ->
           with(get() ?: SyncAttemptTrackerEntity()) {
             copy(attempts = attempts.plus(1)).also { upsert(syncAttemptTrackerEntity = it) }
-
-            /**
-             * Avoid unnecessary [onSyncFailure] invocation, cancel & delay [onSyncFailureJob] for 5
-             * seconds*
-             */
-            if (this.attempts > 2) {
-              onSyncFailureJob?.cancel()
-              onSyncFailureJob = launch {
-                delay(5_000)
-                onSyncFailure()
-              }
-            }
           }
         is SyncJobStatus.Succeeded -> {
-          localChangeRepo.deleteAll()
-          deleteAll()
+          with(get() ?: SyncAttemptTrackerEntity()) {
+            upsert(syncAttemptTrackerEntity = copy(attempts = 0))
+          }
         }
         else -> Unit
       }
     }
+  }
 }

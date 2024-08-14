@@ -75,25 +75,24 @@ constructor(
       .launchIn(viewModelScope)
 
   init {
+    shouldShowLocalChangeScreen()
     listenToLocalChangeRepo()
   }
 
   private fun onQuery() {
-    viewModelScope.launch(Dispatchers.IO) {
-      localChangeRepo.deleteAll()
-      localChangeRepo.queryFHIRLocalChanges()
-    }
+    viewModelScope.launch(Dispatchers.IO) { localChangeRepo.queryFHIRLocalChanges() }
   }
 
   private fun onBatch() =
     viewModelScope.launch(Dispatchers.IO) {
+      localChangeRepo.queryFHIRLocalChanges()
       with(localChangeRepo.get()) getLocalChangeRepo@{
         forEachIndexed { index, value ->
           localChangeRepo
             .invoke(index, value)
             .onEach { event ->
               _state.update { it.copy(event = event.event) }
-              if (event.index.plus(1) == this@getLocalChangeRepo.size) {
+              if (index.plus(1) == this@getLocalChangeRepo.size) {
                 _state.update { it.copy(event = LocalChangeStateEvent.Finished) }
               }
             }
@@ -106,6 +105,7 @@ constructor(
     viewModelScope.launch {
       syncBroadcaster.runSync()
       localChangeRepo.deleteAll()
+      syncAttemptTrackerRepo.deleteAll()
     }
   }
 

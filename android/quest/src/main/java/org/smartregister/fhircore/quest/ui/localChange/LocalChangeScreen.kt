@@ -31,11 +31,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Badge
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.FloatingActionButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -102,17 +103,21 @@ fun LocalChangeScreen(
       ) {
         Column(modifier = Modifier.weight(1f)) {
           Text(
-            text = "Staged Resources",
-            style = MaterialTheme.typography.h5.copy(color = Color.Gray),
+            text = "Force Sync",
+            style = MaterialTheme.typography.h6.copy(color = Color.Gray),
           )
           AnimatedVisibility(animateState != 0) {
-            Text(text = "${state.localChanges.count { it.status == 2 }} completed of $animateState")
+            Text(
+              text = "${state.localChanges.count { it.status == 2 }} synced of $animateState",
+              fontWeight = FontWeight.Bold,
+              color = Color.Gray,
+            )
           }
 
           AnimatedVisibility(state.localChanges.any { it.status == 3 }) {
             Badge {
               Text(
-                text = "${state.localChanges.count { it.status == 3 }} FAILED",
+                text = "${state.localChanges.count { it.status == 3 }} Failed",
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 2.dp),
                 style = MaterialTheme.typography.button.copy(letterSpacing = 0.sp),
@@ -121,52 +126,40 @@ fun LocalChangeScreen(
           }
         }
 
-        AnimatedVisibility(animateState != 0) {
-          Box(
-            contentAlignment = Alignment.Center,
-          ) {
-            val isVisible = state.event !is LocalChangeStateEvent.Completed
+        Box(contentAlignment = Alignment.Center) {
+          CircularProgressIndicator(
+            modifier =
+              Modifier.alpha(if (state.event !is LocalChangeStateEvent.Completed) 0f else 1f)
+                .size(70.dp),
+            strokeWidth = 8.dp,
+            backgroundColor = Color.LightGray,
+            color = Color.Gray,
+          )
 
-            CircularProgressIndicator(
-              modifier = Modifier.alpha(if (isVisible) 0f else 1f).size(64.dp),
-              strokeWidth = 8.dp,
-              backgroundColor = Color.LightGray,
-            )
-
-            FloatingActionButton(
-              onClick = {
-                if (state.event !is LocalChangeStateEvent.Completed) {
-                  event(LocalChangeEvent.Batch)
-                }
-              },
-              backgroundColor = MaterialTheme.colors.onPrimary,
-            ) {
-              Text(
-                text = "Push",
-                letterSpacing = 0.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-              )
-            }
-          }
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        AnimatedVisibility(state.event !is LocalChangeStateEvent.Completed) {
           Button(
             onClick = {
-              if (state.localChanges.any { it.status == 3 }) {
-                event(LocalChangeEvent.Retry)
+              if (state.event !is LocalChangeStateEvent.Completed) {
                 event(LocalChangeEvent.Batch)
-                return@Button
               }
-              event(LocalChangeEvent.Query)
             },
+            modifier = Modifier.size(60.dp),
+            shape = RoundedCornerShape(50),
+            colors =
+              ButtonDefaults.buttonColors(
+                backgroundColor = Color(0xFFE09220),
+              ),
           ) {
-            Text(text = "Load")
+            Text(
+              text = "Sync",
+              letterSpacing = 0.sp,
+              fontWeight = FontWeight.Bold,
+              color = Color.White,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
           }
         }
+        Spacer(modifier = Modifier.width(8.dp))
       }
     }
   }

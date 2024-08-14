@@ -96,7 +96,9 @@ fun InsightsScreen(
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           item { RamInformation(insightsViewModel = insightsViewModel) }
           item { SyncInformation(insightsViewModel = insightsViewModel) }
-          item { LocalChangeScreen(state = state, localChangeViewModel::onEvent) }
+          if (state.shouldShow) {
+            item { LocalChangeScreen(state = state, localChangeViewModel::onEvent) }
+          }
           item { UnsyncedResourcesInformation(insightsViewModel = insightsViewModel) }
         }
       }
