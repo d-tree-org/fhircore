@@ -86,6 +86,7 @@ class LocationPickerView(
       lifecycleScope.launch {
         physicalLocator = editable.toString().ifBlank { null }
         onUpdate()
+        physicalLocatorInputEditText?.setSelection(editable?.length ?: 0)
       }
     }
   }
