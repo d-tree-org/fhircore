@@ -257,6 +257,11 @@ dependencies {
   debugImplementation("androidx.compose.ui:ui-test-manifest:")
   testImplementation("androidx.compose.ui:ui-test-junit4:")
 
+  // Room
+  implementation("androidx.room:room-runtime:2.6.1")
+  kapt("androidx.room:room-compiler:2.6.1")
+  implementation("androidx.room:room-ktx:2.6.1")
+
   /**
    * This is an SDK Dependency graph bug workaround file HAPI FHIR Dependencies missing at runtime
    * after building FHIRCore application module
