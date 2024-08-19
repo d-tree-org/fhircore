@@ -27,7 +27,7 @@ import com.google.firebase.ktx.Firebase
 import com.google.firebase.perf.ktx.performance
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
-import org.dtree.fhircore.dataclerk.data.QuestXFhirQueryResolver
+import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirXFhirQueryResolver
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.ReferenceUrlResolver
 import org.smartregister.fhircore.engine.trace.ReleaseTree
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl
@@ -42,7 +42,7 @@ class DataClerkApplication : Application(), DataCaptureConfig.Provider, Configur
 
   @Inject lateinit var referenceUrlResolver: ReferenceUrlResolver
 
-  @Inject lateinit var xFhirQueryResolver: QuestXFhirQueryResolver
+  @Inject lateinit var xFhirQueryResolver: FhirXFhirQueryResolver
 
   @Inject lateinit var customQuestItemDataProvider: CustomQuestItemDataProvider
 

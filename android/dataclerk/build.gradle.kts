@@ -153,15 +153,15 @@ android {
       dimension = "apps"
       applicationIdSuffix = ".exposedInfantDev"
       versionNameSuffix = "-exposedInfantDev"
-      versionCode = 3
-      versionName = "0.0.3"
+      versionCode = 5
+      versionName = "0.0.5-alpha1"
     }
     create("artClientDev") {
       dimension = "apps"
       applicationIdSuffix = ".artClientDev"
       versionNameSuffix = "-artClientDev"
-      versionCode = 3
-      versionName = "0.0.3"
+      versionCode = 5
+      versionName = "0.0.5-alpha1"
     }
     create("exposedInfantStaging") {
       dimension = "apps"
@@ -192,17 +192,17 @@ dependencies {
 
   implementation("androidx.core:core-ktx:1.13.1")
   implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.9.20"))
-  implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.1")
-  implementation("androidx.activity:activity-compose:1.9.0")
+  implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+  implementation("androidx.activity:activity-compose:1.9.1")
 
   implementation(Deps.accompanist.swiperefresh)
 
-  implementation(platform("androidx.compose:compose-bom:2024.05.00"))
+  implementation(platform("androidx.compose:compose-bom:2024.06.00"))
   implementation("androidx.compose.ui:ui")
   implementation("androidx.compose.ui:ui-graphics")
   implementation("androidx.compose.ui:ui-tooling-preview")
   implementation("androidx.compose.material3:material3")
-  implementation("androidx.paging:paging-compose:3.3.0")
+  implementation("androidx.paging:paging-compose:3.3.2")
 
   implementation("com.github.anrwatchdog:anrwatchdog:1.4.0")
 
