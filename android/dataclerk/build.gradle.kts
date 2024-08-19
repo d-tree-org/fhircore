@@ -139,43 +139,43 @@ android {
       dimension = "apps"
       applicationIdSuffix = ".exposedInfant"
       versionNameSuffix = "-exposedInfant"
-      versionCode = 4
-      versionName = "0.0.4"
+      versionCode = 6
+      versionName = "0.0.6"
     }
     create("artClient") {
       dimension = "apps"
       applicationIdSuffix = ".artClient"
       versionNameSuffix = "-artClient"
-      versionCode = 4
-      versionName = "0.0.4"
+      versionCode = 6
+      versionName = "0.0.6"
     }
     create("exposedInfantDev") {
       dimension = "apps"
       applicationIdSuffix = ".exposedInfantDev"
       versionNameSuffix = "-exposedInfantDev"
-      versionCode = 5
-      versionName = "0.0.5-alpha1"
+      versionCode = 6
+      versionName = "0.0.6"
     }
     create("artClientDev") {
       dimension = "apps"
       applicationIdSuffix = ".artClientDev"
       versionNameSuffix = "-artClientDev"
-      versionCode = 5
-      versionName = "0.0.5-alpha1"
+      versionCode = 6
+      versionName = "0.0.6"
     }
     create("exposedInfantStaging") {
       dimension = "apps"
       applicationIdSuffix = ".exposedInfantStaging"
       versionNameSuffix = "-exposedInfantStaging"
-      versionCode = 1
-      versionName = "0.0.1"
+      versionCode = 6
+      versionName = "0.0.6"
     }
     create("artClientStaging") {
       dimension = "apps"
       applicationIdSuffix = ".artClientStaging"
       versionNameSuffix = "-artClientStaging"
-      versionCode = 1
-      versionName = "0.0.1"
+      versionCode = 6
+      versionName = "0.0.6"
     }
   }
 
