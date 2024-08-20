@@ -271,7 +271,6 @@ constructor(
   fun forgotPassword() {
     // TODO load supervisor contact e.g.
     _launchDialPad.value = "tel:${applicationConfiguration.supportPhoneNumber}"
-
   }
 
   @TestOnly
