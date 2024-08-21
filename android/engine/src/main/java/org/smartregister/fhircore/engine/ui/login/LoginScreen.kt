@@ -101,7 +101,7 @@ fun LoginScreen(loginViewModel: LoginViewModel) {
   val showProgressBar by loginViewModel.showProgressBar.observeAsState(false)
   val applicationConfiguration by
     loginViewModel.applicationConfiguration.observeAsState(
-      ApplicationConfiguration(supportPhoneNumber = "")
+      ApplicationConfiguration(supportPhoneNumber = ""),
     )
   val context = LocalContext.current
 
@@ -375,7 +375,7 @@ fun ForgotPasswordDialog(
         Text(
           text =
             stringResource(R.string.call_supervisor, applicationConfiguration.supportPhoneNumber),
-          fontSize = 16.sp
+          fontSize = 16.sp,
         )
       }
     },
