@@ -78,7 +78,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.smartregister.fhircore.engine.R
-import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.ui.components.CircularProgressBar
 import org.smartregister.fhircore.engine.ui.theme.LoginButtonColor
 import org.smartregister.fhircore.engine.ui.theme.LoginDarkColor
@@ -99,11 +98,9 @@ fun LoginScreen(loginViewModel: LoginViewModel) {
   val password by loginViewModel.password.observeAsState("")
   val loginErrorState by loginViewModel.loginErrorState.observeAsState(null)
   val showProgressBar by loginViewModel.showProgressBar.observeAsState(false)
-  val applicationConfiguration by
-    loginViewModel.applicationConfiguration.observeAsState(
-      ApplicationConfiguration(supportPhoneNumber = ""),
-    )
+  val applicationConfiguration by loginViewModel.applicationConfiguration.observeAsState()
   val context = LocalContext.current
+  val phoneNum = applicationConfiguration?.supportPhoneNumber
 
   LoginPage(
     username = username,
@@ -114,7 +111,7 @@ fun LoginScreen(loginViewModel: LoginViewModel) {
     onLoginButtonClicked = { loginViewModel.login(context = context) },
     loginErrorState = loginErrorState,
     showProgressBar = showProgressBar,
-    applicationConfiguration = applicationConfiguration,
+    phoneNum = phoneNum,
   )
 }
 
@@ -129,7 +126,7 @@ fun LoginPage(
   modifier: Modifier = Modifier,
   loginErrorState: LoginErrorState? = null,
   showProgressBar: Boolean = false,
-  applicationConfiguration: ApplicationConfiguration? = null,
+  phoneNum: String? = null,
 ) {
   var showPassword by remember { mutableStateOf(false) }
   val backgroundColor = Color.White
@@ -150,13 +147,11 @@ fun LoginPage(
     contentColor = contentColorFor(backgroundColor = contentColor),
   ) {
     if (showForgotPasswordDialog) {
-      if (applicationConfiguration != null) {
-        ForgotPasswordDialog(
-          forgotPassword = forgotPassword,
-          onDismissDialog = { showForgotPasswordDialog = false },
-          applicationConfiguration = applicationConfiguration,
-        )
-      }
+      ForgotPasswordDialog(
+        forgotPassword = forgotPassword,
+        onDismissDialog = { showForgotPasswordDialog = false },
+        phoneNum = phoneNum,
+      )
     }
     Column(
       modifier =
@@ -357,7 +352,7 @@ fun LoginPage(
 fun ForgotPasswordDialog(
   forgotPassword: () -> Unit,
   onDismissDialog: () -> Unit,
-  applicationConfiguration: ApplicationConfiguration,
+  phoneNum: String?,
   modifier: Modifier = Modifier,
 ) {
   AlertDialog(
@@ -370,13 +365,8 @@ fun ForgotPasswordDialog(
       )
     },
     text = {
-      // Display the supervisor's phone number from applicationConfiguration
-      if (applicationConfiguration != null) {
-        Text(
-          text =
-            stringResource(R.string.call_supervisor, applicationConfiguration.supportPhoneNumber),
-          fontSize = 16.sp,
-        )
+      if (phoneNum != null) {
+        Text(text = stringResource(R.string.call_supervisor, phoneNum), fontSize = 16.sp)
       }
     },
     buttons = {
