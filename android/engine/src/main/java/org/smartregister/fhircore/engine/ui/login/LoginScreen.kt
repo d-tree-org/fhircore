@@ -78,6 +78,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.smartregister.fhircore.engine.R
+import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.ui.components.CircularProgressBar
 import org.smartregister.fhircore.engine.ui.theme.LoginButtonColor
 import org.smartregister.fhircore.engine.ui.theme.LoginDarkColor
@@ -98,6 +99,10 @@ fun LoginScreen(loginViewModel: LoginViewModel) {
   val password by loginViewModel.password.observeAsState("")
   val loginErrorState by loginViewModel.loginErrorState.observeAsState(null)
   val showProgressBar by loginViewModel.showProgressBar.observeAsState(false)
+  val applicationConfiguration by
+    loginViewModel.applicationConfiguration.observeAsState(
+      ApplicationConfiguration(supportPhoneNumber = "")
+    )
   val context = LocalContext.current
 
   LoginPage(
@@ -109,6 +114,7 @@ fun LoginScreen(loginViewModel: LoginViewModel) {
     onLoginButtonClicked = { loginViewModel.login(context = context) },
     loginErrorState = loginErrorState,
     showProgressBar = showProgressBar,
+    applicationConfiguration = applicationConfiguration,
   )
 }
 
@@ -123,6 +129,7 @@ fun LoginPage(
   modifier: Modifier = Modifier,
   loginErrorState: LoginErrorState? = null,
   showProgressBar: Boolean = false,
+  applicationConfiguration: ApplicationConfiguration? = null,
 ) {
   var showPassword by remember { mutableStateOf(false) }
   val backgroundColor = Color.White
@@ -143,10 +150,13 @@ fun LoginPage(
     contentColor = contentColorFor(backgroundColor = contentColor),
   ) {
     if (showForgotPasswordDialog) {
-      ForgotPasswordDialog(
-        forgotPassword = forgotPassword,
-        onDismissDialog = { showForgotPasswordDialog = false },
-      )
+      if (applicationConfiguration != null) {
+        ForgotPasswordDialog(
+          forgotPassword = forgotPassword,
+          onDismissDialog = { showForgotPasswordDialog = false },
+          applicationConfiguration = applicationConfiguration,
+        )
+      }
     }
     Column(
       modifier =
@@ -347,6 +357,7 @@ fun LoginPage(
 fun ForgotPasswordDialog(
   forgotPassword: () -> Unit,
   onDismissDialog: () -> Unit,
+  applicationConfiguration: ApplicationConfiguration,
   modifier: Modifier = Modifier,
 ) {
   AlertDialog(
@@ -359,7 +370,14 @@ fun ForgotPasswordDialog(
       )
     },
     text = {
-      Text(text = stringResource(R.string.call_supervisor, "0992 731 748"), fontSize = 16.sp)
+      // Display the supervisor's phone number from applicationConfiguration
+      if (applicationConfiguration != null) {
+        Text(
+          text =
+            stringResource(R.string.call_supervisor, applicationConfiguration.supportPhoneNumber),
+          fontSize = 16.sp
+        )
+      }
     },
     buttons = {
       Row(

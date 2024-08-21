@@ -107,8 +107,13 @@ constructor(
   val loadingConfig: LiveData<Boolean>
     get() = _loadingConfig
 
-  private val applicationConfiguration: ApplicationConfiguration =
-    configurationRegistry.getAppConfigs()
+  private val _applicationConfiguration = MutableLiveData<ApplicationConfiguration>()
+  val applicationConfiguration: LiveData<ApplicationConfiguration>
+    get() = _applicationConfiguration
+
+  init {
+    _applicationConfiguration.value = configurationRegistry.getAppConfigs()
+  }
 
   private suspend fun fetchAccessToken(
     username: String,
@@ -269,8 +274,9 @@ constructor(
   }
 
   fun forgotPassword() {
-    // TODO load supervisor contact e.g.
-    _launchDialPad.value = "tel:${applicationConfiguration.supportPhoneNumber}"
+    applicationConfiguration.value?.let { config ->
+      _launchDialPad.value = "tel:${config.supportPhoneNumber}"
+    }
   }
 
   @TestOnly
