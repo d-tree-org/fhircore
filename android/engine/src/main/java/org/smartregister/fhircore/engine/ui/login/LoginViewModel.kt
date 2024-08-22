@@ -38,6 +38,7 @@ import org.jetbrains.annotations.TestOnly
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.app.AppConfigService
+import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceDataSource
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
@@ -105,6 +106,14 @@ constructor(
   private val _loadingConfig = MutableLiveData(true)
   val loadingConfig: LiveData<Boolean>
     get() = _loadingConfig
+
+  private val _applicationConfiguration = MutableLiveData<ApplicationConfiguration>()
+  val applicationConfiguration: LiveData<ApplicationConfiguration>
+    get() = _applicationConfiguration
+
+  init {
+    _applicationConfiguration.value = configurationRegistry.getAppConfigs()
+  }
 
   private suspend fun fetchAccessToken(
     username: String,
@@ -265,8 +274,9 @@ constructor(
   }
 
   fun forgotPassword() {
-    // TODO load supervisor contact e.g.
-    _launchDialPad.value = "tel:0123456789"
+    applicationConfiguration.value?.let { config ->
+      _launchDialPad.value = "tel:${config.supportPhoneNumber}"
+    }
   }
 
   @TestOnly

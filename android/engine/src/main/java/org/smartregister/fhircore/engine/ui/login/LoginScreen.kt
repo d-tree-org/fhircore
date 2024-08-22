@@ -98,7 +98,9 @@ fun LoginScreen(loginViewModel: LoginViewModel) {
   val password by loginViewModel.password.observeAsState("")
   val loginErrorState by loginViewModel.loginErrorState.observeAsState(null)
   val showProgressBar by loginViewModel.showProgressBar.observeAsState(false)
+  val applicationConfiguration by loginViewModel.applicationConfiguration.observeAsState()
   val context = LocalContext.current
+  val phoneNumber = applicationConfiguration?.supportPhoneNumber
 
   LoginPage(
     username = username,
@@ -109,6 +111,7 @@ fun LoginScreen(loginViewModel: LoginViewModel) {
     onLoginButtonClicked = { loginViewModel.login(context = context) },
     loginErrorState = loginErrorState,
     showProgressBar = showProgressBar,
+    phoneNumber = phoneNumber,
   )
 }
 
@@ -123,6 +126,7 @@ fun LoginPage(
   modifier: Modifier = Modifier,
   loginErrorState: LoginErrorState? = null,
   showProgressBar: Boolean = false,
+  phoneNumber: String? = null,
 ) {
   var showPassword by remember { mutableStateOf(false) }
   val backgroundColor = Color.White
@@ -146,6 +150,7 @@ fun LoginPage(
       ForgotPasswordDialog(
         forgotPassword = forgotPassword,
         onDismissDialog = { showForgotPasswordDialog = false },
+        phoneNumber = phoneNumber,
       )
     }
     Column(
@@ -347,6 +352,7 @@ fun LoginPage(
 fun ForgotPasswordDialog(
   forgotPassword: () -> Unit,
   onDismissDialog: () -> Unit,
+  phoneNumber: String?,
   modifier: Modifier = Modifier,
 ) {
   AlertDialog(
@@ -359,7 +365,9 @@ fun ForgotPasswordDialog(
       )
     },
     text = {
-      Text(text = stringResource(R.string.call_supervisor, "012-3456-789"), fontSize = 16.sp)
+      if (phoneNumber != null) {
+        Text(text = stringResource(R.string.call_supervisor, phoneNumber), fontSize = 16.sp)
+      }
     },
     buttons = {
       Row(
