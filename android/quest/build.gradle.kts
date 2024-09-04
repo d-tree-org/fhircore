@@ -38,6 +38,11 @@ android {
     buildConfigField("String", "APP_ID", """"${project.extra["APP_ID"]}"""")
     buildConfigField(
       "String",
+      "FHIR_HELPER_SERVICE",
+      """"${project.extra["FHIR_HELPER_SERVICE"]}"""",
+    )
+    buildConfigField(
+      "String",
       "OAUTH_CLIENT_SECRET",
       """"${project.extra["OAUTH_CLIENT_SECRET"]}"""",
     )

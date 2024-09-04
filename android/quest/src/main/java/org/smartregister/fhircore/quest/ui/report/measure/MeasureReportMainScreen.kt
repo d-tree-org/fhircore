@@ -22,10 +22,10 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
+import org.smartregister.fhircore.engine.ui.reports.FacilityReportScreen
 import org.smartregister.fhircore.quest.navigation.MainNavigationScreen
 import org.smartregister.fhircore.quest.navigation.MeasureReportNavigationScreen
 import org.smartregister.fhircore.quest.navigation.NavigationArg
-import org.smartregister.fhircore.quest.ui.report.measure.screens.MeasureReportListScreen
 import org.smartregister.fhircore.quest.ui.report.measure.screens.MeasureReportPatientsScreen
 import org.smartregister.fhircore.quest.ui.report.measure.screens.MeasureReportResultScreen
 import org.smartregister.fhircore.quest.ui.report.measure.screens.ReportTypeSelectorScreen
@@ -39,15 +39,20 @@ fun NavGraphBuilder.measureReportNavigationGraph(
     route = MainNavigationScreen.Reports.route,
   ) {
     // Display list of supported measures for reporting
+    //    composable(MeasureReportNavigationScreen.MeasureReportList.route) {
+    //      MeasureReportListScreen(
+    //        navController = navController,
+    //        dataList = measureReportViewModel.reportMeasuresList(),
+    //        onReportMeasureClicked = { measureReportRowData ->
+    //          measureReportViewModel.onEvent(
+    //            MeasureReportEvent.OnSelectMeasure(measureReportRowData, navController),
+    //          )
+    //        },
+    //      )
+    //    }
     composable(MeasureReportNavigationScreen.MeasureReportList.route) {
-      MeasureReportListScreen(
+      FacilityReportScreen(
         navController = navController,
-        dataList = measureReportViewModel.reportMeasuresList(),
-        onReportMeasureClicked = { measureReportRowData ->
-          measureReportViewModel.onEvent(
-            MeasureReportEvent.OnSelectMeasure(measureReportRowData, navController),
-          )
-        },
       )
     }
     // Choose report type; for either individual or population

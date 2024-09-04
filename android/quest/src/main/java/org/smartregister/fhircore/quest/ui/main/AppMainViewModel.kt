@@ -92,7 +92,7 @@ constructor(
         enableDeviceToDeviceSync = appFeatureManager.isFeatureActive(AppFeature.DeviceToDeviceSync),
         // Disable in-app reporting -- Measure reports not well supported
         // enableReports = appFeatureManager.isFeatureActive(AppFeature.InAppReporting),
-        enableReports = false,
+        enableReports = true,
       )
   }
 
