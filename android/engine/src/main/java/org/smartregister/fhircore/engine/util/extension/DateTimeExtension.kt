@@ -17,6 +17,7 @@
 package org.smartregister.fhircore.engine.util.extension
 
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
@@ -93,6 +94,8 @@ fun Date.plusDays(days: Int): Date {
 }
 
 fun DateType.format(): String = SDF_YYYY_MM_DD.format(value)
+
+fun LocalDate.format(): String = format(DateTimeFormatter.ISO_LOCAL_DATE)
 
 fun DateTimeType.format(): String =
   SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").format(value).let {
