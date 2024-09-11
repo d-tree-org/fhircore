@@ -34,7 +34,6 @@ import java.util.TimeZone
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import org.smartregister.fhircore.engine.appfeature.AppFeature
 import org.smartregister.fhircore.engine.appfeature.AppFeatureManager
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
@@ -89,7 +88,7 @@ constructor(
         sideMenuOptions = sideMenuOptionFactory.retrieveSideMenuOptions(),
         lastSyncTime = retrieveLastSyncTimestamp() ?: "",
         languages = configurationRegistry.fetchLanguages(),
-        enableDeviceToDeviceSync = appFeatureManager.isFeatureActive(AppFeature.DeviceToDeviceSync),
+        enableDeviceToDeviceSync = true,
         // Disable in-app reporting -- Measure reports not well supported
         // enableReports = appFeatureManager.isFeatureActive(AppFeature.InAppReporting),
         enableReports = false,
