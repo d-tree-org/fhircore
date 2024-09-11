@@ -28,6 +28,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -45,6 +46,7 @@ import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirConverter
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
 import org.smartregister.fhircore.engine.data.remote.shared.TokenAuthenticator
 import org.smartregister.fhircore.engine.util.LocalDateAdapter
+import org.smartregister.fhircore.engine.util.LocalDateTimeTypeAdapter
 import org.smartregister.fhircore.engine.util.TimeZoneTypeAdapter
 import org.smartregister.fhircore.engine.util.extension.getCustomJsonParser
 import retrofit2.Retrofit
@@ -104,6 +106,7 @@ class NetworkModule {
       .setLenient()
       .registerTypeAdapter(TimeZone::class.java, TimeZoneTypeAdapter().nullSafe())
       .registerTypeAdapter(LocalDate::class.java, LocalDateAdapter())
+      .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeTypeAdapter())
       .create()
 
   @Provides fun provideParser(): IParser = FhirContext.forR4Cached().getCustomJsonParser()
