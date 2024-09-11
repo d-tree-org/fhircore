@@ -30,6 +30,7 @@ data class GroupedSummaryItem(
   val groupTitle: String,
   val summaries: List<SummaryItem>,
   val order: Int,
+  val startCollapsed: Boolean = false,
 )
 
 data class SummaryItem(val name: String, val value: Int)

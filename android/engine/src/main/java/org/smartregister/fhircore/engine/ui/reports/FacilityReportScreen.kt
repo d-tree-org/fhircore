@@ -16,6 +16,7 @@
 
 package org.smartregister.fhircore.engine.ui.reports
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,9 +39,15 @@ import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.twotone.KeyboardArrowDown
+import androidx.compose.material.icons.twotone.KeyboardArrowUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -117,30 +124,50 @@ fun ReportContainer(facilityData: FacilityResultData) {
     }
     for (group in facilityData.groups.sortedBy { it.order }) {
       item {
+        var collapsed by rememberSaveable { mutableStateOf(!group.startCollapsed) }
         Card(
           elevation = 1.dp,
           backgroundColor = Color.White,
-          modifier = Modifier.padding(vertical = 12.dp),
+          modifier = Modifier.padding(vertical = 6.dp),
         ) {
-          Column(Modifier.padding(12.dp)) {
-            Text(
-              text = group.groupTitle,
-              style = MaterialTheme.typography.h6,
-              modifier = Modifier.fillMaxWidth(),
-            )
-            Box(modifier = Modifier.height(10.dp))
-            repeat(group.summaries.count()) { idx ->
-              val summary = group.summaries[idx]
-              Column(
-                Modifier.fillMaxWidth().padding(12.dp),
-              ) {
-                Text(
-                  text = summary.name,
-                  color = SubtitleTextColor,
-                  style = MaterialTheme.typography.subtitle2,
-                  modifier = Modifier.wrapContentWidth(),
+          Column(
+            Modifier.padding(12.dp).fillMaxWidth(),
+          ) {
+            Row(
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.padding(4.dp).fillMaxWidth().clickable { collapsed = !collapsed },
+            ) {
+              Text(
+                text = group.groupTitle,
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier,
+              )
+              IconButton(onClick = { collapsed = !collapsed }) {
+                Icon(
+                  if (!collapsed) {
+                    Icons.TwoTone.KeyboardArrowDown
+                  } else Icons.TwoTone.KeyboardArrowUp,
+                  contentDescription = "",
                 )
-                Text(text = summary.value.toString(), style = MaterialTheme.typography.subtitle1)
+              }
+            }
+
+            if (collapsed) {
+              Box(modifier = Modifier.height(6.dp))
+              repeat(group.summaries.count()) { idx ->
+                val summary = group.summaries[idx]
+                Column(
+                  Modifier.fillMaxWidth().padding(12.dp),
+                ) {
+                  Text(
+                    text = summary.name,
+                    color = SubtitleTextColor,
+                    style = MaterialTheme.typography.subtitle2,
+                    modifier = Modifier.wrapContentWidth(),
+                  )
+                  Text(text = summary.value.toString(), style = MaterialTheme.typography.subtitle1)
+                }
               }
             }
           }
@@ -168,7 +195,9 @@ fun ReportContainerPreview() {
     FacilityResultData(
       groups =
         listOf(
-          group,
+          group.copy(
+            startCollapsed = true,
+          ),
           group,
         ),
       date = LocalDate.now(),
