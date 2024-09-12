@@ -27,6 +27,8 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -39,9 +41,12 @@ import okhttp3.logging.HttpLoggingInterceptor
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.data.remote.auth.KeycloakService
 import org.smartregister.fhircore.engine.data.remote.auth.OAuthService
+import org.smartregister.fhircore.engine.data.remote.fhir.helper.FhirHelperService
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirConverterFactory
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
 import org.smartregister.fhircore.engine.data.remote.shared.TokenAuthenticator
+import org.smartregister.fhircore.engine.util.LocalDateAdapter
+import org.smartregister.fhircore.engine.util.LocalDateTimeTypeAdapter
 import org.smartregister.fhircore.engine.util.TimeZoneTypeAdapter
 import org.smartregister.fhircore.engine.util.extension.getCustomJsonParser
 import retrofit2.Retrofit
@@ -100,6 +105,8 @@ class NetworkModule {
     GsonBuilder()
       .setLenient()
       .registerTypeAdapter(TimeZone::class.java, TimeZoneTypeAdapter().nullSafe())
+      .registerTypeAdapter(LocalDate::class.java, LocalDateAdapter())
+      .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeTypeAdapter())
       .create()
 
   @Provides fun provideParser(): IParser = FhirContext.forR4Cached().getCustomJsonParser()
@@ -167,6 +174,22 @@ class NetworkModule {
   @Provides
   fun provideFhirResourceService(@RegularRetrofit retrofit: Retrofit): FhirResourceService =
     retrofit.create(FhirResourceService::class.java)
+
+  @Provides
+  fun provideFhirHelperService(
+    @WithAuthorizationOkHttpClientQualifier okHttpClient: OkHttpClient,
+    configService: ConfigService,
+    gson: Gson,
+    parser: IParser,
+  ): FhirHelperService {
+    val retrofit =
+      Retrofit.Builder()
+        .baseUrl(configService.provideAuthConfiguration().fhirHelperServiceBaseUrl)
+        .client(okHttpClient)
+        .addConverterFactory(GsonConverterFactory.create(gson))
+        .build()
+    return retrofit.create(FhirHelperService::class.java)
+  }
 
   @Provides
   fun providesGenericFhirClient(
