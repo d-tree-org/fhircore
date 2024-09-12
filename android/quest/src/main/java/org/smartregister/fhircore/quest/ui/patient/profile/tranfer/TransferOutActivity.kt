@@ -255,6 +255,11 @@ class TransferOutActivity : BaseMultiLanguageActivity() {
     }
   }
 
+  override fun onSupportNavigateUp(): Boolean {
+    finish()
+    return true
+  }
+
   companion object {
     fun launch(context: Context, patientId: String) {
       context.startActivity(
