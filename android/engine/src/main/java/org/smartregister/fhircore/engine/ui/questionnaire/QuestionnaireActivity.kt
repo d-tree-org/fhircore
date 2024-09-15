@@ -80,8 +80,6 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
 
   @Inject lateinit var dispatcherProvider: DefaultDispatcherProvider
 
-  @Inject lateinit var syncBroadcaster: SyncBroadcaster
-
   @Inject lateinit var tracer: PerformanceReporter
 
   open val questionnaireViewModel: QuestionnaireViewModel by viewModels()
@@ -393,7 +391,6 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
     extras: List<Resource>? = null,
   ) {
     dismissSaveProcessing()
-    syncBroadcaster.runSync()
     postSaveSuccessful(questionnaireResponse, extras)
   }
 
