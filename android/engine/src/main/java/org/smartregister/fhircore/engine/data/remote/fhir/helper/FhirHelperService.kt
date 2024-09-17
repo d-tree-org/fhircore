@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.configuration.app
+package org.smartregister.fhircore.engine.data.remote.fhir.helper
 
-/** Configurations for Keycloak server authentication loaded from the BuildConfig */
-data class AuthConfiguration(
-  var oauthServerBaseUrl: String,
-  var fhirServerBaseUrl: String,
-  var clientId: String,
-  var clientSecret: String,
-  var fhirHelperServiceBaseUrl: String,
-  var accountType: String,
-  var scope: String = "openid",
-)
+import org.smartregister.fhircore.engine.data.remote.model.helper.FacilityResultData
+import retrofit2.Response
+import retrofit2.http.GET
+import retrofit2.http.Path
+
+interface FhirHelperService {
+  @GET("/stats/facility/{id}")
+  suspend fun fetchDailyFacilityStats(@Path("id") id: String): Response<FacilityResultData>
+}
