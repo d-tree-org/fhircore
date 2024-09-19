@@ -168,7 +168,7 @@ fun SettingsScreen(
                 Text(
                   text =
                     "When disabled, form saves will not start sync automatically, you have to manually sync the changes.",
-                  style = MaterialTheme.typography.caption
+                  style = MaterialTheme.typography.caption,
                 )
               },
             )
@@ -181,7 +181,7 @@ fun SettingsScreen(
                 Text(
                   text =
                     "When enable the app will attempt to fix the patient completely offline which my fail",
-                  style = MaterialTheme.typography.caption
+                  style = MaterialTheme.typography.caption,
                 )
               },
             )
