@@ -171,7 +171,7 @@ fun SettingsScreen(
                 Text(text = "Sync on form answered")
               },
               summary = {
-                Text(text = "When enabled form saves will not start sync automatically, you have to manually sync the changes.", style = MaterialTheme.typography.caption)
+                Text(text = "When disabled, form saves will not start sync automatically, you have to manually sync the changes.", style = MaterialTheme.typography.caption)
               },
             )
 
