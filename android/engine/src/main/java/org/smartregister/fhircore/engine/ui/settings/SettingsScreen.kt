@@ -17,7 +17,6 @@
 package org.smartregister.fhircore.engine.ui.settings
 
 import android.content.Context
-import android.content.res.Resources.Theme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.Divider
@@ -44,7 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import java.text.SimpleDateFormat
@@ -108,9 +106,7 @@ fun SettingsScreen(
               .getPreferenceFlow(),
         ) {
           LazyColumn(
-            modifier = modifier
-              .padding(paddingValues)
-              .padding(vertical = 20.dp),
+            modifier = modifier.padding(paddingValues).padding(vertical = 20.dp),
           ) {
             item {
               InfoCard(profileData = settingsViewModel.profileData)
@@ -167,11 +163,13 @@ fun SettingsScreen(
             switchPreference(
               key = SharedPreferenceKey.SYNC_ON_SAVE.name,
               defaultValue = true,
-              title = {
-                Text(text = "Sync on form answered")
-              },
+              title = { Text(text = "Sync on form answered") },
               summary = {
-                Text(text = "When disabled, form saves will not start sync automatically, you have to manually sync the changes.", style = MaterialTheme.typography.caption)
+                Text(
+                  text =
+                    "When disabled, form saves will not start sync automatically, you have to manually sync the changes.",
+                  style = MaterialTheme.typography.caption
+                )
               },
             )
 
@@ -180,7 +178,11 @@ fun SettingsScreen(
               defaultValue = false,
               title = { Text(text = "Fix patients offline") },
               summary = {
-                Text(text = "When enable the app will attempt to fix the patient completely offline which my fail", style = MaterialTheme.typography.caption)
+                Text(
+                  text =
+                    "When enable the app will attempt to fix the patient completely offline which my fail",
+                  style = MaterialTheme.typography.caption
+                )
               },
             )
 
