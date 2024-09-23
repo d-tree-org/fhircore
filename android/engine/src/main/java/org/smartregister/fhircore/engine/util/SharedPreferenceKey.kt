@@ -32,4 +32,5 @@ enum class SharedPreferenceKey {
   USER_CLAIM_INFO,
   SYNC_UPLOAD_STRATEGY,
   PATIENT_FIX_TYPE,
+  SYNC_ON_SAVE,
 }

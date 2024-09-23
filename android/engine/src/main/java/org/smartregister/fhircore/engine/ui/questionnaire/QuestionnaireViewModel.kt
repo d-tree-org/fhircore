@@ -69,6 +69,7 @@ import org.hl7.fhir.r4.model.Task
 import org.hl7.fhir.r4.model.Task.TaskStatus
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
+import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.engine.task.FhirCarePlanGenerator
 import org.smartregister.fhircore.engine.trace.PerformanceReporter
 import org.smartregister.fhircore.engine.util.AssetUtil
@@ -103,9 +104,10 @@ constructor(
   val defaultRepository: DefaultRepository,
   val configurationRegistry: ConfigurationRegistry,
   val transformSupportServices: TransformSupportServices,
-  val simpleWorkerContext: SimpleWorkerContext,
+  private val simpleWorkerContext: SimpleWorkerContext,
   val dispatcherProvider: DispatcherProvider,
   val sharedPreferencesHelper: SharedPreferencesHelper,
+  var syncBroadcaster: SyncBroadcaster,
   var tracer: PerformanceReporter,
 ) : ViewModel() {
   @Inject lateinit var fhirCarePlanGenerator: FhirCarePlanGenerator
@@ -308,6 +310,9 @@ constructor(
             backReference,
           )
         extractionProgress.postValue(ExtractionProgress.Success(questionnaireResponse, extras))
+        if (sharedPreferencesHelper.read(SharedPreferenceKey.SYNC_ON_SAVE.name, true)) {
+          syncBroadcaster.runSync()
+        }
       } catch (e: Exception) {
         Timber.e(e)
         extractionProgress.postValue(ExtractionProgress.Failed(questionnaireResponse, e))

@@ -52,6 +52,8 @@ import org.smartregister.fhircore.engine.domain.util.PaginationConstant
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireType
+import org.smartregister.fhircore.engine.util.SharedPreferenceKey
+import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.extension.asReference
 import org.smartregister.fhircore.engine.util.extension.isGuardianVisit
 import org.smartregister.fhircore.quest.R
@@ -82,6 +84,7 @@ constructor(
   val configurationRegistry: ConfigurationRegistry,
   private val profileViewDataMapper: ProfileViewDataMapper,
   val registerViewDataMapper: RegisterViewDataMapper,
+  val sharedPreferences: SharedPreferencesHelper,
 ) : ViewModel() {
 
   val appFeatureName = savedStateHandle.get<String>(NavigationArg.FEATURE)
@@ -91,7 +94,7 @@ constructor(
   val familyId = savedStateHandle.get<String>(NavigationArg.FAMILY_ID)
 
   // TODO: replace later with actual implementation from the engine
-  val isSyncing = mutableStateOf(false)
+  val isSyncing = MutableStateFlow(false)
 
   var patientProfileUiState: MutableState<PatientProfileUiState> =
     mutableStateOf(
@@ -114,6 +117,8 @@ constructor(
 
   val loadingState = MutableStateFlow<DataLoadState<Boolean>>(DataLoadState.Idle)
 
+  val autoSyncOn = MutableStateFlow(true)
+
   init {
     syncBroadcaster.registerSyncListener(
       { state ->
@@ -126,6 +131,7 @@ constructor(
           is SyncJobStatus.Started -> {
             isSyncing.value = true
           }
+          is SyncJobStatus.InProgress -> {}
           else -> {
             isSyncing.value = false
           }
@@ -135,6 +141,15 @@ constructor(
     )
 
     fetchPatientProfileDataWithChildren()
+    checkAutoSyncStatus()
+  }
+
+  private fun checkAutoSyncStatus() {
+    autoSyncOn.value = sharedPreferences.read(SharedPreferenceKey.SYNC_ON_SAVE.name, true)
+  }
+
+  fun runSync() {
+    syncBroadcaster.runSync()
   }
 
   fun getOverflowMenuHostByPatientType(healthStatus: HealthStatus): OverflowMenuHost {

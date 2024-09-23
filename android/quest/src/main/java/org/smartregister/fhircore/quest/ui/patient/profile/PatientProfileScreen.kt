@@ -31,17 +31,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
+import androidx.compose.material.Chip
+import androidx.compose.material.ChipDefaults
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.LinearProgressIndicator
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.runtime.Composable
@@ -93,9 +96,10 @@ fun PatientProfileScreen(
   var showOverflowMenu by remember { mutableStateOf(false) }
   val viewState = patientProfileViewModel.patientProfileUiState.value
   val taskId by appMainViewModel.completedTaskId.collectAsState()
-  val syncing by remember { patientProfileViewModel.isSyncing }
+  val syncing by patientProfileViewModel.isSyncing.collectAsState()
   val tasksId = profileViewData.tasks.map { it.actionFormId }
   val loadingState by patientProfileViewModel.loadingState.collectAsState()
+  val autoSyncEnabled by patientProfileViewModel.autoSyncOn.collectAsState()
 
   val launchQuestionnaireActivityForResults =
     rememberLauncherForActivityResult(
@@ -120,6 +124,11 @@ fun PatientProfileScreen(
             }
           },
           actions = {
+            AutoSyncButton(
+              enabled = autoSyncEnabled,
+              isSyncing = syncing,
+              runSync = patientProfileViewModel::runSync,
+            )
             IconButton(onClick = { patientProfileViewModel.reFetch() }, enabled = !syncing) {
               Icon(
                 imageVector = Icons.Outlined.Refresh,
@@ -335,6 +344,30 @@ fun PatientProfileScreen(
             fontWeight = FontWeight.Medium,
           )
         }
+      }
+    }
+  }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun AutoSyncButton(enabled: Boolean, isSyncing: Boolean, runSync: () -> Unit) {
+  if (!enabled) {
+    Chip(
+      onClick = runSync,
+      colors =
+        if (isSyncing) {
+          ChipDefaults.chipColors()
+        } else
+          ChipDefaults.chipColors(
+            backgroundColor = MaterialTheme.colors.error,
+            contentColor = MaterialTheme.colors.onError,
+          ),
+    ) {
+      if (isSyncing) {
+        Text(text = "Syncing...")
+      } else {
+        Text(text = "Auto sync off")
       }
     }
   }

@@ -53,7 +53,6 @@ import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.StringType
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
-import org.smartregister.fhircore.engine.sync.SyncBroadcaster
 import org.smartregister.fhircore.engine.trace.PerformanceReporter
 import org.smartregister.fhircore.engine.ui.base.AlertDialogue
 import org.smartregister.fhircore.engine.ui.base.AlertDialogue.showConfirmAlert
@@ -79,8 +78,6 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
   @Inject lateinit var configurationRegistry: ConfigurationRegistry
 
   @Inject lateinit var dispatcherProvider: DefaultDispatcherProvider
-
-  @Inject lateinit var syncBroadcaster: SyncBroadcaster
 
   @Inject lateinit var tracer: PerformanceReporter
 
@@ -393,7 +390,6 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
     extras: List<Resource>? = null,
   ) {
     dismissSaveProcessing()
-    syncBroadcaster.runSync()
     postSaveSuccessful(questionnaireResponse, extras)
   }
 

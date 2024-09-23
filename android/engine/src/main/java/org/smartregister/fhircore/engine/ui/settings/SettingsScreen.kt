@@ -23,6 +23,7 @@ import androidx.compose.material.Divider
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.Scaffold
@@ -160,9 +161,29 @@ fun SettingsScreen(
             )
 
             switchPreference(
+              key = SharedPreferenceKey.SYNC_ON_SAVE.name,
+              defaultValue = true,
+              title = { Text(text = "Sync on form answered") },
+              summary = {
+                Text(
+                  text =
+                    "When disabled, form saves will not start sync automatically, you have to manually sync the changes.",
+                  style = MaterialTheme.typography.caption,
+                )
+              },
+            )
+
+            switchPreference(
               key = SharedPreferenceKey.PATIENT_FIX_TYPE.name,
               defaultValue = false,
               title = { Text(text = "Fix patients offline") },
+              summary = {
+                Text(
+                  text =
+                    "When enable the app will attempt to fix the patient completely offline which my fail",
+                  style = MaterialTheme.typography.caption,
+                )
+              },
             )
 
             item {
