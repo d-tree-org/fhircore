@@ -19,7 +19,6 @@ package org.smartregister.fhircore.engine.util.extension
 import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.parser.IParser
 import ca.uhn.fhir.rest.gclient.ReferenceClientParam
-import com.google.android.fhir.datacapture.extensions.createQuestionnaireResponseItem
 import com.google.android.fhir.datacapture.extensions.logicalId
 import java.util.Date
 import java.util.LinkedList
@@ -137,20 +136,6 @@ fun JSONObject.updateFrom(updated: JSONObject) {
     }
 
   keys.forEach { key -> updated.opt(key)?.run { put(key, this) } }
-}
-
-fun QuestionnaireResponse.generateMissingItems(questionnaire: Questionnaire) =
-  questionnaire.item.generateMissingItems(this.item)
-
-fun List<Questionnaire.QuestionnaireItemComponent>.generateMissingItems(
-  qrItems: MutableList<QuestionnaireResponse.QuestionnaireResponseItemComponent>,
-) {
-  this.forEachIndexed { index, qItem ->
-    // generate complete hierarchy if response item missing otherwise check for nested items
-    if (qrItems.isEmpty() || qItem.linkId != qrItems[index].linkId) {
-      qrItems.add(index, qItem.createQuestionnaireResponseItem())
-    } else qItem.item.generateMissingItems(qrItems[index].item)
-  }
 }
 
 /**
