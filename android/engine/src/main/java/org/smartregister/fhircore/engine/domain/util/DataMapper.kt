@@ -22,5 +22,5 @@ package org.smartregister.fhircore.engine.domain.util
  */
 interface DataMapper<InputModel, OutputModel> {
 
-  fun transformInputToOutputModel(inputModel: InputModel): OutputModel
+  suspend fun transformInputToOutputModel(inputModel: InputModel): OutputModel
 }

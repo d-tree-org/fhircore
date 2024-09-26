@@ -36,7 +36,7 @@ import org.smartregister.fhircore.quest.data.patient.model.PatientItem
 class PatientItemMapper @Inject constructor(@ApplicationContext val context: Context) :
   DataMapper<Patient, PatientItem> {
 
-  override fun transformInputToOutputModel(inputModel: Patient): PatientItem {
+  override suspend fun transformInputToOutputModel(inputModel: Patient): PatientItem {
     val name = inputModel.extractName()
     val gender = inputModel.extractGender(context)?.first() ?: ""
     val age = inputModel.extractAge()

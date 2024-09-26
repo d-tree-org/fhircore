@@ -18,6 +18,8 @@ package org.smartregister.fhircore.engine.util.fhirpath
 
 import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.context.FhirVersionEnum
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.hapi.ctx.HapiWorkerContext
 import org.hl7.fhir.r4.model.Base
 import org.hl7.fhir.r4.utils.FHIRPathEngine
@@ -29,9 +31,11 @@ object FhirPathDataExtractor {
   private val fhirPathEngine: FHIRPathEngine =
     FHIRPathEngine(HapiWorkerContext(fhirContext, fhirContext.validationSupport))
 
-  fun extractData(base: Base, expressions: Map<String, String>): Map<String, List<Base>> =
-    expressions.map { Pair(it.key, fhirPathEngine.evaluate(base, it.value)) }.toMap()
+  suspend fun extractData(base: Base, expressions: Map<String, String>): Map<String, List<Base>> =
+    withContext(Dispatchers.Default) {
+      expressions.map { Pair(it.key, fhirPathEngine.evaluate(base, it.value)) }.toMap()
+    }
 
-  fun extractData(base: Base, expression: String): List<Base> =
-    fhirPathEngine.evaluate(base, expression)
+  suspend fun extractData(base: Base, expression: String): List<Base> =
+    withContext(Dispatchers.Default) { fhirPathEngine.evaluate(base, expression) }
 }

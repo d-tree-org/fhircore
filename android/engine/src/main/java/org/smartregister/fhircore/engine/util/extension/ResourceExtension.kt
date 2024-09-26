@@ -245,7 +245,7 @@ fun Resource.setPropertySafely(name: String, value: Base) =
 
 fun generateUniqueId() = UUID.randomUUID().toString()
 
-fun Base.extractWithFhirPath(expression: String) =
+suspend fun Base.extractWithFhirPath(expression: String) =
   FhirPathDataExtractor.extractData(this, expression).firstOrNull()?.primitiveValue() ?: ""
 
 fun ArrayList<CarePlan>.asBaseResources(): ArrayList<Resource> {

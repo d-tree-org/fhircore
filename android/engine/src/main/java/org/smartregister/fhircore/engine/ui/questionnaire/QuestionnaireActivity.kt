@@ -33,7 +33,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.whenResumed
+import androidx.lifecycle.withResumed
 import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.context.FhirVersionEnum
 import com.google.android.fhir.datacapture.QuestionnaireFragment
@@ -43,7 +43,6 @@ import com.google.android.fhir.datacapture.validation.Invalid
 import com.google.android.fhir.datacapture.validation.QuestionnaireResponseValidator
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.Encounter
@@ -129,7 +128,7 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
         }
 
         updateViews()
-        fragment.whenResumed { loadProgress.dismiss() }
+        fragment.withResumed { loadProgress.dismiss() }
       }
     }
 
@@ -283,9 +282,6 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
 
         questionnaireConfig = resultPair.first
         questionnaire = resultPair.second
-
-        val t = measureTimeMillis { populateInitialValues(questionnaire) }
-        Timber.d("populateInitialValues took $t ms : cachedxxx")
       }
       .onFailure {
         Timber.e(it)
@@ -396,8 +392,6 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
       confirmButtonText = R.string.retry_extraction,
     )
   }
-
-  open fun populateInitialValues(questionnaire: Questionnaire) = Unit
 
   open fun postSaveSuccessful(
     questionnaireResponse: QuestionnaireResponse,
