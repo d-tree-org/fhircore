@@ -154,7 +154,7 @@ dependencies {
   implementation("androidx.datastore:datastore-preferences:1.1.1")
 
   // P2P dependency
-  api("org.smartregister:p2p-lib:0.3.0-SNAPSHOT")
+  api("org.smartregister:p2p-lib:0.6.11-preview1-SNAPSHOT")
 
   // Configure Jetpack Compose
   api(platform("androidx.compose:compose-bom:2024.05.00"))

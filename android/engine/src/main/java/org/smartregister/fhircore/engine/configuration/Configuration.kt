@@ -66,3 +66,5 @@ data class Resource(
 data class Parameter(
   @SerializedName("resource") var resource: Resource,
 )
+
+@Serializable data class DeviceToDeviceSyncConfig(val resourcesToSync: List<String>? = null)

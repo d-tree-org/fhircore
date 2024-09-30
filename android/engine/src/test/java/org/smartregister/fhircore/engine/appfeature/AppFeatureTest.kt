@@ -35,10 +35,5 @@ class AppFeatureTest {
     Assert.assertTrue(
       appFeatureHouseholdManagement.name.equals("HouseholdManagement", ignoreCase = true),
     )
-
-    val appFeatureDeviceToDeviceSync = AppFeature.DeviceToDeviceSync
-    Assert.assertTrue(
-      appFeatureDeviceToDeviceSync.name.equals("DeviceToDeviceSync", ignoreCase = true),
-    )
   }
 }
