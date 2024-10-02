@@ -109,17 +109,7 @@ suspend fun FhirEngine.addDateTimeIndex() {
 
 suspend inline fun <reified R : Resource> FhirEngine.getResourcesByIds(
   list: List<String>,
-): List<R> {
-  //  if (list.isEmpty()) return listOf()
-  //  val paramQueries: List<(TokenParamFilterCriterion.() -> Unit)> =
-  //    list.map { id -> { value = of(id) } }
-  //  return this.search<R> {
-  //      filter(Resource.RES_ID, *paramQueries.toTypedArray(), operation = Operation.OR)
-  //    }
-  //    .map { it.resource }
-
-  return list.map { this.get<R>(it) }
-}
+): List<R> = list.map { this.get<R>(it) }
 
 suspend fun FhirEngine.forceTagsUpdate(source: Resource) {
   try {

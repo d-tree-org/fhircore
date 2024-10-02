@@ -426,18 +426,22 @@ constructor(
 
   suspend fun carePlanAndPatientMetaExtraction(source: Resource) {
     try {
-      /** Get a FHIR [Resource] in the local storage. */
-      var resource = fhirEngine.get(source.resourceType, source.id)
-      /** Increment [Resource.meta] versionId of [source]. */
-      resource.meta.versionId?.toInt()?.plus(1)?.let {
-        /** Append passed [Resource.meta] to the [source]. */
-        resource.addTags(source.meta.tag)
-        /** Assign [Resource.meta] versionId of [source]. */
-        resource = resource.copy().apply { meta.versionId = "$it" }
-        /** Delete a FHIR [source] in the local storage. */
-        fhirEngine.delete(resource.resourceType, resource.id)
-        /** Recreate a FHIR [source] in the local storage. */
-        fhirEngine.create(resource)
+      withContext(dispatcherProvider.io()) {
+        /** Get a FHIR [Resource] in the local storage. */
+        var resource = fhirEngine.get(source.resourceType, source.id)
+        /** Increment [Resource.meta] versionId of [source]. */
+        resource.meta.versionId?.toInt()?.plus(1)?.let {
+          /** Append passed [Resource.meta] to the [source]. */
+          resource.addTags(source.meta.tag)
+          /** Assign [Resource.meta] versionId of [source]. */
+          resource = resource.copy().apply { meta.versionId = "$it" }
+          fhirEngine.withTransaction {
+            /** Delete a FHIR [source] in the local storage. */
+            fhirEngine.delete(resource.resourceType, resource.id)
+            /** Recreate a FHIR [source] in the local storage. */
+            fhirEngine.create(resource)
+          }
+        }
       }
     } catch (e: Exception) {
       Timber.e(e)
@@ -546,111 +550,130 @@ constructor(
   }
 
   private suspend fun loadScheduledAppointments(patientId: String): Iterable<Appointment> {
-    return fhirEngine
-      .search<Appointment> {
-        filter(
-          Appointment.STATUS,
-          { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) },
-          { value = of(Appointment.AppointmentStatus.WAITLIST.toCode()) },
-          operation = Operation.OR,
-        )
-      }
-      .map { it.resource }
-      // filter on patient subject
-      .filter { appointment ->
-        appointment.participant.any {
-          it.hasActor() &&
-            it.actor.referenceElement.resourceType == ResourceType.Patient.name &&
-            it.actor.referenceElement.idPart == patientId
-        }
-      }
-      .filter {
-        (it.status == Appointment.AppointmentStatus.BOOKED ||
-          it.status == Appointment.AppointmentStatus.WAITLIST) &&
-          it.hasStart() &&
-          it.start.after(
-            Date.from(
-              LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().minusSeconds(30),
-            ),
-          )
-      }
-  }
-
-  private suspend fun getLastActiveCarePlan(patientId: String): CarePlan? {
-    val carePlans =
+    return withContext(dispatcherProvider.io()) {
       fhirEngine
-        .search<CarePlan> {
-          filterByResourceTypeId(CarePlan.SUBJECT, ResourceType.Patient, patientId)
+        .search<Appointment> {
           filter(
-            CarePlan.STATUS,
-            { value = of(CarePlan.CarePlanStatus.COMPLETED.toCoding()) },
+            Appointment.STATUS,
+            { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) },
+            { value = of(Appointment.AppointmentStatus.WAITLIST.toCode()) },
             operation = Operation.OR,
           )
         }
         .map { it.resource }
+        // filter on patient subject
+        .filter { appointment ->
+          appointment.participant.any {
+            it.hasActor() &&
+              it.actor.referenceElement.resourceType == ResourceType.Patient.name &&
+              it.actor.referenceElement.idPart == patientId
+          }
+        }
+        .filter {
+          (it.status == Appointment.AppointmentStatus.BOOKED ||
+            it.status == Appointment.AppointmentStatus.WAITLIST) &&
+            it.hasStart() &&
+            it.start.after(
+              Date.from(
+                LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().minusSeconds(30),
+              ),
+            )
+        }
+    }
+  }
+
+  private suspend fun getLastActiveCarePlan(patientId: String): CarePlan? {
+    val carePlans =
+      withContext(dispatcherProvider.io()) {
+        fhirEngine
+          .search<CarePlan> {
+            filterByResourceTypeId(CarePlan.SUBJECT, ResourceType.Patient, patientId)
+            filter(
+              CarePlan.STATUS,
+              { value = of(CarePlan.CarePlanStatus.COMPLETED.toCoding()) },
+              operation = Operation.OR,
+            )
+          }
+          .map { it.resource }
+      }
     return carePlans.sortedByDescending { it.meta.lastUpdated }.firstOrNull()
   }
 
   private suspend fun getActiveListResource(patient: String): ListResource? {
     val list =
-      fhirEngine
-        .search<ListResource> {
-          filter(ListResource.SUBJECT, { value = "Patient/$patient" })
-          filter(ListResource.STATUS, { value = of(ListResource.ListStatus.CURRENT.toCode()) })
-          sort(ListResource.TITLE, Order.DESCENDING)
-          count = 1
-          from = 0
-        }
-        .map { it.resource }
+      withContext(dispatcherProvider.io()) {
+        fhirEngine
+          .search<ListResource> {
+            filter(ListResource.SUBJECT, { value = "Patient/$patient" })
+            filter(ListResource.STATUS, { value = of(ListResource.ListStatus.CURRENT.toCode()) })
+            sort(ListResource.TITLE, Order.DESCENDING)
+            count = 1
+            from = 0
+          }
+          .map { it.resource }
+      }
     return list.firstOrNull()
   }
 
   suspend fun loadLatestAppointmentWithNoStartDate(patientId: String): Appointment? {
-    return fhirEngine
-      .search<Appointment> {
-        filter(Appointment.STATUS, { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) })
-      }
-      .map { it.resource }
-      // filter on patient subject
-      .filter { appointment ->
-        appointment.participant.any {
-          it.hasActor() &&
-            it.actor.referenceElement.resourceType == ResourceType.Patient.name &&
-            it.actor.referenceElement.idPart == patientId
+    return withContext(dispatcherProvider.io()) {
+      fhirEngine
+        .search<Appointment> {
+          filter(Appointment.STATUS, { value = of(Appointment.AppointmentStatus.BOOKED.toCode()) })
         }
-      }
-      .filterNot { it.hasStart() && it.status == Appointment.AppointmentStatus.BOOKED }
-      .sortedBy { it.created }
-      .firstOrNull()
+        .map { it.resource }
+        // filter on patient subject
+        .filter { appointment ->
+          appointment.participant.any {
+            it.hasActor() &&
+              it.actor.referenceElement.resourceType == ResourceType.Patient.name &&
+              it.actor.referenceElement.idPart == patientId
+          }
+        }
+        .filterNot { it.hasStart() && it.status == Appointment.AppointmentStatus.BOOKED }
+        .sortedBy { it.created }
+        .firstOrNull()
+    }
   }
 
   suspend fun loadTracing(patientId: String): List<Task> {
     val tasks =
-      fhirEngine
-        .search<Task> {
-          filter(Task.SUBJECT, { value = "Patient/$patientId" })
-          filter(
-            TokenClientParam("code"),
-            {
-              value =
-                of(CodeableConcept().addCoding(Coding("http://snomed.info/sct", "225368008", null)))
-            },
-          )
-          filter(
-            Task.STATUS,
-            { value = of(Task.TaskStatus.READY.toCode()) },
-            { value = of(Task.TaskStatus.INPROGRESS.toCode()) },
-            operation = Operation.OR,
-          )
-          filter(
-            Task.PERIOD,
-            {
-              value = of(DateTimeType.now())
-              prefix = ParamPrefixEnum.GREATERTHAN
-            },
-          )
-        }
-        .map { it.resource }
+      withContext(dispatcherProvider.io()) {
+        fhirEngine
+          .search<Task> {
+            filter(Task.SUBJECT, { value = "Patient/$patientId" })
+            filter(
+              TokenClientParam("code"),
+              {
+                value =
+                  of(
+                    CodeableConcept()
+                      .addCoding(
+                        Coding(
+                          "http://snomed.info/sct",
+                          "225368008",
+                          null,
+                        ),
+                      ),
+                  )
+              },
+            )
+            filter(
+              Task.STATUS,
+              { value = of(Task.TaskStatus.READY.toCode()) },
+              { value = of(Task.TaskStatus.INPROGRESS.toCode()) },
+              operation = Operation.OR,
+            )
+            filter(
+              Task.PERIOD,
+              {
+                value = of(DateTimeType.now())
+                prefix = ParamPrefixEnum.GREATERTHAN
+              },
+            )
+          }
+          .map { it.resource }
+      }
     return tasks.filter { it.status in arrayOf(TaskStatus.READY, TaskStatus.INPROGRESS) }
   }
 
@@ -687,52 +710,56 @@ constructor(
     val resourcesList = getPopulationResourcesFromIntent(intent).toMutableList()
 
     intent.getStringExtra(QuestionnaireActivity.QUESTIONNAIRE_ARG_PATIENT_KEY)?.let { patientId ->
-      fhirEngine.withTransaction {
-        loadPatient(patientId)?.apply { resourcesList.add(this) }
-          ?: defaultRepository.loadResource<Group>(patientId)?.apply { resourcesList.add(this) }
+      withContext(dispatcherProvider.io()) {
+        fhirEngine.withTransaction {
+          loadPatient(patientId)?.apply { resourcesList.add(this) }
+            ?: defaultRepository.loadResource<Group>(patientId)?.apply { resourcesList.add(this) }
 
-        val bundleIndex = resourcesList.indexOfFirst { x -> x is Bundle }
-        if (bundleIndex != -1) {
-          val currentBundle = resourcesList[bundleIndex] as Bundle
+          val bundleIndex = resourcesList.indexOfFirst { x -> x is Bundle }
+          if (bundleIndex != -1) {
+            val currentBundle = resourcesList[bundleIndex] as Bundle
 
-          if (TracingHelpers.requireTracingTasks(questionnaireConfig.identifier)) {
-            val bundle = Bundle()
-            bundle.id = TracingHelpers.tracingBundleId
-            val tasks = loadTracing(patientId)
-            tasks.forEach { bundle.addEntry(Bundle.BundleEntryComponent().setResource(it)) }
+            if (TracingHelpers.requireTracingTasks(questionnaireConfig.identifier)) {
+              val bundle = Bundle()
+              bundle.id = TracingHelpers.tracingBundleId
+              val tasks = loadTracing(patientId)
+              tasks.forEach { bundle.addEntry(Bundle.BundleEntryComponent().setResource(it)) }
 
-            val list = getActiveListResource(patientId)
-            if (list != null) {
-              bundle.addEntry(Bundle.BundleEntryComponent().setResource(list))
+              val list = getActiveListResource(patientId)
+              if (list != null) {
+                bundle.addEntry(Bundle.BundleEntryComponent().setResource(list))
+              }
+
+              currentBundle.addEntry(
+                Bundle.BundleEntryComponent().setResource(bundle).apply {
+                  id = TracingHelpers.tracingBundleId
+                },
+              )
             }
 
-            currentBundle.addEntry(
-              Bundle.BundleEntryComponent().setResource(bundle).apply {
-                id = TracingHelpers.tracingBundleId
-              },
-            )
+            val appointmentToPopulate = loadLatestAppointmentWithNoStartDate(patientId)
+            if (appointmentToPopulate != null) {
+              currentBundle.addEntry(
+                Bundle.BundleEntryComponent().setResource(appointmentToPopulate),
+              )
+            }
+            // Add appointments that may need to be closed
+            loadScheduledAppointments(patientId).forEach {
+              currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(it))
+            }
+
+            val lastCarePlan = getLastActiveCarePlan(patientId)
+            if (lastCarePlan != null) {
+              currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(lastCarePlan))
+            }
+
+            resourcesList[bundleIndex] = currentBundle
           }
 
-          val appointmentToPopulate = loadLatestAppointmentWithNoStartDate(patientId)
-          if (appointmentToPopulate != null) {
-            currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(appointmentToPopulate))
+          // for situations where patient RelatedPersons not passed through intent extras
+          if (resourcesList.none { it.resourceType == ResourceType.RelatedPerson }) {
+            loadRelatedPerson(patientId)?.forEach { resourcesList.add(it) }
           }
-          // Add appointments that may need to be closed
-          loadScheduledAppointments(patientId).forEach {
-            currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(it))
-          }
-
-          val lastCarePlan = getLastActiveCarePlan(patientId)
-          if (lastCarePlan != null) {
-            currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(lastCarePlan))
-          }
-
-          resourcesList[bundleIndex] = currentBundle
-        }
-
-        // for situations where patient RelatedPersons not passed through intent extras
-        if (resourcesList.none { it.resourceType == ResourceType.RelatedPerson }) {
-          loadRelatedPerson(patientId)?.forEach { resourcesList.add(it) }
         }
       }
     }
@@ -746,7 +773,10 @@ constructor(
     val populationResourcesList = getPopulationResources(intent, questionnaire.logicalId)
     val populationResourceTypeResourceMap =
       populationResourcesList.associateBy { it.resourceType.name.lowercase() }
-    val questResponse = ResourceMapper.populate(questionnaire, populationResourceTypeResourceMap)
+    val questResponse =
+      withContext(dispatcherProvider.default()) {
+        ResourceMapper.populate(questionnaire, populationResourceTypeResourceMap)
+      }
     questResponse.contained = populationResourcesList.toList()
     questResponse.questionnaire = "${questionnaire.resourceType}/${questionnaire.logicalId}"
     return questResponse
