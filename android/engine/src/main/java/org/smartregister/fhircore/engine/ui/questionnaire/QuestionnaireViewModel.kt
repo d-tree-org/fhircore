@@ -31,6 +31,7 @@ import com.google.android.fhir.datacapture.mapping.ResourceMapper
 import com.google.android.fhir.datacapture.mapping.StructureMapExtractionContext
 import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Order
+import com.google.android.fhir.search.revInclude
 import com.google.android.fhir.search.search
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -719,10 +720,62 @@ constructor(
           if (bundleIndex != -1) {
             val currentBundle = resourcesList[bundleIndex] as Bundle
 
+            val patientSearchResults =
+              fhirEngine
+                .search<Patient> {
+                  filter(Patient.RES_ID, { value = of(patientId) })
+                  count = 1
+
+                  if (TracingHelpers.requireTracingTasks(questionnaireConfig.identifier)) {
+                    revInclude<Task>(Task.SUBJECT) {
+                      filter(
+                        TokenClientParam("code"),
+                        {
+                          value =
+                            of(
+                              CodeableConcept()
+                                .addCoding(
+                                  Coding(
+                                    "http://snomed.info/sct",
+                                    "225368008",
+                                    null,
+                                  ),
+                                ),
+                            )
+                        },
+                      )
+                      filter(
+                        Task.STATUS,
+                        { value = of(Task.TaskStatus.READY.toCode()) },
+                        { value = of(Task.TaskStatus.INPROGRESS.toCode()) },
+                        operation = Operation.OR,
+                      )
+                      filter(
+                        Task.PERIOD,
+                        {
+                          value = of(DateTimeType.now())
+                          prefix = ParamPrefixEnum.GREATERTHAN
+                        },
+                      )
+                    }
+                  }
+
+                  revInclude<CarePlan>(CarePlan.SUBJECT) {
+                    filter(
+                      CarePlan.STATUS,
+                      { value = of(CarePlan.CarePlanStatus.COMPLETED.toCoding()) },
+                      operation = Operation.OR,
+                    )
+                  }
+                }
+                .firstOrNull()
+
             if (TracingHelpers.requireTracingTasks(questionnaireConfig.identifier)) {
               val bundle = Bundle()
               bundle.id = TracingHelpers.tracingBundleId
-              val tasks = loadTracing(patientId)
+              val tasks =
+                patientSearchResults?.revIncluded?.get(ResourceType.Task to Task.SUBJECT.paramName)
+                  ?: emptyList()
               tasks.forEach { bundle.addEntry(Bundle.BundleEntryComponent().setResource(it)) }
 
               val list = getActiveListResource(patientId)
@@ -748,7 +801,12 @@ constructor(
               currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(it))
             }
 
-            val lastCarePlan = getLastActiveCarePlan(patientId)
+            val lastCarePlan =
+              patientSearchResults
+                ?.revIncluded
+                ?.get(ResourceType.CarePlan to CarePlan.SUBJECT.paramName)
+                ?.sortedByDescending { it.meta.lastUpdated }
+                ?.firstOrNull()
             if (lastCarePlan != null) {
               currentBundle.addEntry(Bundle.BundleEntryComponent().setResource(lastCarePlan))
             }
