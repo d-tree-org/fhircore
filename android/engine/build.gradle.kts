@@ -112,8 +112,6 @@ dependencies {
   implementation("androidx.cardview:cardview:1.0.0")
   implementation("joda-time:joda-time:2.10.14")
   implementation("androidx.paging:paging-runtime-ktx:3.3.0")
-  api("com.github.bumptech.glide:glide:4.16.0")
-  kapt("com.github.bumptech.glide:compiler:4.16.0")
   implementation("id.zelory:compressor:3.0.1")
 
   implementation(group = "javax.xml.stream", name = "stax-api", version = "1.0-2")
@@ -186,7 +184,7 @@ dependencies {
     exclude(group = "com.google.android.fhir", module = "common")
     exclude(group = "com.google.android.fhir", module = "engine")
   }
-  api("org.smartregister:data-capture:1.1.0-preview14-rc2-SNAPSHOT") {
+  api("org.smartregister:data-capture:1.1.0-preview11-MWCore2-SNAPSHOT") {
     isTransitive = true
     exclude(group = "ca.uhn.hapi.fhir")
     exclude(group = "com.google.android.fhir", module = "engine")

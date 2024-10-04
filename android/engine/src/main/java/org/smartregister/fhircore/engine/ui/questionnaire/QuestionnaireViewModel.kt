@@ -84,7 +84,6 @@ import org.smartregister.fhircore.engine.util.extension.assertSubject
 import org.smartregister.fhircore.engine.util.extension.deleteRelatedResources
 import org.smartregister.fhircore.engine.util.extension.extractId
 import org.smartregister.fhircore.engine.util.extension.extractLogicalIdUuid
-import org.smartregister.fhircore.engine.util.extension.filterByResourceTypeId
 import org.smartregister.fhircore.engine.util.extension.find
 import org.smartregister.fhircore.engine.util.extension.isExtractionCandidate
 import org.smartregister.fhircore.engine.util.extension.isIn
@@ -583,23 +582,6 @@ constructor(
     }
   }
 
-  private suspend fun getLastActiveCarePlan(patientId: String): CarePlan? {
-    val carePlans =
-      withContext(dispatcherProvider.io()) {
-        fhirEngine
-          .search<CarePlan> {
-            filterByResourceTypeId(CarePlan.SUBJECT, ResourceType.Patient, patientId)
-            filter(
-              CarePlan.STATUS,
-              { value = of(CarePlan.CarePlanStatus.COMPLETED.toCoding()) },
-              operation = Operation.OR,
-            )
-          }
-          .map { it.resource }
-      }
-    return carePlans.sortedByDescending { it.meta.lastUpdated }.firstOrNull()
-  }
-
   private suspend fun getActiveListResource(patient: String): ListResource? {
     val list =
       withContext(dispatcherProvider.io()) {
@@ -635,47 +617,6 @@ constructor(
         .sortedBy { it.created }
         .firstOrNull()
     }
-  }
-
-  suspend fun loadTracing(patientId: String): List<Task> {
-    val tasks =
-      withContext(dispatcherProvider.io()) {
-        fhirEngine
-          .search<Task> {
-            filter(Task.SUBJECT, { value = "Patient/$patientId" })
-            filter(
-              TokenClientParam("code"),
-              {
-                value =
-                  of(
-                    CodeableConcept()
-                      .addCoding(
-                        Coding(
-                          "http://snomed.info/sct",
-                          "225368008",
-                          null,
-                        ),
-                      ),
-                  )
-              },
-            )
-            filter(
-              Task.STATUS,
-              { value = of(Task.TaskStatus.READY.toCode()) },
-              { value = of(Task.TaskStatus.INPROGRESS.toCode()) },
-              operation = Operation.OR,
-            )
-            filter(
-              Task.PERIOD,
-              {
-                value = of(DateTimeType.now())
-                prefix = ParamPrefixEnum.GREATERTHAN
-              },
-            )
-          }
-          .map { it.resource }
-      }
-    return tasks.filter { it.status in arrayOf(TaskStatus.READY, TaskStatus.INPROGRESS) }
   }
 
   fun saveResource(resource: Resource) {
