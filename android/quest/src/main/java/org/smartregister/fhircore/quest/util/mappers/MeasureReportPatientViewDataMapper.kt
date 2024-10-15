@@ -29,7 +29,7 @@ class MeasureReportPatientViewDataMapper
 @Inject
 constructor(@ApplicationContext val context: Context) :
   DataMapper<RegisterData.AncRegisterData, MeasureReportPatientViewData> {
-  override fun transformInputToOutputModel(
+  override suspend fun transformInputToOutputModel(
     inputModel: RegisterData.AncRegisterData,
   ): MeasureReportPatientViewData {
     return MeasureReportPatientViewData(

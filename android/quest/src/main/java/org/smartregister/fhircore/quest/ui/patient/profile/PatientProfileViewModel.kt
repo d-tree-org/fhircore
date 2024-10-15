@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.appfeature.AppFeature
@@ -194,17 +195,22 @@ constructor(
               it.task.isGuardianVisit(applicationConfiguration.taskFilterTagViaMetaCodingSystem)
             },
         )
-      _patientProfileViewDataFlow.value =
-        profileViewDataMapper.transformInputToOutputModel(newProfileData)
-          as ProfileViewData.PatientProfileViewData
+      viewModelScope.launch {
+        _patientProfileViewDataFlow.update {
+          profileViewDataMapper.transformInputToOutputModel(newProfileData)
+            as ProfileViewData.PatientProfileViewData
+        }
+      }
     }
   }
 
   fun undoGuardianVisitTasksFilter() {
     if (patientProfileData != null) {
-      _patientProfileViewDataFlow.value =
-        profileViewDataMapper.transformInputToOutputModel(patientProfileData!!)
-          as ProfileViewData.PatientProfileViewData
+      viewModelScope.launch {
+        _patientProfileViewDataFlow.value =
+          profileViewDataMapper.transformInputToOutputModel(patientProfileData!!)
+            as ProfileViewData.PatientProfileViewData
+      }
     }
   }
 

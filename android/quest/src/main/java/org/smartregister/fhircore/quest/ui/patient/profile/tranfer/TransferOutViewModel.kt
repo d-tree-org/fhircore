@@ -33,6 +33,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.Questionnaire
 import org.hl7.fhir.r4.model.QuestionnaireResponse
@@ -155,7 +156,8 @@ constructor(
   }
 
   suspend fun generateResponse(questionnaire: Questionnaire): QuestionnaireResponse {
-    val questResponse = ResourceMapper.populate(questionnaire, mapOf())
+    val questResponse =
+      withContext(Dispatchers.Default) { ResourceMapper.populate(questionnaire, mapOf()) }
     return questResponse
   }
 

@@ -187,7 +187,6 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
         clientIdentifier = "1234",
         formName = "my-form",
         questionnaireType = QuestionnaireType.READ_ONLY,
-        questionnaireResponse = questionnaireResponse,
         populationResources = populationResources,
       )
     Assert.assertEquals("my-form", result.getString(QuestionnaireActivity.QUESTIONNAIRE_ARG_FORM))
@@ -198,12 +197,6 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
     Assert.assertEquals(
       QuestionnaireType.READ_ONLY.name,
       result.getString(QuestionnaireActivity.QUESTIONNAIRE_ARG_TYPE),
-    )
-    Assert.assertEquals(
-      FhirContext.forCached(FhirVersionEnum.R4)
-        .newJsonParser()
-        .encodeResourceToString(questionnaireResponse),
-      result.getString(QuestionnaireActivity.QUESTIONNAIRE_RESPONSE),
     )
     Assert.assertEquals(
       FhirContext.forCached(FhirVersionEnum.R4).newJsonParser().encodeResourceToString(patient),
@@ -379,10 +372,6 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
         putExtra(QuestionnaireActivity.QUESTIONNAIRE_TITLE_KEY, "Patient registration")
         putExtra(QuestionnaireActivity.QUESTIONNAIRE_ARG_FORM, "patient-registration")
         putExtra(QuestionnaireActivity.QUESTIONNAIRE_ARG_TYPE, QuestionnaireType.READ_ONLY.name)
-        putExtra(
-          QuestionnaireActivity.QUESTIONNAIRE_RESPONSE,
-          QuestionnaireResponse().encodeResourceToString(),
-        )
       }
 
     val questionnaireString = parser.encodeResourceToString(Questionnaire())

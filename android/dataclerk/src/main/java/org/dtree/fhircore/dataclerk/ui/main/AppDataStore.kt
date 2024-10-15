@@ -212,7 +212,7 @@ data class AddressData(
   }
 }
 
-internal fun Patient.toPatientItem(configuration: ApplicationConfiguration): PatientItem {
+internal suspend fun Patient.toPatientItem(configuration: ApplicationConfiguration): PatientItem {
   val phone = if (hasTelecom()) telecom[0].value else "N/A"
   val isActive = active
   val gender = if (hasGenderElement()) genderElement.valueAsString else ""

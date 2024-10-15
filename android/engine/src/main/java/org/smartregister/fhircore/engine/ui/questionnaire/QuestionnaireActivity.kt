@@ -33,7 +33,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.whenResumed
+import androidx.lifecycle.withResumed
 import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.context.FhirVersionEnum
 import com.google.android.fhir.datacapture.QuestionnaireFragment
@@ -43,7 +43,6 @@ import com.google.android.fhir.datacapture.validation.Invalid
 import com.google.android.fhir.datacapture.validation.QuestionnaireResponseValidator
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.Encounter
@@ -60,11 +59,9 @@ import org.smartregister.fhircore.engine.ui.base.AlertDialogue.showProgressAlert
 import org.smartregister.fhircore.engine.ui.base.BaseMultiLanguageActivity
 import org.smartregister.fhircore.engine.util.DefaultDispatcherProvider
 import org.smartregister.fhircore.engine.util.extension.FieldType
-import org.smartregister.fhircore.engine.util.extension.decodeResourceFromString
 import org.smartregister.fhircore.engine.util.extension.distinctifyLinkId
 import org.smartregister.fhircore.engine.util.extension.encodeResourceToString
 import org.smartregister.fhircore.engine.util.extension.find
-import org.smartregister.fhircore.engine.util.extension.generateMissingItems
 import org.smartregister.fhircore.engine.util.extension.showToast
 import timber.log.Timber
 
@@ -131,7 +128,7 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
         }
 
         updateViews()
-        fragment.whenResumed { loadProgress.dismiss() }
+        fragment.withResumed { loadProgress.dismiss() }
       }
     }
 
@@ -169,23 +166,14 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
   private suspend fun renderFragment() {
     tracer.startTrace(QUESTIONNAIRE_TRACE)
     val questionnaireString = parser.encodeResourceToString(questionnaire)
-    var questionnaireResponse: QuestionnaireResponse?
+    val questionnaireResponse: QuestionnaireResponse
     if (clientIdentifier != null) {
       setBarcode(questionnaire, clientIdentifier!!, true)
       questionnaireResponse =
         questionnaireViewModel.generateQuestionnaireResponse(questionnaire, intent)
     } else {
       questionnaireResponse =
-        intent
-          .getStringExtra(QUESTIONNAIRE_RESPONSE)
-          ?.decodeResourceFromString<QuestionnaireResponse>()
-          ?.apply { generateMissingItems(this@QuestionnaireActivity.questionnaire) }
-      if (questionnaireType.isReadOnly()) {
-        requireNotNull(questionnaireResponse)
-      } else {
-        questionnaireResponse =
-          questionnaireViewModel.generateQuestionnaireResponse(questionnaire, intent)
-      }
+        questionnaireViewModel.generateQuestionnaireResponse(questionnaire, intent)
     }
 
     val questionnaireFragmentBuilder =
@@ -294,9 +282,6 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
 
         questionnaireConfig = resultPair.first
         questionnaire = resultPair.second
-
-        val t = measureTimeMillis { populateInitialValues(questionnaire) }
-        Timber.d("populateInitialValues took $t ms : cachedxxx")
       }
       .onFailure {
         Timber.e(it)
@@ -407,8 +392,6 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
       confirmButtonText = R.string.retry_extraction,
     )
   }
-
-  open fun populateInitialValues(questionnaire: Questionnaire) = Unit
 
   open fun postSaveSuccessful(
     questionnaireResponse: QuestionnaireResponse,
@@ -525,7 +508,6 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
       groupIdentifier: String? = null,
       formName: String,
       questionnaireType: QuestionnaireType = QuestionnaireType.DEFAULT,
-      questionnaireResponse: QuestionnaireResponse? = null,
       backReference: String? = null,
       launchContexts: Map<String, Resource> = emptyMap(),
       populationResources: ArrayList<out Resource> = ArrayList(),
@@ -538,9 +520,6 @@ open class QuestionnaireActivity : BaseMultiLanguageActivity(), View.OnClickList
           Pair(QUESTIONNAIRE_BACK_REFERENCE_KEY, backReference),
         )
         .apply {
-          questionnaireResponse?.let {
-            putString(QUESTIONNAIRE_RESPONSE, it.encodeResourceToString())
-          }
           val resourcesList = populationResources.map { it.encodeResourceToString() }
           if (resourcesList.isNotEmpty()) {
             putStringArrayList(

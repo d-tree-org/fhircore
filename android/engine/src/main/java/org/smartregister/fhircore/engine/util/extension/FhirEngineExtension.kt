@@ -23,10 +23,8 @@ import com.google.android.fhir.SearchResult
 import com.google.android.fhir.datacapture.extensions.logicalId
 import com.google.android.fhir.db.ResourceNotFoundException
 import com.google.android.fhir.get
-import com.google.android.fhir.search.Operation
 import com.google.android.fhir.search.Search
 import com.google.android.fhir.search.SearchQuery
-import com.google.android.fhir.search.filter.TokenParamFilterCriterion
 import com.google.android.fhir.search.search
 import com.google.android.fhir.workflow.FhirOperator
 import org.hl7.fhir.r4.model.Composition
@@ -111,15 +109,7 @@ suspend fun FhirEngine.addDateTimeIndex() {
 
 suspend inline fun <reified R : Resource> FhirEngine.getResourcesByIds(
   list: List<String>,
-): List<R> {
-  if (list.isEmpty()) return listOf()
-  val paramQueries: List<(TokenParamFilterCriterion.() -> Unit)> =
-    list.map { id -> { value = of(id) } }
-  return this.search<R> {
-      filter(Resource.RES_ID, *paramQueries.toTypedArray(), operation = Operation.OR)
-    }
-    .map { it.resource }
-}
+): List<R> = list.map { this.get<R>(it) }
 
 suspend fun FhirEngine.forceTagsUpdate(source: Resource) {
   try {

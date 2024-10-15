@@ -14,13 +14,9 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.domain.util
+package org.smartregister.fhircore.quest
 
-/**
- * Mapper util for transforming model of type [InputModel] to [OutputModel]. An example is
- * transforming FHIR resource to an entity class
- */
-interface DataMapper<InputModel, OutputModel> {
+import com.bumptech.glide.annotation.GlideModule
+import com.bumptech.glide.module.AppGlideModule
 
-  suspend fun transformInputToOutputModel(inputModel: InputModel): OutputModel
-}
+@GlideModule class QuestGlideModule : AppGlideModule()
