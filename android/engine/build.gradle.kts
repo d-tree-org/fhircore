@@ -184,7 +184,7 @@ dependencies {
     exclude(group = "com.google.android.fhir", module = "common")
     exclude(group = "com.google.android.fhir", module = "engine")
   }
-  api("org.smartregister:data-capture:1.1.0-preview11-MWCore2-SNAPSHOT") {
+  api("org.smartregister:data-capture:1.1.0-preview11-SNAPSHOT") {
     isTransitive = true
     exclude(group = "ca.uhn.hapi.fhir")
     exclude(group = "com.google.android.fhir", module = "engine")
