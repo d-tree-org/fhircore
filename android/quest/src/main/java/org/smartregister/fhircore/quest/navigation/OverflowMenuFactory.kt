@@ -81,7 +81,7 @@ enum class OverflowMenuHost(val overflowMenuItems: List<OverflowMenuItem>) {
       OverflowMenuItem(R.id.view_guardians, R.string.view_guardians_x),
       OverflowMenuItem(R.id.edit_profile, R.string.edit_profile),
       OverflowMenuItem(R.id.vl_collection, R.string.vl_collection),
-      OverflowMenuItem(R.id.vl_results, R.string.vl_results),
+      OverflowMenuItem(R.id.vl_results, R.string.viral_load_results),
       OverflowMenuItem(R.id.clinic_history, R.string.clinic_history),
       OverflowMenuItem(R.id.patient_transfer_out, R.string.transfer_out),
       OverflowMenuItem(R.id.patient_change_status, R.string.change_status),
