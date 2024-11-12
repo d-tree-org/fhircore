@@ -27,4 +27,6 @@
     <item name="patient_change_status"  type="id"/>
     <item name="patient_transfer_out" type="id"/>
     <item name="tracing_history" type="id"/>
+    <item name="vl_collection" type="id"/>
+    <item name="vl_results" type="id"/>
 </resources>
