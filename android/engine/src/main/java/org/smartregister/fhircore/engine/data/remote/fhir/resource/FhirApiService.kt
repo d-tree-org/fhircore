@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.configuration.app
+package org.smartregister.fhircore.engine.data.remote.fhir.resource
 
-/** Configurations for Keycloak server authentication loaded from the BuildConfig */
-data class AuthConfiguration(
-  var oauthServerBaseUrl: String,
-  var fhirServerBaseUrl: String,
-  var clientId: String,
-  var clientSecret: String,
-  var fhirHelperServiceBaseUrl: String,
-  var fhirApiBaseUrl: String,
-  var accountType: String,
-  var scope: String = "openid",
-)
+import org.hl7.fhir.r4.model.Bundle
+import retrofit2.Retrofit
+import retrofit2.http.GET
+import retrofit2.http.Path
+
+/** [Retrofit] Service for communication with HAPI FHIR server. Used for querying FHIR Resources */
+interface FhirApiService {
+
+  @GET("{logicalId}") suspend fun getPatient(@Path("logicalId") logicalId: String): Bundle
+}

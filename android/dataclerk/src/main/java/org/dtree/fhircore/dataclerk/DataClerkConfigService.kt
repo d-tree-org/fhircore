@@ -39,6 +39,7 @@ class DataClerkConfigService @Inject constructor(@ApplicationContext val context
       clientSecret = BuildConfig.OAUTH_CLIENT_SECRET,
       accountType = BuildConfig.APPLICATION_ID,
       fhirHelperServiceBaseUrl = BuildConfig.FHIR_HELPER_SERVICE,
+      fhirApiBaseUrl = BuildConfig.FHIR_BASE_URL,
     )
 
   override fun defineResourceTags() =

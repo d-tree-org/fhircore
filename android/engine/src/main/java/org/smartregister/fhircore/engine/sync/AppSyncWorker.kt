@@ -24,17 +24,22 @@ import com.google.android.fhir.sync.AcceptLocalConflictResolver
 import com.google.android.fhir.sync.ConflictResolver
 import com.google.android.fhir.sync.DownloadWorkManager
 import com.google.android.fhir.sync.FhirSyncWorker
-import com.google.android.fhir.sync.download.ResourceParamsBasedDownloadWorkManager
 import com.google.android.fhir.sync.upload.UploadStrategy
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.configuration.preferences.SyncUploadStrategy
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.SyncParamStrategy
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir.ResourceParamsBasedDownload
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir.TimestampContext
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SyncState.CompletedInitialSync
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SyncState.InitialSync
 import org.smartregister.fhircore.engine.ui.questionnaire.ContentCache
 import org.smartregister.fhircore.engine.util.AppDataStore
 import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
+import org.smartregister.fhircore.engine.util.SharedPreferenceKey.SYNC_STATUS
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 
 @HiltWorker
@@ -49,13 +54,26 @@ constructor(
   val preference: SharedPreferencesHelper,
   val dispatcherProvider: DispatcherProvider,
 ) : FhirSyncWorker(appContext, workerParams) {
+
+  private fun syncParams(): Map<ResourceType, Map<String, String>> {
+    return if (
+      preference.read(
+        SYNC_STATUS.name,
+        InitialSync.value,
+      ) <= CompletedInitialSync.value
+    ) {
+      preference.write(SharedPreferenceKey.LAST_SYNC_TIMESTAMP.name, null)
+      SyncParamStrategy(preference).syncParams()
+    } else syncListenerManager.loadSyncParams()
+  }
+
   override fun getConflictResolver(): ConflictResolver = AcceptLocalConflictResolver
 
   override fun getDownloadWorkManager(): DownloadWorkManager =
-    ResourceParamsBasedDownloadWorkManager(
-      syncParams = syncListenerManager.loadSyncParams(),
+    ResourceParamsBasedDownload(
+      syncParams = syncParams(),
       context =
-        object : ResourceParamsBasedDownloadWorkManager.TimestampContext {
+        object : TimestampContext {
           override suspend fun getLasUpdateTimestamp(resourceType: ResourceType): String =
             dataStore.getLastUpdateTimestamp(resourceType) ?: ""
 

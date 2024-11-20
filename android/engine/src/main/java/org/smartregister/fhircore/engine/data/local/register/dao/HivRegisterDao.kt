@@ -370,7 +370,7 @@ constructor(
       currentCarePlan = null,
     )
 
-  private fun transformPatientToHivRegisterData(
+  fun transformPatientToHivRegisterData(
     patient: Patient,
     pregnancyStatus: PregnancyStatus = PregnancyStatus.None,
   ): RegisterData.HivRegisterData {

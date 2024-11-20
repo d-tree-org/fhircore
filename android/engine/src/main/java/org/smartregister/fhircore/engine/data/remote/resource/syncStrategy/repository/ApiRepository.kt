@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.configuration.app
+package org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.repository
 
-/** Configurations for Keycloak server authentication loaded from the BuildConfig */
-data class AuthConfiguration(
-  var oauthServerBaseUrl: String,
-  var fhirServerBaseUrl: String,
-  var clientId: String,
-  var clientSecret: String,
-  var fhirHelperServiceBaseUrl: String,
-  var fhirApiBaseUrl: String,
-  var accountType: String,
-  var scope: String = "openid",
-)
+import org.hl7.fhir.r4.model.Patient
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SearchBy
+
+abstract class ApiRepository {
+  abstract suspend fun search(searchQuery: String, criteria: SearchBy): List<Patient>
+
+  abstract suspend fun fetchAndSaveToDb(
+    logicalId: String,
+    onCompleteListener: (Boolean) -> Unit,
+  )
+}
