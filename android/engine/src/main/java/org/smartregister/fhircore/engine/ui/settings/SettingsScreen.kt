@@ -32,6 +32,7 @@ import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.Report
 import androidx.compose.material.icons.rounded.Task
@@ -189,6 +190,16 @@ fun SettingsScreen(
             item {
               Divider(color = DividerColor, modifier = Modifier.padding(vertical = 10.dp))
               PreferenceCategory(title = { Text(text = "Others") })
+            }
+            if (settingsViewModel.isOfflineFirst()) {
+              item {
+                UserProfileRow(
+                  icon = Icons.Default.ClearAll,
+                  text = stringResource(id = R.string.reset),
+                  clickListener = { settingsViewModel.resetStrategyCache() },
+                  modifier = modifier,
+                )
+              }
             }
             item {
               UserProfileRow(

@@ -60,4 +60,6 @@ abstract class SyncStrategyCacheDao {
 
   @Query("UPDATE syncstrategycacheentity SET shouldSync = 1 WHERE logicalId = :logicalId")
   abstract suspend fun update(logicalId: String)
+
+  @Query("UPDATE syncstrategycacheentity SET shouldSync = 0") abstract suspend fun resetAll()
 }

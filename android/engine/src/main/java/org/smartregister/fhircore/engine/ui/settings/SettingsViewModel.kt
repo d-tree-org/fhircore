@@ -34,7 +34,9 @@ import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
+import org.smartregister.fhircore.engine.data.local.TingatheDatabase
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.syncConfigOfflineFirst
 import org.smartregister.fhircore.engine.domain.model.Language
 import org.smartregister.fhircore.engine.domain.util.DataLoadState
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
@@ -60,11 +62,13 @@ constructor(
   val fhirEngine: FhirEngine,
   val defaultRepository: DefaultRepository,
   val fhirResourceService: FhirResourceService,
+  database: TingatheDatabase,
 ) : ViewModel() {
 
   private val onLogout = MutableLiveData<Boolean?>(null)
 
   val language = MutableLiveData<Language?>(null)
+  private val syncStrategyCacheDao = database.syncStrategyCacheDao
 
   val profileData = MutableLiveData<DataLoadState<ProfileData>>()
 
@@ -147,6 +151,15 @@ constructor(
     onLogout.postValue(true)
     accountAuthenticator.logout @ExcludeFromJacocoGeneratedReport {
       context.getActivity()?.launchActivityWithNoBackStackHistory<LoginActivity>()
+    }
+  }
+
+  fun isOfflineFirst() = syncConfigOfflineFirst(configurationRegistry, sharedPreferences)
+
+  fun resetStrategyCache() {
+    viewModelScope.launch {
+      syncStrategyCacheDao.resetAll()
+      syncBroadcaster.runSync()
     }
   }
 
