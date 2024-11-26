@@ -17,10 +17,11 @@
 package org.smartregister.fhircore.engine.sync
 
 import android.content.Context
-import android.content.Intent
 import androidx.hilt.work.HiltWorker
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.work.WorkerParameters
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.search.search
 import com.google.android.fhir.sync.AcceptLocalConflictResolver
 import com.google.android.fhir.sync.ConflictResolver
 import com.google.android.fhir.sync.DownloadWorkManager
@@ -30,22 +31,23 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import org.hl7.fhir.r4.model.ListResource
 import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.preferences.SyncUploadStrategy
 import org.smartregister.fhircore.engine.data.local.TingatheDatabase
 import org.smartregister.fhircore.engine.data.local.syncStrategy.toEntity
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.SyncParamStrategy
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.broadcast.SYNC_STATUS_BROADCAST_RECEIVER_KEY
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.broadcast.SyncStatusBroadcastReceiver
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir.IdentifierSyncParams
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir.LogicalIdSyncParamsBased
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir.ResourceParamsBasedDownload
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir.TimestampContext
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.getIdentifiers
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.hasCompletedInitialSync
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.logicalIds
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.perOrgSyncConfig
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.onSendBroadcast
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.saveLastUpdatedTimestamp
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.subListIds
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.syncConfigOfflineFirst
 import org.smartregister.fhircore.engine.ui.questionnaire.ContentCache
 import org.smartregister.fhircore.engine.util.AppDataStore
 import org.smartregister.fhircore.engine.util.DispatcherProvider
@@ -70,40 +72,65 @@ constructor(
 ) : FhirSyncWorker(appContext, workerParams) {
 
   private val syncStrategyCacheDao = database.syncStrategyCacheDao
+  private val broadcaster = LocalBroadcastManager.getInstance(dataStore.context.applicationContext)
+  private val listResourceTitle = "Patient Identifier List"
 
-  private fun downloadWorkManager(): DownloadWorkManager {
-    return when {
-      hasCompletedInitialSync(preference) -> defaultDownloadManager()
-      else -> {
-        val subList = logicalIds(engine).subListIds(syncStrategyCacheDao)
-        return if (subList.isNotEmpty()) {
-          LogicalIdSyncParamsBased(subList) {
-            Timber.tag("TAG")
-              .e("downloadWorkManager: " + it.patientPositionAt + " of " + it.idsTotal)
+  private fun downloadWorkManager(): DownloadWorkManager = runBlocking {
+    syncConfigOfflineFirst(configurationRegistry, preference)
+      .takeIf { it }
+      ?.let {
+        getIdentifiers(engine)?.let { item ->
+          return@runBlocking IdentifierSyncParams(item.data) {
             runBlocking {
-              syncStrategyCacheDao.upsert(it.logicalId.toEntity())
-              saveLastUpdatedTimestamp(dataStore)
-            }
-            val broadcastIntent =
-              Intent(SyncStatusBroadcastReceiver::class.java.name).apply {
-                putExtra(SYNC_STATUS_BROADCAST_RECEIVER_KEY, it)
+              onSendBroadcast(broadcaster, it)
+              syncStrategyCacheDao.insert(it.logicalId.toEntity())
+              if (it.patientPositionAt == item.data.size) {
+                purgeListResource()
               }
-            dataStore.context.sendBroadcast(broadcastIntent)
+            }
           }
-        } else {
-          defaultDownloadManager()
         }
       }
+
+    val logicalIds = logicalIds(syncStrategyCacheDao)
+
+    return@runBlocking if (logicalIds.isNotEmpty()) {
+      LogicalIdSyncParamsBased(logicalIds) {
+        Timber.e("${it.patientPositionAt} of ${logicalIds.size}")
+        runBlocking {
+          it.logicalId
+            .toEntity()
+            .map { catchEntity -> catchEntity.copy(shouldSync = true) }
+            .also { syncStrategyCacheDao.upsert(it.map { it.logicalId }) }
+          saveLastUpdatedTimestamp(dataStore)
+          onSendBroadcast(broadcaster, it)
+        }
+      }
+    } else {
+      defaultDownloadManager()
     }
   }
 
+  private suspend fun purgeListResource() {
+    engine
+      .search<ListResource> { filter(ListResource.TITLE, { value = listResourceTitle }) }
+      .map { it.resource }
+      .firstOrNull()
+      ?.let {
+        runCatching { engine.purge(ResourceType.List, it.idPart) }.onFailure { Timber.e(it) }
+      }
+  }
+
   private fun syncParams(): Map<ResourceType, Map<String, String>> {
-    val configs =
-      perOrgSyncConfig(configurationRegistry, preference)
-        ?: return syncListenerManager.loadSyncParams()
-
-    if (configs.offlineFirst) return syncListenerManager.loadSyncParams()
-
+    if (
+      syncConfigOfflineFirst(
+          configurationRegistry,
+          preference,
+        )
+        .not()
+    ) {
+      return syncListenerManager.loadSyncParams()
+    }
     return when {
       hasCompletedInitialSync(preference) -> SyncParamStrategy(preference).syncParams()
       else -> syncListenerManager.loadSyncParams()
@@ -125,7 +152,11 @@ constructor(
             timestamp?.let { dataStore.saveLastUpdatedTimestamp(resourceType, timestamp) }
           }
         },
-    )
+    ) { ids ->
+      if (syncConfigOfflineFirst(configurationRegistry, preference)) {
+        runBlocking { syncStrategyCacheDao.upsert(ids) }
+      }
+    }
 
   override fun getConflictResolver(): ConflictResolver = AcceptLocalConflictResolver
 

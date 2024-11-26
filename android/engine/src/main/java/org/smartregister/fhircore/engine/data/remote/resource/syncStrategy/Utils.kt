@@ -16,44 +16,28 @@
 
 package org.smartregister.fhircore.engine.data.remote.resource.syncStrategy
 
+import android.content.Intent
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.search.search
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.runBlocking
 import org.hl7.fhir.r4.model.ListResource
-import org.hl7.fhir.r4.model.Patient
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.Item
 import org.smartregister.fhircore.engine.data.local.syncStrategy.SyncStrategyCacheDao
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.broadcast.SYNC_STATUS_BROADCAST_RECEIVER_KEY
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.broadcast.SyncStatusBroadcastReceiver
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir.ParamSyncStatus
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SyncState
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey.SYNC_STATUS
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 
-fun logicalIds(fhirEngine: FhirEngine) = runBlocking {
-  fhirEngine
-    .search<Patient> { filter(Patient.ACTIVE, { value = of(true) }) }
-    .map { it.resource.idPart }
-}
-
-fun List<String>.subListIds(syncStrategyCacheDao: SyncStrategyCacheDao): List<String> {
-  return runBlocking {
-    val cachedIds = syncStrategyCacheDao.query().map { it.logicalId }
-    ((cachedIds union this@subListIds) - (cachedIds intersect this@subListIds.toSet())).toList()
-  }
-}
+suspend fun logicalIds(syncStrategyCacheDao: SyncStrategyCacheDao) =
+  syncStrategyCacheDao.query().map { it.logicalId }
 
 fun hasCompletedInitialSync(sharedPreferencesHelper: SharedPreferencesHelper) =
   getSyncState(sharedPreferencesHelper) < SyncState.CompletedInitialSync.value
-
-fun setSubSequentSync(sharedPreferencesHelper: SharedPreferencesHelper) =
-  sharedPreferencesHelper.write(SYNC_STATUS.name, SyncState.SubSequentSync.value)
-
-fun isSubSequentSync(sharedPreferencesHelper: SharedPreferencesHelper) =
-  getSyncState(sharedPreferencesHelper) == SyncState.SubSequentSync.value
-
-fun isRunSyncNow(sharedPreferencesHelper: SharedPreferencesHelper) =
-  getSyncState(sharedPreferencesHelper) == SyncState.RunSyncNow.value
 
 fun getSyncState(sharedPreferencesHelper: SharedPreferencesHelper) =
   sharedPreferencesHelper.read(SYNC_STATUS.name, SyncState.InitialSync.value)
@@ -84,10 +68,30 @@ data class IdTimestamp(
   val timestamp: Long,
 )
 
-fun perOrgSyncConfig(
+fun onPerOrgSyncConfigItem(
   configurationRegistry: ConfigurationRegistry,
   sharedPreferencesHelper: SharedPreferencesHelper,
 ): Item? =
   configurationRegistry.getPerOrgSyncConfigs()?.items?.find {
     it.id == sharedPreferencesHelper.organisationCode()
   }
+
+fun syncConfigOfflineFirst(
+  configurationRegistry: ConfigurationRegistry,
+  sharedPreferencesHelper: SharedPreferencesHelper,
+): Boolean {
+  val configs =
+    onPerOrgSyncConfigItem(configurationRegistry, sharedPreferencesHelper) ?: return false
+  return !configs.offlineFirst
+}
+
+fun onSendBroadcast(
+  broadcaster: LocalBroadcastManager,
+  paramSyncStatus: ParamSyncStatus,
+) {
+  val broadcastIntent =
+    Intent(SyncStatusBroadcastReceiver::class.java.name).apply {
+      putExtra(SYNC_STATUS_BROADCAST_RECEIVER_KEY, paramSyncStatus)
+    }
+  broadcaster.sendBroadcast(broadcastIntent)
+}

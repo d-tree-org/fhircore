@@ -24,11 +24,40 @@ import androidx.room.Query
 @Dao
 abstract class SyncStrategyCacheDao {
 
+  suspend fun upsert(logicalId: String) =
+    with(get(logicalId)) {
+      if (this == null) {
+        insert(logicalId.toEntity())
+      } else {
+        update(this.logicalId)
+      }
+    }
+
+  suspend fun upsert(logicalIds: List<String>) =
+    logicalIds.onEach { logicalId ->
+      with(get(logicalId)) {
+        if (this == null) {
+          insert(logicalId.toEntity())
+        } else {
+          update(this.logicalId)
+        }
+      }
+    }
+
   @Insert(onConflict = OnConflictStrategy.REPLACE)
-  abstract suspend fun upsert(syncStrategyCacheEntity: List<SyncStrategyCacheEntity>)
+  abstract suspend fun insert(syncStrategyCacheEntity: List<SyncStrategyCacheEntity>)
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  abstract suspend fun insert(syncStrategyCacheEntity: SyncStrategyCacheEntity)
 
   @Query("DELETE FROM syncstrategycacheentity") abstract suspend fun deleteAll()
 
-  @Query("SELECT * FROM syncstrategycacheentity")
+  @Query("SELECT * FROM syncstrategycacheentity WHERE shouldSync = 0")
   abstract suspend fun query(): List<SyncStrategyCacheEntity>
+
+  @Query("SELECT * FROM syncstrategycacheentity WHERE logicalId = :logicalId")
+  abstract suspend fun get(logicalId: String): SyncStrategyCacheEntity?
+
+  @Query("UPDATE syncstrategycacheentity SET shouldSync = 1 WHERE logicalId = :logicalId")
+  abstract suspend fun update(logicalId: String)
 }

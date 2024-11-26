@@ -62,10 +62,21 @@ class LogicalIdSyncParamsBased(
       .mapNotNull { it.resource as Bundle }
       .map { it.entry.map { it.resource } }
       .flatten()
-      .also { catchIds() }
+      .also(::catchIds)
   }
 
-  private fun catchIds() = callback(ParamSyncStatus(logicalIds, logicalIds.size, patientPosition))
+  private fun catchIds(resources: List<Resource>) =
+    resources
+      .filter { it.resourceType == ResourceType.Patient }
+      .also { patients ->
+        callback(
+          ParamSyncStatus(
+            logicalId = patients.map { it.idPart },
+            idsTotal = logicalIds.size,
+            patientPositionAt = patientPosition,
+          ),
+        )
+      }
 
   private fun List<String>.bundleOf(): Bundle {
     return Bundle().apply {

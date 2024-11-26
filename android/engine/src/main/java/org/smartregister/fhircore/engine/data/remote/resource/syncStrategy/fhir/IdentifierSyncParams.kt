@@ -31,7 +31,7 @@ class IdentifierSyncParams(
 ) : DownloadWorkManager {
 
   private val urlOfTheNextPagesToDownloadForAResource = LinkedList<String>()
-  private val resourcesToDownloadWithSearchParams = LinkedList(identifiers.chunked(12))
+  private val resourcesToDownloadWithSearchParams = LinkedList(identifiers.chunked(32))
   private var patientPosition = 0
 
   override suspend fun getNextRequest(): DownloadRequest? {
@@ -62,11 +62,21 @@ class IdentifierSyncParams(
       .mapNotNull { it.resource as Bundle }
       .map { it.entry.map { it.resource } }
       .flatten()
-      .also { catchIds() }
+      .also(::catchIds)
   }
 
-  private fun catchIds() =
-    callback(ParamSyncStatus(identifiers.map { it.toString() }, identifiers.size, patientPosition))
+  private fun catchIds(resources: List<Resource>) =
+    resources
+      .filter { it.resourceType == ResourceType.Patient }
+      .also { patients ->
+        callback(
+          ParamSyncStatus(
+            logicalId = patients.map { it.idPart },
+            idsTotal = identifiers.size,
+            patientPositionAt = patientPosition,
+          ),
+        )
+      }
 
   private fun List<Int>.bundleOf(): Bundle {
     return Bundle().apply {

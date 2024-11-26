@@ -37,6 +37,7 @@ typealias ResourceSearchParams = Map<ResourceType, ParamMap>
 class ResourceParamsBasedDownload(
   syncParams: ResourceSearchParams,
   val context: TimestampContext,
+  private val callback: (List<String>) -> Unit,
 ) : DownloadWorkManager {
   private val resourcesToDownloadWithSearchParams = LinkedList(syncParams.entries)
   private val urlOfTheNextPagesToDownloadForAResource = LinkedList<String>()
@@ -117,6 +118,7 @@ class ResourceParamsBasedDownload(
 
     return response.entry
       .map { it.resource }
+      .also(::catchIds)
       .also { resources ->
         resources
           .groupBy { it.resourceType }
@@ -133,6 +135,12 @@ class ResourceParamsBasedDownload(
           }
       }
   }
+
+  private fun catchIds(resources: List<Resource>) =
+    resources
+      .filter { it.resourceType == ResourceType.Patient }
+      .map { it.idPart }
+      .also { callback(it) }
 }
 
 interface TimestampContext {

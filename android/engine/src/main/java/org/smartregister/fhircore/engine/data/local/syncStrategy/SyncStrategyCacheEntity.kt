@@ -27,3 +27,5 @@ data class SyncStrategyCacheEntity(
 )
 
 fun List<String>.toEntity() = map { SyncStrategyCacheEntity(logicalId = it) }
+
+fun String.toEntity() = SyncStrategyCacheEntity(logicalId = this)

@@ -19,13 +19,13 @@ package org.smartregister.fhircore.quest.ui.main
 import android.app.Activity
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.lifecycle.lifecycleScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.fhir.sync.SyncJobStatus
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -68,6 +68,7 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
   val appMainViewModel by viewModels<AppMainViewModel>()
 
   private lateinit var syncStatusBroadcastReceiver: SyncStatusBroadcastReceiver
+  private lateinit var localBroadcastManager: LocalBroadcastManager
 
   private val authActivityLauncherForResult =
     registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
@@ -80,16 +81,13 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
     super.onCreate(savedInstanceState)
     setupTimeOutListener()
     val paramSyncStatus = MutableStateFlow<ParamSyncStatus?>(null)
+    localBroadcastManager = LocalBroadcastManager.getInstance(this)
     syncStatusBroadcastReceiver = SyncStatusBroadcastReceiver {
       showToast("Syncing ${it.patientPositionAt} of ${it.idsTotal}")
       paramSyncStatus.value = it
     }
     val intentFilter = IntentFilter(SyncStatusBroadcastReceiver::class.java.name)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-      registerReceiver(syncStatusBroadcastReceiver, intentFilter, RECEIVER_NOT_EXPORTED)
-    } else {
-      registerReceiver(syncStatusBroadcastReceiver, intentFilter)
-    }
+    localBroadcastManager.registerReceiver(syncStatusBroadcastReceiver, intentFilter)
 
     setContent {
       AppTheme {
@@ -105,7 +103,7 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
 
   override fun onDestroy() {
     super.onDestroy()
-    unregisterReceiver(syncStatusBroadcastReceiver)
+    localBroadcastManager.unregisterReceiver(syncStatusBroadcastReceiver)
   }
 
   override fun onResume() {

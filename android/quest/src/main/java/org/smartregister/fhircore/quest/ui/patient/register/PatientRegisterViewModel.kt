@@ -54,8 +54,7 @@ import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.data.local.TingatheDatabase
 import org.smartregister.fhircore.engine.data.local.register.AppRegisterRepository
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.logicalIds
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.perOrgSyncConfig
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.subListIds
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.syncConfigOfflineFirst
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SyncState
 import org.smartregister.fhircore.engine.domain.util.PaginationConstant
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
@@ -86,13 +85,12 @@ constructor(
   val appFeatureManager: AppFeatureManager,
   val dispatcherProvider: DispatcherProvider,
   val sharedPreferencesHelper: SharedPreferencesHelper,
-  database: TingatheDatabase,
+  private val database: TingatheDatabase,
 ) : ViewModel() {
 
   private val appFeatureName = savedStateHandle.get<String>(NavigationArg.FEATURE)
   private val healthModule =
     savedStateHandle.get<HealthModule>(NavigationArg.HEALTH_MODULE) ?: HealthModule.DEFAULT
-  private val dao = database.syncStrategyCacheDao
 
   private val _isRefreshing = MutableStateFlow(false)
 
@@ -197,10 +195,15 @@ constructor(
             refresh()
             _firstTimeSyncState.value = false
             viewModelScope.launch(Dispatchers.IO) {
-              val configs =
-                perOrgSyncConfig(configurationRegistry, sharedPreferencesHelper) ?: return@launch
-
-              if (configs.offlineFirst) return@launch
+              if (
+                syncConfigOfflineFirst(
+                    configurationRegistry,
+                    sharedPreferencesHelper,
+                  )
+                  .not()
+              ) {
+                return@launch
+              }
 
               if (getSyncState() == SyncState.InitialSync.value) {
                 sharedPreferencesHelper.write(
@@ -210,16 +213,7 @@ constructor(
                 syncBroadcaster.runSync()
               }
 
-              if (getSyncState() < SyncState.SubSequentSync.value) {
-                if (logicalIds(syncBroadcaster.fhirEngine).subListIds(dao).isNotEmpty()) {
-                  syncBroadcaster.runSync()
-                } else {
-                  sharedPreferencesHelper.write(
-                    SharedPreferenceKey.SYNC_STATUS.name,
-                    SyncState.SubSequentSync.value,
-                  )
-                }
-              }
+              if (logicalIds(database.syncStrategyCacheDao).isNotEmpty()) syncBroadcaster.runSync()
             }
           }
           is SyncJobStatus.InProgress -> {
