@@ -49,5 +49,7 @@
                 tools:node="remove" />
         </provider>
 
+        <receiver android:name=".data.remote.resource.syncStrategy.broadcast.SyncStatusBroadcastReceiver" />
+
     </application>
 </manifest>

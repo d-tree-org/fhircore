@@ -17,75 +17,29 @@
 package org.smartregister.fhircore.engine.data.remote.resource.syncStrategy
 
 import com.google.android.fhir.FhirEngine
-import com.google.android.fhir.db.ResourceNotFoundException
 import com.google.android.fhir.search.Search
 import org.hl7.fhir.r4.model.ListResource
 import org.hl7.fhir.r4.model.ResourceType
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.Progress
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SearchBy
-import org.smartregister.fhircore.engine.util.SharedPreferenceKey.PATIENT_IDENTIFIER_LIST_TIMESTAMP
-import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
-import timber.log.Timber
 
-class ListResourceExt(
-  private val fhirEngine: FhirEngine,
-  private val sharedPreferences: SharedPreferencesHelper,
-  private val apiRepository: ApiRepositoryImpl,
-) {
+suspend fun getListResource(fhirEngine: FhirEngine) =
+  fhirEngine
+    .search<ListResource>(
+      Search(ResourceType.List).apply {
+        filter(ListResource.TITLE, { value = "Patient Identifier List" })
+      },
+    )
+    .map { it.resource }
+    .firstOrNull()
 
-  private var invokeCounter = 0
-
-  suspend fun onListResourceExt(
-    onProgress: (Progress) -> Unit,
-  ): Boolean {
-    var shouldRunSync = false
-    var size = 0
-    shouldRun()
-      ?.filterNotNull()
-      ?.also { size = it.size }
-      ?.forEachIndexed { index, identifier ->
-        apiRepository.search(identifier.toString(), SearchBy.IDENTIFIER).onEach { patient ->
-          kotlin
-            .runCatching { fhirEngine.get(patient.resourceType, patient.idPart) }
-            .onFailure { throwable ->
-              if (throwable is ResourceNotFoundException) {
-                apiRepository.fetchAndSaveToDb(
-                  logicalId = patient.idPart,
-                  onCompleteListener = { shouldRunSync = it },
-                )
-              }
-            }
-            .onSuccess { Timber.e("Skipping -> ${it.resourceType} - ${it.idPart}") }
-        }
-        onProgress(Progress(index, size, identifier.toString()))
-      }
-
-    return shouldRunSync
-  }
-
-  private suspend fun get() =
-    fhirEngine
-      .search<ListResource>(
-        Search(ResourceType.List).apply {
-          filter(ListResource.TITLE, { value = "Patient Identifier List" })
-        },
-      )
-      .map { it.resource }
-      .firstOrNull()
-
-  suspend fun shouldRun(): List<Int?>? {
-    invokeCounter += 1
-    if (invokeCounter == 1) {
-      val listResource: ListResource = get() ?: return null
-      val preferenceKey = PATIENT_IDENTIFIER_LIST_TIMESTAMP.name
-      val oldTimestamp = sharedPreferences.read(preferenceKey, 0L)
-      val currentTimestamp = listResource.meta.lastUpdated.time
-      if (oldTimestamp == 0L || oldTimestamp > currentTimestamp) {
-        sharedPreferences.write(preferenceKey, currentTimestamp)
-        return listResource.entry.map { entry -> entry.item.display.toIntOrNull() }.toList()
-      }
-      return null
-    }
-    return null
-  }
+suspend fun getIdentifiers(fhirEngine: FhirEngine): ListResourceItem? {
+  val listResource: ListResource = getListResource(fhirEngine) ?: return null
+  return ListResourceItem(
+    data = listResource.entry.mapNotNull { entry -> entry.item.display.toInt() }.toList(),
+    idPart = listResource.idPart,
+  )
 }
+
+data class ListResourceItem(
+  val data: List<Int>,
+  val idPart: String,
+)

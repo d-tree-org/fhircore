@@ -147,8 +147,8 @@ android {
       dimension = "apps"
       applicationIdSuffix = ".mwcoreDev"
       versionNameSuffix = "-mwcoreDev"
-      versionCode = 38
-      versionName = "0.2.0.2"
+      versionCode = 40
+      versionName = "0.2.1.0-fhir-sdk-sync-strategy"
     }
     create("mwcoreStaging") {
       dimension = "apps"

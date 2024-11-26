@@ -14,27 +14,12 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.util
+package org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir
 
-enum class SharedPreferenceKey {
-  APP_ID,
-  LAST_SYNC_TIMESTAMP,
-  LANG,
-  PRACTITIONER_ID,
-  PRACTITIONER_DETAILS,
-  PRACTITIONER_LOCATION_HIERARCHIES,
-  THEME,
-  REMOTE_SYNC_RESOURCES,
-  OVERDUE_TASK_LAST_AUTHORED_ON_DATE,
-  LOGIN_CREDENTIAL_KEY,
-  LOGIN_PIN_KEY,
-  LAST_PURGE_KEY,
-  USER_CLAIM_INFO,
-  SYNC_UPLOAD_STRATEGY,
-  PATIENT_FIX_TYPE,
-  SYNC_ON_SAVE,
-  SYNC_STATUS,
-  PATIENT_IDENTIFIER_LIST_TIMESTAMP,
-  SEARCH_PATIENT_ID_TIMESTAMP,
-  SEARCH_PATIENT_ID_OPEN,
-}
+import java.io.Serializable
+
+data class ParamSyncStatus(
+  val logicalId: List<String>,
+  val idsTotal: Int,
+  val patientPositionAt: Int,
+) : Serializable

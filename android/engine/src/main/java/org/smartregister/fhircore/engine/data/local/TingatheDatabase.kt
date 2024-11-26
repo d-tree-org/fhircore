@@ -24,19 +24,23 @@ import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeDao
 import org.smartregister.fhircore.engine.data.local.localChange.LocalChangeEntity
 import org.smartregister.fhircore.engine.data.local.syncAttempt.SyncAttemptTrackerDao
 import org.smartregister.fhircore.engine.data.local.syncAttempt.SyncAttemptTrackerEntity
+import org.smartregister.fhircore.engine.data.local.syncStrategy.SyncStrategyCacheDao
+import org.smartregister.fhircore.engine.data.local.syncStrategy.SyncStrategyCacheEntity
 
 @Database(
-  version = 2,
+  version = 3,
   entities =
     [
       LocalChangeEntity::class,
       SyncAttemptTrackerEntity::class,
+      SyncStrategyCacheEntity::class,
     ],
 )
 abstract class TingatheDatabase : RoomDatabase() {
 
   abstract val localChangeDao: LocalChangeDao
   abstract val syncAttemptTrackerDao: SyncAttemptTrackerDao
+  abstract val syncStrategyCacheDao: SyncStrategyCacheDao
 
   companion object {
     fun databaseBuilder(context: Context): Builder<TingatheDatabase> {

@@ -43,6 +43,7 @@ data class AppConfiguration(
   val appFeatures: AppFeatureConfig,
   val syncConfig: SyncConfig,
   val formConfigs: List<QuestionnaireConfig> = listOf(),
+  val organizationSyncConfig: OrganizationSyncConfig,
 )
 
 @Serializable
@@ -65,4 +66,13 @@ data class Resource(
 @Serializable
 data class Parameter(
   @SerializedName("resource") var resource: Resource,
+)
+
+@Serializable data class OrganizationSyncConfig(@SerializedName("items") val items: List<Item>)
+
+@Serializable
+data class Item(
+  @SerializedName("id") val id: String,
+  @SerializedName("name") val name: String,
+  @SerializedName("offline_first") val offlineFirst: Boolean,
 )

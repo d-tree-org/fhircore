@@ -36,6 +36,8 @@ import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirApiService
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.ApiRepositoryImpl.Companion.SYNC_TIMESTAMP_INPUT_FORMAT
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.ApiRepositoryImpl.OfType
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.repository.ApiRepository
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.Progress
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SearchBy
@@ -160,7 +162,7 @@ class ApiRepositoryImpl(
             .onFailure { Timber.e(it) }
           progressStatus(Progress(index, patientSize, logicalId))
         }
-      saveLastUpdatedTimestamp()
+      saveLastUpdatedTimestamp(appDataStore)
       onCompleteListener(runSync, patientSize)
     }
 
@@ -170,7 +172,7 @@ class ApiRepositoryImpl(
       .map { it.resource }
       .lastOrNull()
 
-  private enum class OfType {
+  enum class OfType {
     Patient,
     Encounter,
     Observation,
@@ -183,44 +185,44 @@ class ApiRepositoryImpl(
     Appointment,
   }
 
-  private suspend fun saveLastUpdatedTimestamp() {
-    OfType.entries
-      .map {
-        when (it) {
-          OfType.Patient -> ResourceType.Patient
-          OfType.Observation -> ResourceType.Observation
-          OfType.CarePlan -> ResourceType.CarePlan
-          OfType.Task -> ResourceType.Task
-          OfType.Condition -> ResourceType.Condition
-          OfType.Appointment -> ResourceType.Appointment
-          OfType.Encounter -> ResourceType.Encounter
-          OfType.List -> ResourceType.List
-          OfType.Practitioner -> ResourceType.Practitioner
-          OfType.RelatedPerson -> ResourceType.RelatedPerson
-        }
-      }
-      .onEach { resourceType ->
-        val lastSyncTimestamp = Date().toOffsetDateTime().formatLastSyncTimestamp()
-        appDataStore.saveLastUpdatedTimestamp(resourceType, lastSyncTimestamp)
-      }
-  }
-
-  private fun Date.toOffsetDateTime(): OffsetDateTime {
-    return OffsetDateTime.ofInstant(toInstant(), ZoneId.systemDefault())
-  }
-
-  private fun OffsetDateTime.formatLastSyncTimestamp(): String {
-    val syncTimestampFormatter =
-      SimpleDateFormat(SYNC_TIMESTAMP_INPUT_FORMAT, Locale.getDefault()).apply {
-        timeZone = TimeZone.getDefault()
-      }
-    val parse: Date? = syncTimestampFormatter.parse(toString())
-    return if (parse == null) "" else simpleDateFormat.format(parse)
-  }
-
   companion object {
     const val SYNC_TIMESTAMP_INPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss"
   }
+}
 
-  private val simpleDateFormat = SimpleDateFormat(SYNC_TIMESTAMP_INPUT_FORMAT, Locale.getDefault())
+fun simpleDateFormat() = SimpleDateFormat(SYNC_TIMESTAMP_INPUT_FORMAT, Locale.getDefault())
+
+fun Date.toOffsetDateTime(): OffsetDateTime {
+  return OffsetDateTime.ofInstant(toInstant(), ZoneId.systemDefault())
+}
+
+private fun OffsetDateTime.formatLastSyncTimestamp(): String {
+  val syncTimestampFormatter =
+    SimpleDateFormat(SYNC_TIMESTAMP_INPUT_FORMAT, Locale.getDefault()).apply {
+      timeZone = TimeZone.getDefault()
+    }
+  val parse: Date? = syncTimestampFormatter.parse(toString())
+  return if (parse == null) "" else simpleDateFormat().format(parse)
+}
+
+suspend fun saveLastUpdatedTimestamp(appDataStore: AppDataStore) {
+  OfType.entries
+    .map {
+      when (it) {
+        OfType.Patient -> ResourceType.Patient
+        OfType.Observation -> ResourceType.Observation
+        OfType.CarePlan -> ResourceType.CarePlan
+        OfType.Task -> ResourceType.Task
+        OfType.Condition -> ResourceType.Condition
+        OfType.Appointment -> ResourceType.Appointment
+        OfType.Encounter -> ResourceType.Encounter
+        OfType.List -> ResourceType.List
+        OfType.Practitioner -> ResourceType.Practitioner
+        OfType.RelatedPerson -> ResourceType.RelatedPerson
+      }
+    }
+    .onEach { resourceType ->
+      val lastSyncTimestamp = Date().toOffsetDateTime().formatLastSyncTimestamp()
+      appDataStore.saveLastUpdatedTimestamp(resourceType, lastSyncTimestamp)
+    }
 }

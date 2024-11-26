@@ -17,9 +17,9 @@
 package org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils
 
 enum class SyncState(val value: Long) {
-  ShowDialog(value = 0),
   InitialSync(value = 1),
   CompletedInitialSync(value = 2),
   SubSequentSync(value = 3),
   SubSequentRunSync(value = 4),
+  RunSyncNow(value = 5),
 }
