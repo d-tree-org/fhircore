@@ -28,6 +28,7 @@ import androidx.paging.filter
 import androidx.paging.map
 import com.google.android.fhir.sync.SyncJobStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
@@ -47,12 +48,20 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
+import org.hl7.fhir.r4.model.CodeableConcept
+import org.hl7.fhir.r4.model.Coding
+import org.hl7.fhir.r4.model.ListResource
+import org.hl7.fhir.r4.model.ListResource.ListEntryComponent
+import org.hl7.fhir.r4.model.Reference
+import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.appfeature.AppFeature
 import org.smartregister.fhircore.engine.appfeature.AppFeatureManager
 import org.smartregister.fhircore.engine.appfeature.model.HealthModule
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
+import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.data.local.TingatheDatabase
 import org.smartregister.fhircore.engine.data.local.register.AppRegisterRepository
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.getIdentifier
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.logicalIds
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.syncConfigOfflineFirst
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SyncState
@@ -63,6 +72,10 @@ import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireType
 import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
+import org.smartregister.fhircore.engine.util.extension.addTags
+import org.smartregister.fhircore.engine.util.extension.generateCreatedOn
+import org.smartregister.fhircore.engine.util.extension.generateMissingId
+import org.smartregister.fhircore.engine.util.extension.generateMissingVersionId
 import org.smartregister.fhircore.quest.R
 import org.smartregister.fhircore.quest.data.patient.model.PatientPagingSourceState
 import org.smartregister.fhircore.quest.data.register.RegisterPagingSource
@@ -71,6 +84,11 @@ import org.smartregister.fhircore.quest.navigation.NavigationArg
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 import org.smartregister.fhircore.quest.util.REGISTER_FORM_ID_KEY
 import org.smartregister.fhircore.quest.util.mappers.RegisterViewDataMapper
+
+data class PatientId(
+  val identifier: String,
+  val uuid: String = UUID.randomUUID().toString(),
+)
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -86,6 +104,7 @@ constructor(
   val dispatcherProvider: DispatcherProvider,
   val sharedPreferencesHelper: SharedPreferencesHelper,
   private val database: TingatheDatabase,
+  private val configService: ConfigService,
 ) : ViewModel() {
 
   private val appFeatureName = savedStateHandle.get<String>(NavigationArg.FEATURE)
@@ -93,6 +112,58 @@ constructor(
     savedStateHandle.get<HealthModule>(NavigationArg.HEALTH_MODULE) ?: HealthModule.DEFAULT
 
   private val _isRefreshing = MutableStateFlow(false)
+  private val fhirEngine = syncBroadcaster.fhirEngine
+
+  private val _identifiers = MutableStateFlow<MutableList<PatientId>>(mutableListOf())
+  val identifiers: StateFlow<MutableList<PatientId>> = _identifiers
+
+  fun onAddIdentifier(patientId: String) {
+    _identifiers.value = _identifiers.value.toMutableList().apply { add(PatientId(patientId)) }
+  }
+
+  fun onDeleteIdentifier(patientId: PatientId) {
+    _identifiers.value = _identifiers.value.toMutableList().apply { remove(patientId) }
+  }
+
+  fun isOfflineFirst() = syncConfigOfflineFirst(configurationRegistry, sharedPreferencesHelper)
+
+  fun onSyncNow() {
+    viewModelScope.launch {
+      getIdentifier(fhirEngine).forEach {
+        kotlin.runCatching { fhirEngine.purge(ResourceType.List, it.idPart) }
+      }
+      val newResource =
+        ListResource().apply {
+          title = "Patient Identifier List"
+          generateMissingId()
+          generateMissingVersionId()
+          generateCreatedOn()
+          addTags(configService.provideResourceTags(sharedPreferencesHelper))
+          status = ListResource.ListStatus.CURRENT
+          mode = ListResource.ListMode.CHANGES
+          title = "Patient Identifier List"
+          code =
+            CodeableConcept().apply {
+              coding.add(
+                Coding().apply {
+                  system = "http://smartregister.org/fhir/patient-identifier-list"
+                  code = sharedPreferencesHelper.organisationCode()
+                },
+              )
+            }
+          _identifiers.value
+            .map {
+              ListEntryComponent().apply {
+                this.item = Reference().apply { display = it.identifier }
+              }
+            }
+            .also { entry.addAll(it) }
+        }
+      _identifiers.value.clear()
+      fhirEngine.create(newResource, isLocalOnly = true)
+      syncBroadcaster.runSync()
+    }
+  }
 
   val isRefreshing: StateFlow<Boolean>
     get() = _isRefreshing.asStateFlow()

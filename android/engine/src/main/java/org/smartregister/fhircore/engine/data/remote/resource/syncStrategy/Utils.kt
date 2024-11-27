@@ -20,7 +20,6 @@ import android.content.Intent
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.search.search
-import java.util.concurrent.TimeUnit
 import org.hl7.fhir.r4.model.ListResource
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.Item
@@ -29,7 +28,6 @@ import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.broad
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.broadcast.SyncStatusBroadcastReceiver
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir.ParamSyncStatus
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SyncState
-import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey.SYNC_STATUS
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 
@@ -42,31 +40,10 @@ fun hasCompletedInitialSync(sharedPreferencesHelper: SharedPreferencesHelper) =
 fun getSyncState(sharedPreferencesHelper: SharedPreferencesHelper) =
   sharedPreferencesHelper.read(SYNC_STATUS.name, SyncState.InitialSync.value)
 
-fun Long.before1min(): Boolean {
-  val currentTimeMillis = System.currentTimeMillis()
-  val diffMillis = currentTimeMillis - this
-  return TimeUnit.MILLISECONDS.toMinutes(diffMillis) < 1
-}
-
-fun String.splitIdTimestamp() = split("|")
-
-fun toIdTimestamp(sharedPreferencesHelper: SharedPreferencesHelper): IdTimestamp? =
-  sharedPreferencesHelper
-    .read(SharedPreferenceKey.SEARCH_PATIENT_ID_TIMESTAMP.name, null)
-    ?.splitIdTimestamp()
-    ?.map { IdTimestamp(it.first().toString(), it.last().toString().toLong()) }
-    ?.firstOrNull()
-
 suspend fun getIdentifier(fhirEngine: FhirEngine) =
   fhirEngine
     .search<ListResource> { filter(ListResource.TITLE, { value = "Patient Identifier List" }) }
     .map { it.resource }
-    .firstOrNull()
-
-data class IdTimestamp(
-  val logicalId: String,
-  val timestamp: Long,
-)
 
 fun onPerOrgSyncConfigItem(
   configurationRegistry: ConfigurationRegistry,

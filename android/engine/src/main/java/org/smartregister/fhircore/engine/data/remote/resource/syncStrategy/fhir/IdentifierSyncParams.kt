@@ -27,6 +27,7 @@ import org.hl7.fhir.r4.model.ResourceType
 
 class IdentifierSyncParams(
   private val identifiers: List<Int>,
+  private val tagSystem: String,
   private val callback: (ParamSyncStatus) -> Unit,
 ) : DownloadWorkManager {
 
@@ -87,7 +88,7 @@ class IdentifierSyncParams(
 
   private fun List<Int>.bundleEntryComponent(): List<Bundle.BundleEntryComponent> {
     return flatMap {
-      listOf("Patient?identifier=$it").map { url ->
+      listOf("Patient?_tag=$tagSystem&identifier=$it&active=true").map { url ->
         Bundle.BundleEntryComponent().apply {
           request =
             Bundle.BundleEntryRequestComponent().apply {

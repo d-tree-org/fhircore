@@ -27,11 +27,16 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.Scaffold
+import androidx.compose.material.SnackbarDuration
+import androidx.compose.material.SnackbarHost
+import androidx.compose.material.SnackbarHostState
+import androidx.compose.material.SnackbarResult
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.Report
@@ -39,12 +44,20 @@ import androidx.compose.material.icons.rounded.Task
 import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -64,6 +77,7 @@ import org.smartregister.fhircore.engine.ui.theme.DividerColor
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey.LAST_PURGE_KEY
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
+import org.smartregister.fhircore.engine.util.extension.showToast
 
 const val SYNC_TIMESTAMP_OUTPUT_FORMAT = "hh:mm aa, MMM d"
 
@@ -88,7 +102,59 @@ fun SettingsScreen(
       sheetState = devMenuSheetState,
       sheetContent = { DevMenu(viewModel = devViewModel) },
     ) {
+      val snackbarHostState = remember { SnackbarHostState() }
+      val coroutineScope = rememberCoroutineScope()
+
+      var fixProgress by remember {
+        mutableStateOf(SettingsChannelUiEvent.FixPatientProgress(0, 0))
+      }
+
+      var showProgressDialog by remember { mutableStateOf(false) }
+
+      val lifecycle = LocalLifecycleOwner.current
+
+      LaunchedEffect(key1 = settingsViewModel.channelFlow) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+          settingsViewModel.channelFlow.collect { event ->
+            when (event) {
+              is SettingsChannelUiEvent.FixPatient -> {
+                if (event.ids.isNotEmpty()) {
+                  coroutineScope.launch {
+                    snackbarHostState
+                      .showSnackbar(
+                        message =
+                          "We found ${event.ids.size} issue(s), would you like to fix that?",
+                        actionLabel = "Proceed",
+                        duration = SnackbarDuration.Indefinite,
+                      )
+                      .also {
+                        when (it) {
+                          SnackbarResult.Dismissed -> Unit
+                          SnackbarResult.ActionPerformed ->
+                            settingsViewModel.fixPatientIssues(event.ids)
+                        }
+                      }
+                  }
+                } else {
+                  context.showToast("No issue was found")
+                }
+              }
+              is SettingsChannelUiEvent.FixPatientProgress -> {
+                fixProgress =
+                  SettingsChannelUiEvent.FixPatientProgress(event.currentIndex, event.totalSize)
+                showProgressDialog = fixProgress.totalSize.minus(1) != event.currentIndex
+              }
+            }
+          }
+        }
+      }
+
+      if (showProgressDialog) {
+        FixPatientProgressDialog(fixProgress) { showProgressDialog = false }
+      }
+
       Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
           TopAppBar(
             title = {},
@@ -197,6 +263,19 @@ fun SettingsScreen(
                   icon = Icons.Default.ClearAll,
                   text = stringResource(id = R.string.reset),
                   clickListener = { settingsViewModel.resetStrategyCache() },
+                  modifier = modifier,
+                )
+              }
+            }
+            if (settingsViewModel.isOfflineFirst()) {
+              item {
+                UserProfileRow(
+                  icon = Icons.Default.AutoFixHigh,
+                  text = stringResource(id = R.string.fix_patients),
+                  clickListener = {
+                    context.showToast("Working on it, this takes a moment please wait...")
+                    settingsViewModel.findMissingPatientStrategyCache()
+                  },
                   modifier = modifier,
                 )
               }

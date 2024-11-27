@@ -33,6 +33,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.ListResource
 import org.hl7.fhir.r4.model.ResourceType
+import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.preferences.SyncUploadStrategy
 import org.smartregister.fhircore.engine.data.local.TingatheDatabase
@@ -74,13 +75,17 @@ constructor(
   private val syncStrategyCacheDao = database.syncStrategyCacheDao
   private val broadcaster = LocalBroadcastManager.getInstance(dataStore.context.applicationContext)
   private val listResourceTitle = "Patient Identifier List"
+  private val context = preference.context
+  private val system = context.getString(R.string.sync_strategy_organization_system)
+  private val organization = preference.organisationCode()
+  private val tagSystem = "$system%7C$organization"
 
   private fun downloadWorkManager(): DownloadWorkManager = runBlocking {
     syncConfigOfflineFirst(configurationRegistry, preference)
       .takeIf { it }
       ?.let {
         getIdentifiers(engine)?.let { item ->
-          return@runBlocking IdentifierSyncParams(item.data) {
+          return@runBlocking IdentifierSyncParams(item.data, tagSystem) {
             runBlocking {
               onSendBroadcast(broadcaster, it)
               syncStrategyCacheDao.insert(it.logicalId.toEntity())

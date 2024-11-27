@@ -19,6 +19,7 @@ package org.smartregister.fhircore.quest.ui.main.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -63,9 +64,10 @@ fun TopScreenSection(
   title: String,
   searchText: String,
   onSearchTextChanged: (String) -> Unit,
+  content: @Composable () -> Unit,
   onTitleIconClick: () -> Unit,
 ) {
-  var keyboardTypeText by remember { mutableStateOf(false) }
+  var keyboardTypeText by remember { mutableStateOf(true) }
 
   Column(
     modifier = modifier.fillMaxWidth().background(MaterialTheme.colors.primary),
@@ -78,6 +80,8 @@ fun TopScreenSection(
         Icon(Icons.Filled.Menu, contentDescription = DRAWER_MENU, tint = Color.White)
       }
       Text(text = title, fontSize = 20.sp, color = Color.White)
+      Spacer(modifier = Modifier.weight(1f))
+      content()
     }
     OutlinedTextField(
       colors = TextFieldDefaults.outlinedTextFieldColors(textColor = Color.DarkGray),
@@ -128,5 +132,10 @@ fun TopScreenSection(
 @Preview(showBackground = true)
 @Composable
 fun TopScreenSectionPreview() {
-  TopScreenSection(title = "All Clients", searchText = "Eddy", onSearchTextChanged = {}) {}
+  TopScreenSection(
+    title = "All Clients",
+    searchText = "Eddy",
+    onSearchTextChanged = {},
+    content = {}
+  ) {}
 }

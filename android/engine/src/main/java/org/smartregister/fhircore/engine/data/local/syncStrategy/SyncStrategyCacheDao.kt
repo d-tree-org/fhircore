@@ -17,6 +17,7 @@
 package org.smartregister.fhircore.engine.data.local.syncStrategy
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -62,4 +63,6 @@ abstract class SyncStrategyCacheDao {
   abstract suspend fun update(logicalId: String)
 
   @Query("UPDATE syncstrategycacheentity SET shouldSync = 0") abstract suspend fun resetAll()
+
+  @Delete abstract suspend fun delete(syncStrategyCacheEntity: SyncStrategyCacheEntity)
 }
