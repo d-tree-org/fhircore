@@ -136,6 +136,6 @@ fun TopScreenSectionPreview() {
     title = "All Clients",
     searchText = "Eddy",
     onSearchTextChanged = {},
-    content = {}
+    content = {},
   ) {}
 }
