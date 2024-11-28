@@ -139,22 +139,22 @@ android {
       dimension = "apps"
       applicationIdSuffix = ".mwcore"
       versionNameSuffix = "-mwcore"
-      versionCode = 38
-      versionName = "0.2.0.2"
+      versionCode = 39
+      versionName = "0.2.0.3"
     }
     create("mwcoreDev") {
       dimension = "apps"
       applicationIdSuffix = ".mwcoreDev"
       versionNameSuffix = "-mwcoreDev"
-      versionCode = 38
-      versionName = "0.2.0.2"
+      versionCode = 39
+      versionName = "0.2.0.3"
     }
     create("mwcoreStaging") {
       dimension = "apps"
       applicationIdSuffix = ".mwcoreStaging"
       versionNameSuffix = "-mwcoreStaging"
-      versionCode = 38
-      versionName = "0.2.0.2"
+      versionCode = 39
+      versionName = "0.2.0.3"
     }
   }
 
