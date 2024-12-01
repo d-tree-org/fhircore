@@ -24,6 +24,7 @@ import com.google.android.fhir.datacapture.extensions.logicalId
 import java.util.Date
 import java.util.LinkedList
 import java.util.UUID
+import org.hl7.fhir.exceptions.FHIRException
 import org.hl7.fhir.r4.model.Base
 import org.hl7.fhir.r4.model.BaseDateTimeType
 import org.hl7.fhir.r4.model.Binary
@@ -257,6 +258,18 @@ fun Resource.referenceParamForObservation(): ReferenceClientParam =
 
 fun Resource.setPropertySafely(name: String, value: Base) =
   kotlin.runCatching { this.setProperty(name, value) }.onFailure { Timber.w(it) }.getOrNull()
+
+fun isValidResourceType(resourceCode: String): Boolean {
+  return try {
+    ResourceType.fromCode(resourceCode)
+    true
+  } catch (exception: FHIRException) {
+    false
+  }
+}
+
+fun String.resourceClassType(): Class<out Resource> =
+  FhirContext.forR4Cached().getResourceDefinition(this).implementingClass as Class<out Resource>
 
 fun generateUniqueId() = UUID.randomUUID().toString()
 

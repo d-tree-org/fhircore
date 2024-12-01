@@ -19,6 +19,7 @@ package org.smartregister.fhircore.engine.configuration.app
 import kotlinx.serialization.Serializable
 import org.smartregister.fhircore.engine.configuration.Configuration
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
+import org.smartregister.fhircore.engine.configuration.DeviceToDeviceSyncConfig
 import org.smartregister.fhircore.engine.util.SystemConstants
 
 @Serializable
@@ -38,6 +39,7 @@ data class ApplicationConfiguration(
   var registrationForm: String = "patient-demographic-registration",
   var supportEmail: String = "info@tingathe.org",
   var supportPhoneNumber: String = "",
+  val deviceToDeviceSync: DeviceToDeviceSyncConfig? = null,
 ) : Configuration
 
 /**
