@@ -37,7 +37,7 @@ constructor(
   @ApplicationContext val context: Context,
 ) : DataMapper<PatientTask, PatientTaskItem> {
 
-  override fun transformInputToOutputModel(inputModel: PatientTask): PatientTaskItem {
+  override suspend fun transformInputToOutputModel(inputModel: PatientTask): PatientTaskItem {
     val patient = inputModel.patient
     val task = inputModel.task
 

@@ -5,9 +5,9 @@
 
 object Deps {
     object sdk_versions {
-        const val compile_sdk = 34
+        const val compile_sdk = 35
         const val min_sdk = 26
-        const val target_sdk = 34
+        const val target_sdk = 35
     }
 
     const val build_tool_version = "30.0.3"

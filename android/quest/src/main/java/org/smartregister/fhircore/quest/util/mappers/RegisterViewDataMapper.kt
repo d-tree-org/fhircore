@@ -38,7 +38,7 @@ import org.smartregister.fhircore.quest.ui.shared.models.ServiceMember
 
 class RegisterViewDataMapper @Inject constructor(@ApplicationContext val context: Context) :
   DataMapper<RegisterData, RegisterViewData.ListItemView> {
-  override fun transformInputToOutputModel(
+  override suspend fun transformInputToOutputModel(
     inputModel: RegisterData,
   ): RegisterViewData.ListItemView {
     return when (inputModel) {

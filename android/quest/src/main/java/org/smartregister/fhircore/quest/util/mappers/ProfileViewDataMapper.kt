@@ -57,7 +57,7 @@ class ProfileViewDataMapper @Inject constructor(@ApplicationContext val context:
 
   private val simpleDateFormat = SimpleDateFormat("dd MMM", Locale.getDefault())
 
-  override fun transformInputToOutputModel(inputModel: ProfileData): ProfileViewData {
+  override suspend fun transformInputToOutputModel(inputModel: ProfileData): ProfileViewData {
     return when (inputModel) {
       is ProfileData.AncProfileData ->
         ProfileViewData.PatientProfileViewData(

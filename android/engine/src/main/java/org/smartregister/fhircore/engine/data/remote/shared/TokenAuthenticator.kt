@@ -39,7 +39,10 @@ import java.util.Base64
 import javax.inject.Inject
 import javax.inject.Singleton
 import javax.net.ssl.SSLHandshakeException
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.data.remote.auth.OAuthService
 import org.smartregister.fhircore.engine.data.remote.model.response.OAuthResponse
@@ -263,6 +266,14 @@ constructor(
   }
 
   fun sessionActive(): Boolean = isTokenActive(getAccessToken())
+
+  suspend fun isSessionActive(): Boolean =
+    withContext(dispatcherProvider.io()) {
+      suspendCoroutine {
+        val active = sessionActive()
+        it.resume(active)
+      }
+    }
 
   fun invalidateSession(onSessionInvalidated: () -> Unit) {
     findAccount()?.let { account ->

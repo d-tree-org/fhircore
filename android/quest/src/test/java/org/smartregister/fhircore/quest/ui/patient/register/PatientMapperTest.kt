@@ -21,6 +21,7 @@ import dagger.hilt.android.testing.HiltAndroidTest
 import java.util.Calendar
 import java.util.Date
 import javax.inject.Inject
+import kotlinx.coroutines.test.runTest
 import org.hl7.fhir.r4.model.DateType
 import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.StringType
@@ -43,7 +44,7 @@ class PatientMapperTest : RobolectricTest() {
   }
 
   @Test
-  fun testMapToDomainModel() {
+  fun testMapToDomainModel() = runTest {
     val dto = buildPatient("123456", "123456", "Doe", "John", 12, listOf("+12345678"))
     val patientItem = patientItemMapper.transformInputToOutputModel(dto)
     with(patientItem) {
@@ -63,7 +64,7 @@ class PatientMapperTest : RobolectricTest() {
   }
 
   @Test
-  fun testMapToDomainModelWithoutIdentifier() {
+  fun testMapToDomainModelWithoutIdentifier() = runTest {
     val dto = buildPatient("123456", null, "Doe", "John", 12, listOf("+1234", "+5678"))
     val patientItem = patientItemMapper.transformInputToOutputModel(dto)
 

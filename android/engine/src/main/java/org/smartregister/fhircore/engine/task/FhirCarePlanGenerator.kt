@@ -21,6 +21,8 @@ import com.google.android.fhir.get
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.hl7.fhir.r4.model.Bundle
 import org.hl7.fhir.r4.model.CarePlan
 import org.hl7.fhir.r4.model.Encounter.EncounterStatus
@@ -89,7 +91,9 @@ constructor(val fhirEngine: FhirEngine, val transformSupportServices: TransformS
             )
           }
 
-          fhirPathEngine.evaluateToBoolean(input, null, subject, it.expression.expression)
+          withContext(Dispatchers.Default) {
+            fhirPathEngine.evaluateToBoolean(input, null, subject, it.expression.expression)
+          }
         }
       ) {
         val source =
