@@ -16,178 +16,58 @@
 
 package org.smartregister.fhircore.engine.data.remote.resource.syncStrategy
 
-import ca.uhn.fhir.rest.gclient.DateClientParam
-import com.google.android.fhir.FhirEngine
-import com.google.android.fhir.search.Order
-import com.google.android.fhir.search.Search
-import com.google.android.fhir.search.search
 import java.text.SimpleDateFormat
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.hl7.fhir.r4.model.Patient
-import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.R
-import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirApiService
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.ApiRepositoryImpl.Companion.SYNC_TIMESTAMP_INPUT_FORMAT
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.ApiRepositoryImpl.OfType
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.repository.ApiRepository
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.Progress
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SearchBy
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SearchBy.HUMAN_NAME
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SearchBy.IDENTIFIER
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SyncState
 import org.smartregister.fhircore.engine.util.AppDataStore
-import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
-import timber.log.Timber
 
 class ApiRepositoryImpl(
   private val fhirResourceService: FhirResourceService,
-  private val fhirApiService: FhirApiService,
-  private val sharedPreferencesHelper: SharedPreferencesHelper,
-  private val fhirEngine: FhirEngine,
-  private val appDataStore: AppDataStore,
+  sharedPreferencesHelper: SharedPreferencesHelper,
 ) : ApiRepository() {
 
   private val context = sharedPreferencesHelper.context
   private val system = context.getString(R.string.sync_strategy_organization_system)
   private val tag = "$system%7C${sharedPreferencesHelper.organisationCode()}"
 
-  override suspend fun fetchAndSaveToDb(
-    logicalId: String,
-    onCompleteListener: (Boolean) -> Unit,
-  ) {
-    var shouldRunSync = false
-    runCatching { fhirApiService.getPatient(logicalId).entry }
-      .onSuccess { bundleEntry ->
-        bundleEntry
-          .map { it.resource }
-          .filterNot { resource ->
-            runCatching { fhirEngine.get(resource.resourceType, resource.idPart) }.getOrNull() !=
-              null
-          }
-          .takeIf { it.isNotEmpty() }
-          ?.let { resources ->
-            println("@@@@@@@@@@@@@@@@@@@ runSync @@@@@@@@@@@@@@@@@@@@@@@")
-            fhirEngine.withTransaction { fhirEngine.create(*resources.toTypedArray()) }
-            shouldRunSync = true
-          }
-      }
-      .onFailure { Timber.e(it) }
-    onCompleteListener(shouldRunSync)
-  }
-
   override suspend fun search(searchQuery: String, criteria: SearchBy): List<Patient> =
     fhirResourceService
       .getResource(
         when (criteria) {
-          IDENTIFIER -> "Patient?identifier=$searchQuery&_tag=$tag"
-          HUMAN_NAME -> "Patient?given=$searchQuery,family=$searchQuery&_tag=$tag"
+          IDENTIFIER -> "${ResourceType.Patient.name}?identifier=$searchQuery&_tag=$tag"
+          HUMAN_NAME ->
+            "${ResourceType.Patient.name}?given=$searchQuery,family=$searchQuery&_tag=$tag"
         },
       )
       .entry
       .map { it.resource as Patient }
+}
 
-  suspend fun nativeApi(logicalId: String, onProgress: (Progress) -> Unit) {
-    runCatching {
-        with(fhirResourceService) {
-          val total = getResource("Patient/$logicalId/\$everything?_summary=count").total
-          getResource("Patient/$logicalId/\$everything?_count=$total").entry
-        }
-      }
-      .onSuccess { bundleEntry ->
-        bundleEntry
-          .map { it.resource }
-          .forEachIndexed { index, resource ->
-            fhirEngine.create(resource)
-            onProgress(Progress(index, bundleEntry.size, logicalId))
-          }
-      }
-      .onFailure { Timber.e(it) }
-  }
+private const val SYNC_TIMESTAMP_INPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss"
 
-  operator fun invoke(
-    onProgress: (Progress) -> Unit,
-    onCompleteListener: (Int) -> Unit,
-  ) {
-    onSyncListener(
-      progressStatus = onProgress,
-      onCompleteListener = { runApiFetch, patientSize ->
-        sharedPreferencesHelper.write(
-          SharedPreferenceKey.SYNC_STATUS.name,
-          if (runApiFetch) {
-            SyncState.CompletedInitialSync.value
-          } else SyncState.SubSequentSync.value,
-        )
-        onCompleteListener(patientSize)
-      },
-    )
-  }
-
-  private fun onSyncListener(
-    progressStatus: (Progress) -> Unit,
-    onCompleteListener: (Boolean, Int) -> Unit,
-  ) =
-    CoroutineScope(Dispatchers.IO).launch {
-      var patientSize: Int
-      var runSync = false
-      fhirEngine
-        .search<Patient>(Search(ResourceType.Patient))
-        .map { it.resource.idPart }
-        .also { patientSize = it.size }
-        .forEachIndexed { index, logicalId ->
-          runCatching { fhirApiService.getPatient(logicalId).entry }
-            .onSuccess { bundleEntry ->
-              bundleEntry
-                .map { it.resource }
-                .filterNot { resource ->
-                  runCatching { fhirEngine.get(resource.resourceType, resource.idPart) }
-                    .getOrNull() != null
-                }
-                .takeIf { it.isNotEmpty() }
-                ?.let { resources ->
-                  println("@@@@@@@@@@@@@@@@@@@ runSync @@@@@@@@@@@@@@@@@@@@@@@")
-                  runSync = true
-                  fhirEngine.withTransaction { fhirEngine.create(*resources.toTypedArray()) }
-                }
-            }
-            .onFailure { Timber.e(it) }
-          progressStatus(Progress(index, patientSize, logicalId))
-        }
-      saveLastUpdatedTimestamp(appDataStore)
-      onCompleteListener(runSync, patientSize)
-    }
-
-  private suspend inline fun <reified R : Resource> getLastUpdated() =
-    fhirEngine
-      .search<R> { sort(DateClientParam("_lastUpdated"), Order.DESCENDING) }
-      .map { it.resource }
-      .lastOrNull()
-
-  enum class OfType {
-    Patient,
-    Encounter,
-    Observation,
-    Condition,
-    CarePlan,
-    List,
-    Task,
-    Practitioner,
-    RelatedPerson,
-    Appointment,
-  }
-
-  companion object {
-    const val SYNC_TIMESTAMP_INPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss"
-  }
+enum class OfType {
+  Patient,
+  Encounter,
+  Observation,
+  Condition,
+  CarePlan,
+  List,
+  Task,
+  Practitioner,
+  RelatedPerson,
+  Appointment,
 }
 
 fun simpleDateFormat() = SimpleDateFormat(SYNC_TIMESTAMP_INPUT_FORMAT, Locale.getDefault())

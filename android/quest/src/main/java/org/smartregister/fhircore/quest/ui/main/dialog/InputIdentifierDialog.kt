@@ -29,10 +29,11 @@ import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
 import androidx.compose.material.Card
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -42,41 +43,34 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import java.util.Date
+import java.util.UUID
 import org.smartregister.fhircore.engine.ui.theme.GreyTextColor
-import org.smartregister.fhircore.engine.util.extension.showToast
+import org.smartregister.fhircore.engine.util.extension.toAgeDisplay
 import org.smartregister.fhircore.quest.ui.main.components.CLEAR
 import org.smartregister.fhircore.quest.ui.main.components.SEARCH
 import org.smartregister.fhircore.quest.ui.patient.register.PatientId
 
 @Composable
 fun InputIdentifierDialog(
-  identifiers: List<PatientId>,
-  onAddIdentifier: (String) -> Unit,
-  onDeleteIdentifier: (PatientId) -> Unit,
-  onSyncNow: () -> Unit,
-  onDismissRequest: () -> Unit,
+  query: String,
+  listOfIdentifiers: List<PatientId>,
+  isSearching: Boolean,
+  onEvent: (InputIdentifierUiEvent) -> Unit,
 ) {
-  val context = LocalContext.current
-  var identifier by remember { mutableStateOf("") }
-
-  Dialog(onDismissRequest = onDismissRequest) {
+  Dialog(onDismissRequest = { onEvent(InputIdentifierUiEvent.DismissRequest) }) {
     Card(modifier = Modifier.fillMaxWidth()) {
       Column(
         modifier = Modifier.fillMaxWidth().padding(8.dp),
@@ -93,8 +87,8 @@ fun InputIdentifierDialog(
         Box {
           OutlinedTextField(
             colors = TextFieldDefaults.outlinedTextFieldColors(textColor = Color.DarkGray),
-            value = identifier,
-            onValueChange = { identifier = it },
+            value = query,
+            onValueChange = { onEvent(InputIdentifierUiEvent.ValueChange(it)) },
             maxLines = 1,
             singleLine = true,
             placeholder = {
@@ -104,55 +98,69 @@ fun InputIdentifierDialog(
               )
             },
             modifier = Modifier.padding(8.dp).fillMaxWidth().background(Color.White),
-            leadingIcon = { Icon(imageVector = Icons.Filled.Numbers, SEARCH) },
+            leadingIcon = {
+              Box(modifier = Modifier.size(24.dp)) {
+                if (isSearching) {
+                  CircularProgressIndicator()
+                } else {
+                  Icon(imageVector = Icons.Filled.Numbers, SEARCH)
+                }
+              }
+            },
             trailingIcon = {
               Row {
-                if (identifier.isNotEmpty()) {
-                  IconButton(onClick = { identifier = "" }) {
+                if (query.isNotEmpty()) {
+                  IconButton(onClick = { onEvent(InputIdentifierUiEvent.ValueChange("")) }) {
                     Icon(imageVector = Icons.Filled.Clear, CLEAR, tint = Color.Gray)
                   }
                 }
               }
             },
-            keyboardActions =
-              KeyboardActions(
-                onGo = {
-                  onAddIdentifier(identifier.trim())
-                  identifier = ""
-                },
-              ),
             keyboardOptions =
               KeyboardOptions(
                 keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Go,
+                imeAction = ImeAction.None,
               ),
           )
         }
-
         Card(
           elevation = 4.dp,
           modifier = Modifier.requiredHeightIn(max = 320.dp),
         ) {
           LazyColumn {
             itemsIndexed(
-              items = identifiers.sortedBy { it.identifier },
+              items = listOfIdentifiers.sortedBy { it.identifier },
               key = { _, item -> item.uuid },
             ) { index, item ->
               Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
               ) {
-                IconButton(onClick = { onDeleteIdentifier(item) }) {
+                Text(
+                  text = index.plus(1).toString(),
+                  style = MaterialTheme.typography.h5,
+                  modifier = Modifier.padding(start = 8.dp, end = 16.dp),
+                )
+                Column {
+                  Text(text = item.identifier)
+                  Text(text = item.humanName)
+                  Text(text = item.dateOfBirth.toAgeDisplay())
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(
+                  onClick = { onEvent(InputIdentifierUiEvent.DeleteIdentifier(item)) },
+                  modifier = Modifier.clip(RoundedCornerShape(40)).background(Color(0xFFB40E0E)),
+                ) {
                   Icon(
-                    imageVector = Icons.Default.Delete,
-                    modifier = Modifier.size(16.dp),
+                    imageVector = Icons.Default.Clear,
+                    modifier = Modifier.size(20.dp),
                     contentDescription = null,
+                    tint = Color.White,
                   )
                 }
-                Text(text = item.identifier)
               }
-              if (index < identifiers.size.minus(1)) {
+              if (index < listOfIdentifiers.size.minus(1)) {
                 Divider()
               }
             }
@@ -162,13 +170,8 @@ fun InputIdentifierDialog(
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(
-          onClick = {
-            if (identifier.isEmpty()) {
-              context.showToast("Please add Id numbers to sync")
-              return@Button
-            }
-            onSyncNow()
-          },
+          enabled = listOfIdentifiers.isNotEmpty(),
+          onClick = { onEvent(InputIdentifierUiEvent.SyncNow) },
         ) {
           Text(text = "Sync Now")
         }
@@ -181,10 +184,16 @@ fun InputIdentifierDialog(
 @Composable
 fun InputIdentifierDialogPreview() {
   InputIdentifierDialog(
-    (1..8).toList().map { PatientId("Item $it") },
-    onDeleteIdentifier = {},
-    onDismissRequest = {},
-    onSyncNow = {},
-    onAddIdentifier = {},
+    "123456",
+    (1..4).toList().map {
+      PatientId(
+        uuid = UUID.randomUUID().toString(),
+        identifier = "12345",
+        dateOfBirth = Date(1213235574589),
+        humanName = "John Doe",
+      )
+    },
+    onEvent = {},
+    isSearching = true,
   )
 }

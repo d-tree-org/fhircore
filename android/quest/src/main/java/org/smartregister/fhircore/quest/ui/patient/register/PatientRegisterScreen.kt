@@ -57,11 +57,11 @@ import org.smartregister.fhircore.engine.ui.components.register.RegisterHeader
 import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity
 import org.smartregister.fhircore.engine.util.extension.decodeResourceFromString
 import org.smartregister.fhircore.engine.util.extension.extractId
-import org.smartregister.fhircore.engine.util.extension.showToast
 import org.smartregister.fhircore.quest.ui.components.RegisterFooter
 import org.smartregister.fhircore.quest.ui.components.RegisterList
 import org.smartregister.fhircore.quest.ui.main.components.TopScreenSection
 import org.smartregister.fhircore.quest.ui.main.dialog.InputIdentifierDialog
+import org.smartregister.fhircore.quest.ui.main.dialog.InputIdentifierUiEvent
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 
 @Composable
@@ -80,6 +80,8 @@ fun PatientRegisterScreen(
 
   var showDialog by remember { mutableStateOf(false) }
   val identifiers = patientRegisterViewModel.identifiers.collectAsState().value
+  val query = patientRegisterViewModel.queryString.collectAsState().value
+  val isSearching = patientRegisterViewModel.isSearching.collectAsState().value
 
   val searchedTextState = patientRegisterViewModel.searchedText.collectAsState()
   val searchedText by remember { searchedTextState }
@@ -112,18 +114,22 @@ fun PatientRegisterScreen(
   if (showDialog) {
     with(patientRegisterViewModel) {
       InputIdentifierDialog(
-        identifiers,
-        onAddIdentifier = { onAddIdentifier(it) },
-        onDeleteIdentifier = { onDeleteIdentifier(it) },
-        onSyncNow = {
-          if (identifiers.isEmpty()) {
-            context.showToast("No Ids were added")
-            return@InputIdentifierDialog
+        query = query,
+        listOfIdentifiers = identifiers,
+        isSearching = isSearching,
+        onEvent = { event ->
+          when (event) {
+            is InputIdentifierUiEvent.AddIdentifier -> Unit
+            is InputIdentifierUiEvent.DeleteIdentifier -> onDeleteIdentifier(event.patientId)
+            is InputIdentifierUiEvent.ValueChange ->
+              patientRegisterViewModel.onValueChange(event.query.trim())
+            InputIdentifierUiEvent.DismissRequest -> showDialog = false
+            InputIdentifierUiEvent.SyncNow -> {
+              onSyncNow()
+              showDialog = false
+            }
           }
-          onSyncNow()
-          showDialog = false
         },
-        onDismissRequest = { showDialog = false },
       )
     }
   }

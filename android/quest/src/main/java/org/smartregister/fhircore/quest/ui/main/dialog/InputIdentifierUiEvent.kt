@@ -14,11 +14,18 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.repository
+package org.smartregister.fhircore.quest.ui.main.dialog
 
-import org.hl7.fhir.r4.model.Patient
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SearchBy
+import org.smartregister.fhircore.quest.ui.patient.register.PatientId
 
-abstract class ApiRepository {
-  abstract suspend fun search(searchQuery: String, criteria: SearchBy): List<Patient>
+sealed interface InputIdentifierUiEvent {
+  data class AddIdentifier(val identifier: String) : InputIdentifierUiEvent
+
+  data class DeleteIdentifier(val patientId: PatientId) : InputIdentifierUiEvent
+
+  data class ValueChange(val query: String) : InputIdentifierUiEvent
+
+  data object SyncNow : InputIdentifierUiEvent
+
+  data object DismissRequest : InputIdentifierUiEvent
 }

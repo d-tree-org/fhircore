@@ -18,6 +18,7 @@ package org.smartregister.fhircore.quest.ui.patient.register
 
 import android.content.Context
 import android.content.Intent
+import androidx.core.text.isDigitsOnly
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -28,7 +29,7 @@ import androidx.paging.filter
 import androidx.paging.map
 import com.google.android.fhir.sync.SyncJobStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.util.UUID
+import java.util.Date
 import javax.inject.Inject
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
@@ -39,31 +40,31 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
-import org.hl7.fhir.r4.model.CodeableConcept
-import org.hl7.fhir.r4.model.Coding
-import org.hl7.fhir.r4.model.ListResource
-import org.hl7.fhir.r4.model.ListResource.ListEntryComponent
-import org.hl7.fhir.r4.model.Reference
-import org.hl7.fhir.r4.model.ResourceType
+import kotlinx.coroutines.withContext
+import org.hl7.fhir.r4.model.Patient
 import org.smartregister.fhircore.engine.appfeature.AppFeature
 import org.smartregister.fhircore.engine.appfeature.AppFeatureManager
 import org.smartregister.fhircore.engine.appfeature.model.HealthModule
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
-import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.data.local.TingatheDatabase
 import org.smartregister.fhircore.engine.data.local.register.AppRegisterRepository
-import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.getIdentifier
+import org.smartregister.fhircore.engine.data.local.syncStrategy.toEntity
+import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.ApiRepositoryImpl
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.logicalIds
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.syncConfigOfflineFirst
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SearchBy
 import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils.SyncState
 import org.smartregister.fhircore.engine.domain.util.PaginationConstant
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
@@ -72,10 +73,8 @@ import org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireType
 import org.smartregister.fhircore.engine.util.DispatcherProvider
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
-import org.smartregister.fhircore.engine.util.extension.addTags
-import org.smartregister.fhircore.engine.util.extension.generateCreatedOn
-import org.smartregister.fhircore.engine.util.extension.generateMissingId
-import org.smartregister.fhircore.engine.util.extension.generateMissingVersionId
+import org.smartregister.fhircore.engine.util.extension.extractName
+import org.smartregister.fhircore.engine.util.extension.showToast
 import org.smartregister.fhircore.quest.R
 import org.smartregister.fhircore.quest.data.patient.model.PatientPagingSourceState
 import org.smartregister.fhircore.quest.data.register.RegisterPagingSource
@@ -84,10 +83,13 @@ import org.smartregister.fhircore.quest.navigation.NavigationArg
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 import org.smartregister.fhircore.quest.util.REGISTER_FORM_ID_KEY
 import org.smartregister.fhircore.quest.util.mappers.RegisterViewDataMapper
+import timber.log.Timber
 
 data class PatientId(
   val identifier: String,
-  val uuid: String = UUID.randomUUID().toString(),
+  val dateOfBirth: Date,
+  val humanName: String,
+  val uuid: String,
 )
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -104,21 +106,40 @@ constructor(
   val dispatcherProvider: DispatcherProvider,
   val sharedPreferencesHelper: SharedPreferencesHelper,
   private val database: TingatheDatabase,
-  private val configService: ConfigService,
+  fhirResourceService: FhirResourceService,
 ) : ViewModel() {
 
   private val appFeatureName = savedStateHandle.get<String>(NavigationArg.FEATURE)
   private val healthModule =
     savedStateHandle.get<HealthModule>(NavigationArg.HEALTH_MODULE) ?: HealthModule.DEFAULT
 
+  private val apiRepositoryImpl = ApiRepositoryImpl(fhirResourceService, sharedPreferencesHelper)
   private val _isRefreshing = MutableStateFlow(false)
-  private val fhirEngine = syncBroadcaster.fhirEngine
 
   private val _identifiers = MutableStateFlow<MutableList<PatientId>>(mutableListOf())
   val identifiers: StateFlow<MutableList<PatientId>> = _identifiers
 
-  fun onAddIdentifier(patientId: String) {
-    _identifiers.value = _identifiers.value.toMutableList().apply { add(PatientId(patientId)) }
+  private val _isSearching: MutableStateFlow<Boolean> = MutableStateFlow(false)
+  private val _queryString: MutableStateFlow<String> = MutableStateFlow("")
+  val queryString = _queryString.asStateFlow()
+  val isSearching = _isSearching.asStateFlow()
+
+  fun onAddIdentifier(patients: List<Patient>) {
+    patients.forEach { patient ->
+      _identifiers.value =
+        _identifiers.value.apply {
+          if (patient.idPart !in this.map { it.uuid }) {
+            add(
+              PatientId(
+                uuid = patient.idPart,
+                identifier = patient.identifier.firstOrNull()?.value ?: "",
+                dateOfBirth = patient.birthDate,
+                humanName = patient.extractName(),
+              ),
+            )
+          }
+        }
+    }
   }
 
   fun onDeleteIdentifier(patientId: PatientId) {
@@ -129,39 +150,44 @@ constructor(
 
   fun onSyncNow() {
     viewModelScope.launch {
-      getIdentifier(fhirEngine).forEach {
-        kotlin.runCatching { fhirEngine.purge(ResourceType.List, it.idPart) }
-      }
-      val newResource =
-        ListResource().apply {
-          title = "Patient Identifier List"
-          generateMissingId()
-          generateMissingVersionId()
-          generateCreatedOn()
-          addTags(configService.provideResourceTags(sharedPreferencesHelper))
-          status = ListResource.ListStatus.CURRENT
-          mode = ListResource.ListMode.CHANGES
-          title = "Patient Identifier List"
-          code =
-            CodeableConcept().apply {
-              coding.add(
-                Coding().apply {
-                  system = "http://smartregister.org/fhir/patient-identifier-list"
-                  code = sharedPreferencesHelper.organisationCode()
-                },
-              )
-            }
-          _identifiers.value
-            .map {
-              ListEntryComponent().apply {
-                this.item = Reference().apply { display = it.identifier }
-              }
-            }
-            .also { entry.addAll(it) }
-        }
+      database.syncStrategyCacheDao.insert(identifiers.value.map { it.uuid.toEntity() })
       _identifiers.value.clear()
-      fhirEngine.create(newResource, isLocalOnly = true)
-      syncBroadcaster.runSync()
+      withContext(Dispatchers.Main) {
+        syncBroadcaster.appContext.showToast("Syncing...")
+        syncBroadcaster.runSync()
+      }
+    }
+  }
+
+  fun onValueChange(query: String) {
+    _isSearching.value = query.isNotEmpty()
+    _queryString.update { query }
+  }
+
+  private fun identifierLookup() {
+    viewModelScope.launch {
+      _queryString
+        .debounce(2_000)
+        .filterNot { it.trim().isEmpty() }
+        .collectLatest { query ->
+          val searchBy = if (query.isDigitsOnly()) SearchBy.IDENTIFIER else SearchBy.HUMAN_NAME
+          kotlin
+            .runCatching { apiRepositoryImpl.search(query, searchBy) }
+            .onSuccess {
+              _isSearching.value = false
+              if (it.isEmpty()) {
+                sharedPreferencesHelper.context.showToast("No patient found with ID $query")
+                return@onSuccess
+              }
+              _queryString.update { "" }
+              onAddIdentifier(it)
+            }
+            .onFailure {
+              sharedPreferencesHelper.context.showToast("Something went wrong, please try again")
+              _isSearching.value = false
+              Timber.e(it)
+            }
+        }
     }
   }
 
@@ -255,6 +281,7 @@ constructor(
     sharedPreferencesHelper.read(SharedPreferenceKey.SYNC_STATUS.name, SyncState.InitialSync.value)
 
   init {
+    identifierLookup()
     syncBroadcaster.registerSyncListener(
       { state ->
         when (state) {
