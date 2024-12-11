@@ -47,4 +47,9 @@ annotation class RegularRetrofit
 @ExcludeFromJacocoGeneratedReport
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
+annotation class RegularRetrofitApi
+
+@ExcludeFromJacocoGeneratedReport
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
 annotation class HivPatient

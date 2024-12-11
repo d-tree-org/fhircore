@@ -39,6 +39,7 @@ android {
       """"${project.extra["OAUTH_CLIENT_SECRET"]}"""",
     )
     buildConfigField("String", "OAUTH_SCOPE", """"${project.extra["OAUTH_SCOPE"]}"""")
+    buildConfigField("String", "FHIR_API_SERVICE", """"${project.extra["FHIR_API_SERVICE"]}"""")
     buildConfigField(
       "String",
       "FHIR_HELPER_SERVICE",

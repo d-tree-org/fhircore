@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.configuration.app
+package org.smartregister.fhircore.engine.data.remote.resource.syncStrategy
 
-/** Configurations for Keycloak server authentication loaded from the BuildConfig */
-data class AuthConfiguration(
-  var oauthServerBaseUrl: String,
-  var fhirServerBaseUrl: String,
-  var clientId: String,
-  var clientSecret: String,
-  var fhirHelperServiceBaseUrl: String,
-  var fhirApiBaseUrl: String,
-  var accountType: String,
-  var scope: String = "openid",
-)
+sealed interface EventCallback {
+
+  data object ShowAttentionDialog : EventCallback
+
+  data object InProgress : EventCallback
+
+  data object Stated : EventCallback
+
+  /**
+   * @param logicalId [String] The ID is passed when opening `QuestionnaireActivity`
+   * @see [org.smartregister.fhircore.engine.ui.questionnaire.QuestionnaireActivity]
+   */
+  data class Finished(val logicalId: String) : EventCallback
+
+  data class OnSyncListener(val completed: Boolean) : EventCallback
+}

@@ -46,6 +46,7 @@ sealed class RegisterViewData {
     val registerType: KClass<out RegisterData> = RegisterData.DefaultRegisterData::class,
     val identifier: String = "",
     val customKey: String? = null,
+    val isLocal: Boolean = true,
   ) : RegisterViewData()
 
   @Stable

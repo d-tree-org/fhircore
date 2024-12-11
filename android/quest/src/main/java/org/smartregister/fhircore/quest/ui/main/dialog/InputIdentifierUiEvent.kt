@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.configuration.app
+package org.smartregister.fhircore.quest.ui.main.dialog
 
-/** Configurations for Keycloak server authentication loaded from the BuildConfig */
-data class AuthConfiguration(
-  var oauthServerBaseUrl: String,
-  var fhirServerBaseUrl: String,
-  var clientId: String,
-  var clientSecret: String,
-  var fhirHelperServiceBaseUrl: String,
-  var fhirApiBaseUrl: String,
-  var accountType: String,
-  var scope: String = "openid",
-)
+import org.smartregister.fhircore.quest.ui.patient.register.PatientId
+
+sealed interface InputIdentifierUiEvent {
+  data class AddIdentifier(val identifier: String) : InputIdentifierUiEvent
+
+  data class DeleteIdentifier(val patientId: PatientId) : InputIdentifierUiEvent
+
+  data class ValueChange(val query: String) : InputIdentifierUiEvent
+
+  data object SyncNow : InputIdentifierUiEvent
+
+  data object DismissRequest : InputIdentifierUiEvent
+}

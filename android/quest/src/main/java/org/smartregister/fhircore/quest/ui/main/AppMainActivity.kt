@@ -18,20 +18,24 @@ package org.smartregister.fhircore.quest.ui.main
 
 import android.app.Activity
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.lifecycle.lifecycleScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.fhir.sync.SyncJobStatus
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlin.math.max
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.broadcast.SyncStatusBroadcastReceiver
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir.ParamSyncStatus
 import org.smartregister.fhircore.engine.data.remote.shared.TokenAuthenticator
 import org.smartregister.fhircore.engine.sync.OnSyncListener
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
@@ -63,6 +67,9 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
 
   val appMainViewModel by viewModels<AppMainViewModel>()
 
+  private lateinit var syncStatusBroadcastReceiver: SyncStatusBroadcastReceiver
+  private lateinit var localBroadcastManager: LocalBroadcastManager
+
   private val authActivityLauncherForResult =
     registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
       if (res.resultCode == Activity.RESULT_OK) {
@@ -73,9 +80,30 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     setupTimeOutListener()
-    setContent { AppTheme { MainScreen(appMainViewModel = appMainViewModel) } }
+    val paramSyncStatus = MutableStateFlow<ParamSyncStatus?>(null)
+    localBroadcastManager = LocalBroadcastManager.getInstance(this)
+    syncStatusBroadcastReceiver = SyncStatusBroadcastReceiver {
+      showToast("Syncing ${it.patientPositionAt} of ${it.idsTotal}")
+      paramSyncStatus.value = it
+    }
+    val intentFilter = IntentFilter(SyncStatusBroadcastReceiver::class.java.name)
+    localBroadcastManager.registerReceiver(syncStatusBroadcastReceiver, intentFilter)
+
+    setContent {
+      AppTheme {
+        MainScreen(
+          appMainViewModel = appMainViewModel,
+          paramSyncStatus = paramSyncStatus,
+        )
+      }
+    }
     syncBroadcaster.registerSyncListener(this, lifecycleScope)
     scheduleAuthWorkers()
+  }
+
+  override fun onDestroy() {
+    super.onDestroy()
+    localBroadcastManager.unregisterReceiver(syncStatusBroadcastReceiver)
   }
 
   override fun onResume() {
@@ -95,7 +123,14 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
       }
       is SyncJobStatus.InProgress -> {
         Timber.d(
-          "Syncing in progress: ${state.syncOperation.name} ${state.completed.div(max(state.total, 1).toDouble()).times(100)}%",
+          "Syncing in progress: ${state.syncOperation.name} ${
+                        state.completed.div(
+                            max(
+                                state.total,
+                                1,
+                            ).toDouble(),
+                        ).times(100)
+                    }%",
         )
         appMainViewModel.onEvent(
           AppMainEvent.UpdateSyncState(state, getString(R.string.syncing_in_progress)),
@@ -103,7 +138,7 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
       }
       is SyncJobStatus.Failed -> {
         if (
-          !state?.exceptions.isNullOrEmpty() &&
+          !state.exceptions.isNullOrEmpty() &&
             state.exceptions.first().resourceType == ResourceType.Flag
         ) {
           showToast(state.exceptions.first().exception.message!!)
@@ -111,9 +146,9 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
         }
         showToast(getString(R.string.sync_failed_text))
         val hasAuthError =
-          state?.exceptions?.any {
+          state.exceptions.any {
             it.exception is HttpException && (it.exception as HttpException).code() == 401
-          } ?: false
+          }
         if (hasAuthError) {
           showToast(getString(R.string.session_expired))
         }
@@ -134,7 +169,7 @@ open class AppMainActivity : BaseMultiLanguageActivity(), OnSyncListener {
             },
           )
         }
-        Timber.w(state?.exceptions?.joinToString { it.exception.message.toString() })
+        Timber.w(state.exceptions.joinToString { it.exception.message.toString() })
         scheduleFhirBackgroundWorkers()
       }
       is SyncJobStatus.Succeeded -> {

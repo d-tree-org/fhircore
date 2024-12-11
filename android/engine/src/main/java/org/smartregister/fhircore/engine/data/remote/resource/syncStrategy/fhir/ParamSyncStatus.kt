@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.configuration.app
+package org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir
 
-/** Configurations for Keycloak server authentication loaded from the BuildConfig */
-data class AuthConfiguration(
-  var oauthServerBaseUrl: String,
-  var fhirServerBaseUrl: String,
-  var clientId: String,
-  var clientSecret: String,
-  var fhirHelperServiceBaseUrl: String,
-  var fhirApiBaseUrl: String,
-  var accountType: String,
-  var scope: String = "openid",
-)
+import java.io.Serializable
+
+data class ParamSyncStatus(
+  val logicalId: List<String>,
+  val idsTotal: Int,
+  val patientPositionAt: Int,
+) : Serializable

@@ -35,8 +35,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.smartregister.fhircore.engine.appfeature.model.HealthModule
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.fhir.ParamSyncStatus
 import org.smartregister.fhircore.engine.domain.model.SideMenuOption
 import org.smartregister.fhircore.engine.ui.settings.SettingsScreen
 import org.smartregister.fhircore.quest.R
@@ -66,6 +68,7 @@ import org.smartregister.fhircore.quest.ui.tracing.register.TracingRegisterScree
 fun MainScreen(
   modifier: Modifier = Modifier,
   appMainViewModel: AppMainViewModel = hiltViewModel(),
+  paramSyncStatus: MutableStateFlow<ParamSyncStatus?>,
 ) {
   val navController = rememberNavController()
   val scope = rememberCoroutineScope()
@@ -115,6 +118,7 @@ fun MainScreen(
         openDrawer = openDrawer,
         sideMenuOptions = uiState.sideMenuOptions,
         appMainViewModel = appMainViewModel,
+        paramSyncStatus = paramSyncStatus,
       )
     }
   }
@@ -128,6 +132,7 @@ private fun AppMainNavigationGraph(
   sideMenuOptions: List<SideMenuOption>,
   measureReportViewModel: MeasureReportViewModel = hiltViewModel(),
   appMainViewModel: AppMainViewModel,
+  paramSyncStatus: MutableStateFlow<ParamSyncStatus?>,
 ) {
   val firstSideMenuOption = sideMenuOptions.first()
   val firstScreenTitle = stringResource(firstSideMenuOption.titleResource)
@@ -148,7 +153,12 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.Home ->
           composable(
             route =
-              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.SCREEN_TITLE)}",
+              "${it.route}${
+                            NavigationArg.routePathsOf(
+                                includeCommonArgs = true,
+                                NavigationArg.SCREEN_TITLE,
+                            )
+                        }",
             arguments =
               commonNavArgs.plus(
                 navArgument(NavigationArg.SCREEN_TITLE) {
@@ -194,7 +204,13 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.PatientProfile ->
           composable(
             route =
-              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID, NavigationArg.FAMILY_ID)}",
+              "${it.route}${
+                            NavigationArg.routePathsOf(
+                                includeCommonArgs = true,
+                                NavigationArg.PATIENT_ID,
+                                NavigationArg.FAMILY_ID,
+                            )
+                        }",
             arguments = commonNavArgs.plus(patientIdNavArgument()),
           ) {
             PatientProfileScreen(navController = navController, appMainViewModel = appMainViewModel)
@@ -202,7 +218,14 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.FixPatientProfile ->
           composable(
             route =
-              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID, FixPatientViewModel.NAVIGATION_ARG_START, FixPatientViewModel.NAVIGATION_ARG_CARE_PLAN)}",
+              "${it.route}${
+                            NavigationArg.routePathsOf(
+                                includeCommonArgs = true,
+                                NavigationArg.PATIENT_ID,
+                                FixPatientViewModel.NAVIGATION_ARG_START,
+                                FixPatientViewModel.NAVIGATION_ARG_CARE_PLAN,
+                            )
+                        }",
             arguments = commonNavArgs.plus(patientIdNavArgument()),
           ) {
             FixPatientScreen(navController = navController, appMainViewModel = appMainViewModel)
@@ -210,7 +233,13 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.TracingProfile ->
           composable(
             route =
-              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID, NavigationArg.FAMILY_ID)}",
+              "${it.route}${
+                            NavigationArg.routePathsOf(
+                                includeCommonArgs = true,
+                                NavigationArg.PATIENT_ID,
+                                NavigationArg.FAMILY_ID,
+                            )
+                        }",
             arguments = commonNavArgs.plus(patientIdNavArgument()),
           ) {
             TracingProfileScreen(navController = navController, appViewModel = appMainViewModel)
@@ -232,7 +261,12 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.GuardianProfile ->
           composable(
             route =
-              "${it.route}/{${NavigationArg.PATIENT_ID}}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.ON_ART)}",
+              "${it.route}/{${NavigationArg.PATIENT_ID}}${
+                            NavigationArg.routePathsOf(
+                                includeCommonArgs = true,
+                                NavigationArg.ON_ART,
+                            )
+                        }",
             arguments =
               commonNavArgs.plus(
                 listOf(
@@ -258,7 +292,12 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.FamilyProfile ->
           composable(
             route =
-              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID)}",
+              "${it.route}${
+                            NavigationArg.routePathsOf(
+                                includeCommonArgs = true,
+                                NavigationArg.PATIENT_ID,
+                            )
+                        }",
             arguments = commonNavArgs.plus(patientIdNavArgument()),
           ) {
             FamilyProfileScreen(navController = navController)
@@ -266,7 +305,12 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.ViewChildContacts ->
           composable(
             route =
-              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID)}",
+              "${it.route}${
+                            NavigationArg.routePathsOf(
+                                includeCommonArgs = true,
+                                NavigationArg.PATIENT_ID,
+                            )
+                        }",
             arguments = commonNavArgs.plus(patientIdNavArgument()),
           ) {
             ChildContactsProfileScreen(navController = navController)
@@ -274,7 +318,12 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.TracingHistory ->
           composable(
             route =
-              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID)}",
+              "${it.route}${
+                            NavigationArg.routePathsOf(
+                                includeCommonArgs = true,
+                                NavigationArg.PATIENT_ID,
+                            )
+                        }",
             arguments = commonNavArgs.plus(patientIdNavArgument()),
           ) {
             TracingHistoryScreen(navController = navController)
@@ -282,7 +331,13 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.TracingOutcomes ->
           composable(
             route =
-              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID, NavigationArg.TRACING_ID)}",
+              "${it.route}${
+                            NavigationArg.routePathsOf(
+                                includeCommonArgs = true,
+                                NavigationArg.PATIENT_ID,
+                                NavigationArg.TRACING_ID,
+                            )
+                        }",
             arguments =
               commonNavArgs.plus(
                 listOf(
@@ -299,7 +354,15 @@ private fun AppMainNavigationGraph(
         MainNavigationScreen.TracingHistoryDetails ->
           composable(
             route =
-              "${it.route}${NavigationArg.routePathsOf(includeCommonArgs = true, NavigationArg.PATIENT_ID, NavigationArg.TRACING_ID, NavigationArg.TRACING_ENCOUNTER_ID, NavigationArg.SCREEN_TITLE)}",
+              "${it.route}${
+                            NavigationArg.routePathsOf(
+                                includeCommonArgs = true,
+                                NavigationArg.PATIENT_ID,
+                                NavigationArg.TRACING_ID,
+                                NavigationArg.TRACING_ENCOUNTER_ID,
+                                NavigationArg.SCREEN_TITLE,
+                            )
+                        }",
             arguments =
               commonNavArgs.plus(
                 listOf(

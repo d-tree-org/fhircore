@@ -20,21 +20,31 @@ import android.content.Context
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.datacapture.extensions.logicalId
+import com.google.android.fhir.search.search
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import org.hl7.fhir.r4.model.CarePlan
 import org.hl7.fhir.r4.model.CareTeam
 import org.hl7.fhir.r4.model.Location
 import org.hl7.fhir.r4.model.Organization
+import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.Practitioner
 import org.hl7.fhir.r4.model.ResourceType
 import org.smartregister.fhircore.engine.auth.AccountAuthenticator
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
+import org.smartregister.fhircore.engine.data.local.TingatheDatabase
+import org.smartregister.fhircore.engine.data.local.syncStrategy.toEntity
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
+import org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.syncConfigOfflineFirst
 import org.smartregister.fhircore.engine.domain.model.Language
 import org.smartregister.fhircore.engine.domain.util.DataLoadState
 import org.smartregister.fhircore.engine.sync.SyncBroadcaster
@@ -43,6 +53,7 @@ import org.smartregister.fhircore.engine.util.SecureSharedPreference
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.annotation.ExcludeFromJacocoGeneratedReport
+import org.smartregister.fhircore.engine.util.extension.filterByResourceTypeId
 import org.smartregister.fhircore.engine.util.extension.getActivity
 import org.smartregister.fhircore.engine.util.extension.launchActivityWithNoBackStackHistory
 import timber.log.Timber
@@ -60,11 +71,14 @@ constructor(
   val fhirEngine: FhirEngine,
   val defaultRepository: DefaultRepository,
   val fhirResourceService: FhirResourceService,
+  private val database: TingatheDatabase,
 ) : ViewModel() {
 
   private val onLogout = MutableLiveData<Boolean?>(null)
 
   val language = MutableLiveData<Language?>(null)
+  private val syncStrategyCacheDao = database.syncStrategyCacheDao
+  private var fixPatientJob: Job? = null
 
   val profileData = MutableLiveData<DataLoadState<ProfileData>>()
 
@@ -148,6 +162,54 @@ constructor(
     accountAuthenticator.logout @ExcludeFromJacocoGeneratedReport {
       context.getActivity()?.launchActivityWithNoBackStackHistory<LoginActivity>()
     }
+  }
+
+  fun isOfflineFirst() = syncConfigOfflineFirst(configurationRegistry, sharedPreferences)
+
+  fun resetStrategyCache() {
+    viewModelScope.launch {
+      database.withTransaction { syncStrategyCacheDao.resetAll() }
+      syncBroadcaster.runSync()
+    }
+  }
+
+  private val channel: Channel<SettingsChannelUiEvent> = Channel()
+  val channelFlow = channel.receiveAsFlow()
+
+  fun fixPatientIssues(cachedIds: List<String>) {
+    viewModelScope.launch {
+      cachedIds.forEach { patientId ->
+        database.withTransaction {
+          syncStrategyCacheDao.delete(patientId.toEntity())
+          syncStrategyCacheDao.insert(patientId.toEntity())
+        }
+      }
+      syncBroadcaster.runSync()
+    }
+  }
+
+  fun findMissingPatientStrategyCache() {
+    fixPatientJob?.cancel()
+    fixPatientJob =
+      viewModelScope.launch {
+        var patientIds: Int
+        val cachedIds: MutableList<String> = mutableListOf()
+        fhirEngine
+          .search<Patient> { filter(Patient.ACTIVE, { value = of(true) }) }
+          .map { it.resource.idPart }
+          .also { patientIds = it.size }
+          .forEachIndexed { index, patientId ->
+            channel.send(SettingsChannelUiEvent.FixPatientProgress(index, patientIds))
+            fhirEngine
+              .search<CarePlan> {
+                filterByResourceTypeId(CarePlan.SUBJECT, ResourceType.Patient, patientId)
+              }
+              .map { it.resource }
+              .takeIf { it.isEmpty() }
+              ?.let { cachedIds.add(patientId) }
+          }
+        channel.send(SettingsChannelUiEvent.FixPatient(cachedIds))
+      }
   }
 
   fun fetchPractitionerDetails() {}

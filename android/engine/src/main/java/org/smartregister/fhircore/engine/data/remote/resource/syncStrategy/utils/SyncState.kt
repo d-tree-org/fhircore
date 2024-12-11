@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.configuration.app
+package org.smartregister.fhircore.engine.data.remote.resource.syncStrategy.utils
 
-/** Configurations for Keycloak server authentication loaded from the BuildConfig */
-data class AuthConfiguration(
-  var oauthServerBaseUrl: String,
-  var fhirServerBaseUrl: String,
-  var clientId: String,
-  var clientSecret: String,
-  var fhirHelperServiceBaseUrl: String,
-  var fhirApiBaseUrl: String,
-  var accountType: String,
-  var scope: String = "openid",
-)
+enum class SyncState(val value: Long) {
+  InitialSync(value = 1),
+  CompletedInitialSync(value = 2),
+  SubSequentSync(value = 3),
+  SubSequentRunSync(value = 4),
+  RunSyncNow(value = 5),
+}

@@ -77,6 +77,9 @@ constructor(
 
   fun getFormConfigs(): List<QuestionnaireConfig>? = applicationConfiguration.value?.formConfigs
 
+  fun getPerOrgSyncConfigs(): OrganizationSyncConfig? =
+    applicationConfiguration.value?.organizationSyncConfig
+
   private suspend fun getBinary(id: String): Binary = fhirEngine.get(id)
 
   companion object {

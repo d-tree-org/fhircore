@@ -21,16 +21,27 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.Button
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -49,6 +60,8 @@ import org.smartregister.fhircore.engine.util.extension.extractId
 import org.smartregister.fhircore.quest.ui.components.RegisterFooter
 import org.smartregister.fhircore.quest.ui.components.RegisterList
 import org.smartregister.fhircore.quest.ui.main.components.TopScreenSection
+import org.smartregister.fhircore.quest.ui.main.dialog.InputIdentifierDialog
+import org.smartregister.fhircore.quest.ui.main.dialog.InputIdentifierUiEvent
 import org.smartregister.fhircore.quest.ui.shared.models.RegisterViewData
 
 @Composable
@@ -64,6 +77,11 @@ fun PatientRegisterScreen(
   val firstTimeSync by remember { firstTimeSyncState }
   val searchTextState = patientRegisterViewModel.searchText.collectAsState()
   val searchText by remember { searchTextState }
+
+  var showDialog by remember { mutableStateOf(false) }
+  val identifiers = patientRegisterViewModel.identifiers.collectAsState().value
+  val query = patientRegisterViewModel.queryString.collectAsState().value
+  val isSearching = patientRegisterViewModel.isSearching.collectAsState().value
 
   val searchedTextState = patientRegisterViewModel.searchedText.collectAsState()
   val searchedText by remember { searchedTextState }
@@ -93,6 +111,29 @@ fun PatientRegisterScreen(
       .value
       .collectAsLazyPagingItems()
 
+  if (showDialog) {
+    with(patientRegisterViewModel) {
+      InputIdentifierDialog(
+        query = query,
+        listOfIdentifiers = identifiers,
+        isSearching = isSearching,
+        onEvent = { event ->
+          when (event) {
+            is InputIdentifierUiEvent.AddIdentifier -> Unit
+            is InputIdentifierUiEvent.DeleteIdentifier -> onDeleteIdentifier(event.patientId)
+            is InputIdentifierUiEvent.ValueChange ->
+              patientRegisterViewModel.onValueChange(event.query.trim())
+            InputIdentifierUiEvent.DismissRequest -> showDialog = false
+            InputIdentifierUiEvent.SyncNow -> {
+              onSyncNow()
+              showDialog = false
+            }
+          }
+        },
+      )
+    }
+  }
+
   Scaffold(
     topBar = {
       // Top section has toolbar and a results counts view
@@ -103,6 +144,21 @@ fun PatientRegisterScreen(
           patientRegisterViewModel.onEvent(
             PatientRegisterEvent.SearchRegister(searchText = searchText),
           )
+        },
+        content = {
+          if (patientRegisterViewModel.isOfflineFirst()) {
+            Row {
+              IconButton(onClick = { showDialog = true }) {
+                Icon(
+                  imageVector = Icons.Default.Download,
+                  contentDescription = null,
+                  modifier = Modifier.size(20.dp),
+                  tint = Color.White,
+                )
+              }
+              Spacer(modifier = Modifier.width(8.dp))
+            }
+          }
         },
       ) {
         openDrawer(true)

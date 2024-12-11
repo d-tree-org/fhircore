@@ -39,6 +39,7 @@ class QuestConfigService @Inject constructor(@ApplicationContext val context: Co
       clientSecret = BuildConfig.OAUTH_CLIENT_SECRET,
       accountType = context.getString(R.string.authenticator_account_type),
       fhirHelperServiceBaseUrl = BuildConfig.FHIR_HELPER_SERVICE,
+      fhirApiBaseUrl = BuildConfig.FHIR_API_SERVICE,
     )
 
   override fun defineResourceTags() =

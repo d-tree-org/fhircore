@@ -42,6 +42,7 @@ import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.data.remote.auth.KeycloakService
 import org.smartregister.fhircore.engine.data.remote.auth.OAuthService
 import org.smartregister.fhircore.engine.data.remote.fhir.helper.FhirHelperService
+import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirApiService
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirConverterFactory
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
 import org.smartregister.fhircore.engine.data.remote.shared.TokenAuthenticator
@@ -161,6 +162,25 @@ class NetworkModule {
       .addConverterFactory(FhirConverterFactory(parser))
       .addConverterFactory(GsonConverterFactory.create(gson))
       .build()
+
+  @Provides
+  @RegularRetrofitApi
+  fun provideRegularRetrofitApi(
+    @WithAuthorizationOkHttpClientQualifier okHttpClient: OkHttpClient,
+    configService: ConfigService,
+    gson: Gson,
+    parser: IParser,
+  ): Retrofit =
+    Retrofit.Builder()
+      .baseUrl(configService.provideAuthConfiguration().fhirApiBaseUrl)
+      .client(okHttpClient)
+      .addConverterFactory(FhirConverterFactory(parser))
+      .addConverterFactory(GsonConverterFactory.create(gson))
+      .build()
+
+  @Provides
+  fun provideFhirApiService(@RegularRetrofitApi retrofit: Retrofit): FhirApiService =
+    retrofit.create(FhirApiService::class.java)
 
   @Provides
   fun provideOauthService(

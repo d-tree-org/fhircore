@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-package org.smartregister.fhircore.engine.configuration.app
+package org.smartregister.fhircore.engine.data.local.syncStrategy
 
-/** Configurations for Keycloak server authentication loaded from the BuildConfig */
-data class AuthConfiguration(
-  var oauthServerBaseUrl: String,
-  var fhirServerBaseUrl: String,
-  var clientId: String,
-  var clientSecret: String,
-  var fhirHelperServiceBaseUrl: String,
-  var fhirApiBaseUrl: String,
-  var accountType: String,
-  var scope: String = "openid",
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity
+data class SyncStrategyCacheEntity(
+  @PrimaryKey val logicalId: String,
+  val shouldSync: Boolean = false,
+  val timestamp: Long = System.currentTimeMillis(),
 )
+
+fun List<String>.toEntity() = map { SyncStrategyCacheEntity(logicalId = it) }
+
+fun String.toEntity() = SyncStrategyCacheEntity(logicalId = this)
